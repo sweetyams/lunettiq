@@ -12,6 +12,7 @@
     "perf:measure": "next build && lhci autorun"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.34",
     "framer-motion": "^12.38.0",
     "next": "14.2.35",
     "react": "^18",

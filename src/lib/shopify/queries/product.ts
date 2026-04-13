@@ -76,6 +76,9 @@ const PRODUCT_BY_HANDLE_QUERY = `
       templeLength: metafield(namespace: "custom", key: "temple_length") {
         value
       }
+      tryOnImage: metafield(namespace: "custom", key: "tryon_image") {
+        value
+      }
       collections(first: 10) {
         nodes {
           id
@@ -139,6 +142,7 @@ interface RawProductResponse {
     bridgeWidth: { value: string } | null;
     lensWidth: { value: string } | null;
     templeLength: { value: string } | null;
+    tryOnImage: { value: string } | null;
     collections: { nodes: Product['collections'] };
   } | null;
 }
@@ -165,6 +169,7 @@ function parseMetafields(raw: RawProductResponse['product']): Product['metafield
     bridgeWidth: raw.bridgeWidth ? Number(raw.bridgeWidth.value) : undefined,
     lensWidth: raw.lensWidth ? Number(raw.lensWidth.value) : undefined,
     templeLength: raw.templeLength ? Number(raw.templeLength.value) : undefined,
+    tryOnImage: raw.tryOnImage?.value ?? undefined,
   };
 }
 

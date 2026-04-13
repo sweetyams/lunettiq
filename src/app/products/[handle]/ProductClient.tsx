@@ -140,7 +140,7 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
           {product.images[0] && (
             <div className="mt-4">
               <VirtualTryOn
-                frameImageUrl={product.images[0].url}
+                frameImageUrl={product.metafields.tryOnImage || product.images[0].url}
                 frameName={product.title}
               />
             </div>

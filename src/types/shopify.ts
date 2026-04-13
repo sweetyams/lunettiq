@@ -35,6 +35,7 @@ export interface ProductMetafields {
   bridgeWidth?: number;      // mm
   lensWidth?: number;        // mm
   templeLength?: number;     // mm
+  tryOnImage?: string;       // Front-facing transparent PNG for virtual try-on
 }
 
 export interface Product {
