@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunettiq — Competitor Landscape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0A153D;
+    --green: #005D23;
+    --cream: #F5F2EC;
+    --warm-gray: #E8E4DC;
+    --mid-gray: #B4B2A9;
+    --text-muted: #888780;
+    --white: #ffffff;
+    --tier-luxury: #0A153D;
+    --tier-indie: #005D23;
+    --tier-direct: #533399;
+    --tier-local: #854F0B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--navy);
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--navy);
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #ffffff12;
+  }
+
+  .header-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.02em;
+  }
+
+  .header-meta {
+    font-size: 12px;
+    color: #aaa;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-date {
+    font-size: 12px;
+    color: #555;
+    letter-spacing: 0.05em;
+  }
+
+  .main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 48px 80px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .section-sub {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 36px;
+    max-width: 560px;
+  }
+
+  /* BRAND GRID */
+  .brand-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 48px;
+  }
+
+  .brand-card {
+    background: var(--white);
+    border: 0.5px solid #D3D1C7;
+    border-radius: 10px;
+    padding: 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+  }
+
+  .brand-card:hover {
+    border-color: var(--navy);
+    transform: translateY(-1px);
+  }
+
+  .brand-card.active {
+    border: 1.5px solid var(--navy);
+    background: var(--cream);
+  }
+
+  .brand-card.lunettiq-card {
+    border: 1.5px solid var(--navy);
+    background: var(--navy);
+  }
+
+  .brand-card.lunettiq-card .brand-name { color: var(--white); }
+  .brand-card.lunettiq-card .brand-origin { color: #aaa; }
+  .brand-card.lunettiq-card .bar-label { color: #aaa; }
+  .brand-card.lunettiq-card .bar-track { background: #ffffff18; }
+  .brand-card.lunettiq-card .bar-val { color: #aaa; }
+
+  .lunettiq-badge {
+    position: absolute;
+    top: -1px;
+    right: 12px;
+    background: var(--green);
+    color: var(--white);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 0 0 6px 6px;
+  }
+
+  .tier-pill {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 99px;
+    margin-bottom: 10px;
+  }
+
+  .brand-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-origin {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .bar-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 46px;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 3px;
+    background: var(--warm-gray);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .bar-val {
+    font-size: 10px;
+    color: var(--text-muted);
+    min-width: 18px;
+    text-align: right;
+  }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    background: var(--white);
+    border: 0.5px solid #D3D1C7;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 48px;
+    min-height: 180px;
+    transition: opacity 0.2s;
+  }
+
+  .detail-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .detail-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+  }
+
+  .detail-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .detail-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+
+  .detail-col h4 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .detail-col p {
+    font-size: 13px;
+    color: #444;
+    line-height: 1.6;
+  }
+
+  .detail-opportunity {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 0.5px solid #D3D1C7;
+    color: #555;
+    background: var(--cream);
+  }
+
+  .tag.strength {
+    border-color: currentColor;
+    background: transparent;
+  }
+
+  /* POSITIONING MAP */
+  .map-wrap {
+    margin-bottom: 48px;
+  }
+
+  .pos-map {
+    background: var(--white);
+    border: 0.5px solid #D3D1C7;
+    border-radius: 12px;
+    height: 360px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .axis-h {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 0.5px;
+    background: #E8E4DC;
+  }
+
+  .axis-v {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 0.5px;
+    background: #E8E4DC;
+  }
+
+  .axis-lbl {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mid-gray);
+    font-weight: 500;
+  }
+
+  .map-dot {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.15s;
+    font-family: 'Syne', sans-serif;
+  }
+
+  .map-dot:hover { transform: translate(-50%, -50%) scale(1.15); }
+
+  .map-dot-label {
+    position: absolute;
+    font-size: 10px;
+    white-space: nowrap;
+    color: var(--text-muted);
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-weight: 500;
+  }
+
+  .map-quadrant-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #D3D1C7;
+    font-weight: 600;
+  }
+
+  /* GAP TABLE */
+  .gap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .gap-table th {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-align: left;
+    padding: 0 16px 12px;
+    border-bottom: 0.5px solid #D3D1C7;
+  }
+
+  .gap-table th:first-child { padding-left: 0; }
+
+  .gap-table td {
+    padding: 14px 16px;
+    border-bottom: 0.5px solid #F0EDE8;
+    vertical-align: top;
+    line-height: 1.5;
+    color: #444;
+  }
+
+  .gap-table td:first-child {
+    padding-left: 0;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--navy);
+  }
+
+  .gap-table tr:last-child td { border-bottom: none; }
+
+  .gap-table tr.lunettiq-row td {
+    background: #0A153D08;
+  }
+
+  .gap-table tr.lunettiq-row td:first-child {
+    color: var(--navy);
+  }
+
+  .check { color: var(--green); font-weight: 600; }
+  .cross { color: #B4B2A9; }
+  .partial { color: #BA7517; font-weight: 500; }
+
+  .table-wrap {
+    background: var(--white);
+    border: 0.5px solid #D3D1C7;
+    border-radius: 12px;
+    padding: 28px 32px;
+    overflow-x: auto;
+  }
+
+  .divider {
+    height: 0.5px;
+    background: #E8E4DC;
+    margin: 48px 0;
+  }
+
+  footer {
+    background: var(--navy);
+    padding: 20px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  footer span {
+    font-size: 12px;
+    color: #555;
+    letter-spacing: 0.05em;
+  }
+
+  footer .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--white);
+  }
+
+  @media (max-width: 900px) {
+    .main { padding: 32px 24px 60px; }
+    header { padding: 20px 24px; }
+    .brand-grid { grid-template-columns: repeat(2, 1fr); }
+    .detail-cols { grid-template-columns: 1fr; gap: 16px; }
+    footer { padding: 16px 24px; }
+  }
+
+  @media (max-width: 600px) {
+    .brand-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pos-map { height: 260px; }
+    .map-dot { width: 28px; height: 28px; font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">/lunettiq™</div>
+  <div class="header-meta">Competitor landscape · 2026</div>
+  <div class="header-date">April 2026</div>
+</header>
+
+<div class="main">
+
+  <div style="margin-bottom: 40px;">
+    <div class="section-label">Strategic overview</div>
+    <h1 class="section-title">Eyewear competitive landscape</h1>
+    <p class="section-sub">Click any brand to explore positioning, strengths, and the opportunity gap for Lunettiq. The map plots price vs. cultural signal.</p>
+  </div>
+
+  <div class="section-label" style="margin-bottom: 12px;">Brand cards — click to explore</div>
+  <div class="brand-grid" id="brand-grid"></div>
+
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-empty">Select a brand above to see positioning details</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="map-wrap">
+    <div class="section-label" style="margin-bottom: 6px;">Positioning map</div>
+    <p class="section-sub" style="margin-bottom: 16px;">Price (vertical) vs. cultural signal (horizontal). Click dots to explore.</p>
+    <div class="pos-map" id="pos-map">
+      <div class="axis-h"></div>
+      <div class="axis-v"></div>
+      <span class="axis-lbl" style="top: 10px; left: 50%; transform: translateX(-50%);">High price</span>
+      <span class="axis-lbl" style="bottom: 10px; left: 50%; transform: translateX(-50%);">Low price</span>
+      <span class="axis-lbl" style="left: 12px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: center; white-space: nowrap;">Mass market</span>
+      <span class="axis-lbl" style="right: 12px; top: 50%; transform: translateY(-50%) rotate(90deg); transform-origin: center; white-space: nowrap;">Cultural</span>
+      <span class="map-quadrant-label" style="top: 14px; right: 18px;">Luxury cultural</span>
+      <span class="map-quadrant-label" style="top: 14px; left: 18px;">Luxury mass</span>
+      <span class="map-quadrant-label" style="bottom: 14px; right: 18px;">Accessible cultural</span>
+      <span class="map-quadrant-label" style="bottom: 14px; left: 18px;">Accessible mass</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div>
+    <div class="section-label" style="margin-bottom: 6px;">Capability comparison</div>
+    <p class="section-sub" style="margin-bottom: 20px;">Where Lunettiq has a structural advantage no competitor currently owns.</p>
+    <div class="table-wrap">
+      <table class="gap-table">
+        <thead>
+          <tr>
+            <th>Brand</th>
+            <th>Optical / Rx</th>
+            <th>Loyalty program</th>
+            <th>Cultural signal</th>
+            <th>DTC / online</th>
+            <th>Trade-in / circular</th>
+          </tr>
+        </thead>
+        <tbody id="gap-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span class="footer-logo">/lunettiq™</span>
+  <span>Windows to the soul</span>
+  <span>Confidential · Internal use</span>
+</footer>
+
+<script>
+const brands = [
+  {
+    name: "Lunettiq",
+    origin: "Montréal, CA",
+    tier: "lunettiq",
+    tierLabel: "Lunettiq",
+    price: 76, culture: 92, social: 82, product: 85,
+    price_range: "$180–450",
+    target: "Culture-first eyewear collector, 22–42, optical + fashion",
+    web: "Editorial DTC with loyalty backbone (Essential / CULT / VAULT). Second Sight circular model. Montreal-based with global ambition.",
+    strengths: ["Loyalty program depth", "Optical + fashion hybrid", "Cultural community"],
+    weaknesses: ["Early brand awareness", "Building DTC infra"],
+    opportunity: "The gap: culturally loud + optically credible + loyalty-driven. No competitor owns all three simultaneously.",
+    optical: true, loyalty: true, cultural: true, dtc: true, circular: true
+  },
+  {
+    name: "CHIMI",
+    origin: "Stockholm, SE",
+    tier: "indie",
+    tierLabel: "Indie / DTC",
+    price: 85, culture: 82, social: 88, product: 70,
+    price_range: "$200–350",
+    target: "Nordic minimalist, lifestyle-driven 25–35",
+    web: "Strong Shopify DTC. Editorial photography, muted tones. Heavy Instagram + influencer seeding.",
+    strengths: ["Aesthetic consistency", "Influencer network", "Lifestyle brand feel"],
+    weaknesses: ["No optical / Rx", "No loyalty layer", "Mass-produced"],
+    opportunity: "Lunettiq wins on optical expertise + cultural membership that Chimi lacks.",
+    optical: false, loyalty: false, cultural: true, dtc: true, circular: false
+  },
+  {
+    name: "Jimmy Fairly",
+    origin: "Paris, FR",
+    tier: "direct",
+    tierLabel: "DTC Optical",
+    price: 72, culture: 58, social: 65, product: 80,
+    price_range: "$150–280",
+    target: "Style-conscious optical buyer, 28–45",
+    web: "French minimalism with strong retail presence. Clear optical focus. Blog content around vision health.",
+    strengths: ["Optical credibility", "Retail + DTC hybrid", "Affordable"],
+    weaknesses: ["Less culturally loud", "No community/loyalty"],
+    opportunity: "Lunettiq beats them on culture signal and loyalty depth.",
+    optical: true, loyalty: false, cultural: false, dtc: true, circular: false
+  },
+  {
+    name: "Kaleos",
+    origin: "Barcelona, ES",
+    tier: "indie",
+    tierLabel: "Indie / DTC",
+    price: 78, culture: 75, social: 70, product: 78,
+    price_range: "$180–320",
+    target: "Design-minded European buyer, fashion-adjacent",
+    web: "Strong editorial identity, architecture-inspired frames. Good e-commerce. Modest social following.",
+    strengths: ["Design differentiation", "Strong aesthetic POV"],
+    weaknesses: ["Small social scale", "No loyalty", "Limited North American presence"],
+    opportunity: "Lunettiq's Montreal roots + French-market bilingualism is a unique angle Kaleos can't replicate.",
+    optical: false, loyalty: false, cultural: true, dtc: true, circular: false
+  },
+  {
+    name: "Eluard",
+    origin: "France",
+    tier: "luxury",
+    tierLabel: "Luxury",
+    price: 92, culture: 80, social: 60, product: 92,
+    price_range: "$400–800+",
+    target: "Collector, fashion insider, 30–50",
+    web: "Minimal site, scarcity-focused drops. Small but devoted following. Artisanal positioning.",
+    strengths: ["Premium material story", "Scarcity + exclusivity", "High AOV"],
+    weaknesses: ["Very niche reach", "No optical", "High barrier"],
+    opportunity: "VAULT tier is Lunettiq's answer — exclusivity with a recurring access model.",
+    optical: false, loyalty: false, cultural: true, dtc: false, circular: false
+  },
+  {
+    name: "Lexxola",
+    origin: "London, UK",
+    tier: "indie",
+    tierLabel: "Indie / DTC",
+    price: 80, culture: 88, social: 85, product: 74,
+    price_range: "$250–380",
+    target: "Club-culture, Y2K-adjacent, 20–32",
+    web: "High-impact visual brand, TikTok-native content strategy. Drop model. Very strong Gen Z resonance.",
+    strengths: ["Cultural relevance", "TikTok/Gen Z reach", "Drop excitement"],
+    weaknesses: ["Sunglasses-only", "No optical", "Trend-dependent"],
+    opportunity: "Lunettiq has longevity Lexxola may not — optical need = repeat purchase without trend dependence.",
+    optical: false, loyalty: false, cultural: true, dtc: true, circular: false
+  },
+  {
+    name: "Seventh",
+    origin: "Canada",
+    tier: "luxury",
+    tierLabel: "Luxury",
+    price: 90, culture: 72, social: 55, product: 88,
+    price_range: "$350–700",
+    target: "Discerning buyer, contemporary luxury, 35–55",
+    web: "Minimal site, small but high-quality output. Limited marketing spend. Mostly word-of-mouth.",
+    strengths: ["Canadian credibility", "Quiet luxury aesthetic"],
+    weaknesses: ["Minimal community", "Low digital presence", "No loyalty"],
+    opportunity: "Lunettiq is the culturally active version of Seventh — same market, louder mission.",
+    optical: false, loyalty: false, cultural: false, dtc: false, circular: false
+  },
+  {
+    name: "PJ.LOBSTER",
+    origin: "Montréal, CA",
+    tier: "local",
+    tierLabel: "Local / Optical",
+    price: 65, culture: 60, social: 50, product: 72,
+    price_range: "$150–350",
+    target: "Local Montreal optical buyer",
+    web: "Traditional optician model with independent selection. Modest social. Loyal local base.",
+    strengths: ["Local trust", "Optical expertise", "Physical presence"],
+    weaknesses: ["No DTC", "No brand story", "No loyalty program"],
+    opportunity: "Lunettiq is the evolved, culturally-branded version of this archetype.",
+    optical: true, loyalty: false, cultural: false, dtc: false, circular: false
+  }
+];
+
+const tierStyles = {
+  lunettiq: { bg: "#0A153D", border: "#0A153D", text: "#fff", pillBg: "#005D23", pillText: "#fff", barColor: "#4d9fff" },
+  luxury:   { bg: "#fff", border: "#D3D1C7", text: "#0A153D", pillBg: "#0A153D1A", pillText: "#0A153D", barColor: "#0A153D" },
+  indie:    { bg: "#fff", border: "#D3D1C7", text: "#0A153D", pillBg: "#005D231A", pillText: "#005D23", barColor: "#005D23" },
+  direct:   { bg: "#fff", border: "#D3D1C7", text: "#0A153D", pillBg: "#5333991A", pillText: "#533399", barColor: "#533399" },
+  local:    { bg: "#fff", border: "#D3D1C7", text: "#0A153D", pillBg: "#854F0B1A", pillText: "#854F0B", barColor: "#854F0B" }
+};
+
+let selectedIdx = null;
+
+function bar(label, val, color, isLunettiq) {
+  const trackBg = isLunettiq ? "#ffffff18" : "#E8E4DC";
+  const lblColor = isLunettiq ? "#aaa" : "#888780";
+  const valColor = isLunettiq ? "#aaa" : "#888780";
+  return `<div class="bar-row">
+    <span class="bar-label" style="color:${lblColor}">${label}</span>
+    <div class="bar-track" style="background:${trackBg}">
+      <div class="bar-fill" style="width:${val}%;background:${color}"></div>
+    </div>
+    <span class="bar-val" style="color:${valColor}">${val}</span>
+  </div>`;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('brand-grid');
+  grid.innerHTML = brands.map((b, i) => {
+    const s = tierStyles[b.tier];
+    const isL = b.tier === 'lunettiq';
+    return `<div class="brand-card ${isL ? 'lunettiq-card' : ''} ${selectedIdx === i ? 'active' : ''}"
+      style="border-color:${s.border};background:${s.bg}"
+      onclick="select(${i})">
+      ${isL ? '<div class="lunettiq-badge">You are here</div>' : ''}
+      <span class="tier-pill" style="background:${s.pillBg};color:${s.pillText}">${b.tierLabel}</span>
+      <div class="brand-name" style="color:${isL ? '#fff' : '#0A153D'}">${b.name}</div>
+      <div class="brand-origin" style="color:${isL ? '#aaa' : '#888780'}">${b.origin}</div>
+      ${bar("Price", b.price, s.barColor, isL)}
+      ${bar("Culture", b.culture, s.barColor, isL)}
+      ${bar("Social", b.social, s.barColor, isL)}
+    </div>`;
+  }).join('');
+}
+
+function renderDetail(i) {
+  const b = brands[i];
+  const s = tierStyles[b.tier];
+  const isL = b.tier === 'lunettiq';
+  document.getElementById('detail-panel').innerHTML = `
+    <div class="detail-header">
+      <span class="detail-name">${b.name}</span>
+      <span class="detail-meta">${b.origin} · ${b.price_range}</span>
+      <span class="tier-pill" style="background:${s.pillBg};color:${s.pillText};margin-bottom:0">${b.tierLabel}</span>
+    </div>
+    <div class="detail-cols">
+      <div class="detail-col">
+        <h4>Target customer</h4>
+        <p>${b.target}</p>
+      </div>
+      <div class="detail-col">
+        <h4>Digital & brand</h4>
+        <p>${b.web}</p>
+      </div>
+      <div class="detail-col">
+        <h4>${isL ? 'Opportunity owned' : 'Gap for Lunettiq'}</h4>
+        <p class="detail-opportunity" style="color:${isL ? '#005D23' : '#444'}">${b.opportunity}</p>
+      </div>
+    </div>
+    <div class="tags">
+      ${b.strengths.map(s2 => `<span class="tag strength" style="border-color:${s.pillText}44;color:${s.pillText}">${s2}</span>`).join('')}
+      ${b.weaknesses.map(w => `<span class="tag">${w}</span>`).join('')}
+    </div>`;
+}
+
+function select(i) {
+  selectedIdx = i;
+  renderGrid();
+  renderDetail(i);
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderMap() {
+  const map = document.getElementById('pos-map');
+  brands.forEach((b, i) => {
+    const s = tierStyles[b.tier];
+    const isL = b.tier === 'lunettiq';
+    const W = map.offsetWidth || 700;
+    const H = map.offsetHeight || 360;
+    const x = (0.12 + (b.culture / 100) * 0.76) * W;
+    const y = (1 - (0.12 + (b.price / 100) * 0.76)) * H;
+    const dot = document.createElement('div');
+    dot.className = 'map-dot';
+    dot.style.cssText = `left:${x}px;top:${y}px;background:${isL ? '#0A153D' : s.pillBg};border:1.5px solid ${isL ? '#005D23' : s.pillText};color:${isL ? '#fff' : s.pillText}`;
+    dot.innerHTML = `${b.name.slice(0,2)}<span class="map-dot-label">${b.name}</span>`;
+    dot.onclick = () => select(i);
+    map.appendChild(dot);
+  });
+}
+
+function renderGapTable() {
+  const tbody = document.getElementById('gap-tbody');
+  const check = '<span class="check">Yes</span>';
+  const cross = '<span class="cross">No</span>';
+  const partial = '<span class="partial">Partial</span>';
+  tbody.innerHTML = brands.map(b => {
+    const isL = b.tier === 'lunettiq';
+    return `<tr class="${isL ? 'lunettiq-row' : ''}">
+      <td>${b.name}${isL ? ' <span style="font-size:10px;background:#005D23;color:#fff;padding:2px 7px;border-radius:99px;font-family:DM Sans,sans-serif;font-weight:400">you</span>' : ''}</td>
+      <td>${b.optical ? check : cross}</td>
+      <td>${b.loyalty ? check : cross}</td>
+      <td>${b.cultural ? check : cross}</td>
+      <td>${b.dtc ? check : (b.name === 'Seventh' ? partial : cross)}</td>
+      <td>${b.circular ? check : cross}</td>
+    </tr>`;
+  }).join('');
+}
+
+renderGrid();
+renderMap();
+renderGapTable();
+</script>
+</body>
+</html>
