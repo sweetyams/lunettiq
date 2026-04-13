@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { useCartDrawer } from '@/context/CartDrawerContext';
 import type { CartLineItem } from '@/types/shopify';
 
 /* ------------------------------------------------------------------ */
@@ -143,12 +144,11 @@ function LineItem({
 export default function CartDrawer() {
   const {
     cart,
-    isOpen,
     isLoading,
-    closeCart,
     updateLineItem,
     removeLineItem,
   } = useCart();
+  const { isOpen, closeCart } = useCartDrawer();
 
   const panelRef = useRef<HTMLDivElement>(null);
 

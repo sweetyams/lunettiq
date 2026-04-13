@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { HomepageHero } from '@/types/metaobjects';
@@ -8,13 +11,15 @@ interface HeroSectionProps {
 
 export default function HeroSection({ heroes }: HeroSectionProps) {
   const activeHero = heroes.find((h) => h.active);
+  const [leftLoaded, setLeftLoaded] = useState(false);
+  const [rightLoaded, setRightLoaded] = useState(false);
+
   if (!activeHero) return null;
 
   return (
     <section className="relative w-full">
-      {/* Dual images: side by side on desktop, stacked on mobile */}
       <div className="flex flex-col md:flex-row w-full">
-        <div className="relative w-full md:w-1/2 aspect-[4/5]">
+        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!leftLoaded ? 'animate-pulse' : ''}`}>
           {activeHero.imageLeft && (
             <Image
               src={activeHero.imageLeft}
@@ -23,10 +28,11 @@ export default function HeroSection({ heroes }: HeroSectionProps) {
               className="object-cover"
               priority
               sizes="(max-width: 768px) 100vw, 50vw"
+              onLoad={() => setLeftLoaded(true)}
             />
           )}
         </div>
-        <div className="relative w-full md:w-1/2 aspect-[4/5]">
+        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!rightLoaded ? 'animate-pulse' : ''}`}>
           {activeHero.imageRight && (
             <Image
               src={activeHero.imageRight}
@@ -35,12 +41,12 @@ export default function HeroSection({ heroes }: HeroSectionProps) {
               className="object-cover"
               priority
               sizes="(max-width: 768px) 100vw, 50vw"
+              onLoad={() => setRightLoaded(true)}
             />
           )}
         </div>
       </div>
 
-      {/* Headline overlay + CTA */}
       {(activeHero.headline || activeHero.ctaText) && (
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-12 md:pb-16 bg-gradient-to-t from-black/40 to-transparent">
           {activeHero.headline && (

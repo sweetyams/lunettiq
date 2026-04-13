@@ -1,7 +1,8 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import { getProductByHandle, getProductRecommendations } from '@/lib/shopify/queries/product';
-import { getEyeTestCTAs, getLensOptions } from '@/lib/shopify/queries/metaobjects';
+import { getProductByHandle } from '@/lib/shopify/queries/product';
 import ProductClient from './ProductClient';
+import { BelowFoldPDP } from './ProductClient';
 
 export const revalidate = 60;
 
@@ -9,29 +10,38 @@ interface ProductPageProps {
   params: { handle: string };
 }
 
+async function BelowFoldData({ productId, handle }: { productId: string; handle: string }) {
+  const { getProductRecommendations } = await import('@/lib/shopify/queries/product');
+  const { getEyeTestCTAs } = await import('@/lib/shopify/queries/metaobjects');
+
+  const [recommendations, eyeTestCTAs] = await Promise.all([
+    getProductRecommendations(productId).catch(() => []),
+    getEyeTestCTAs().catch(() => []),
+  ]);
+
+  return <BelowFoldPDP recommendations={recommendations} eyeTestCTAs={eyeTestCTAs} />;
+}
+
 export default async function ProductPage({ params }: ProductPageProps) {
   const handle = decodeURIComponent(params.handle);
 
   try {
     const product = await getProductByHandle(handle);
+    if (!product) notFound();
 
-    if (!product) {
-      notFound();
-    }
-
-    const [recommendations, eyeTestCTAs, lensOptions] = await Promise.all([
-      getProductRecommendations(product.id).catch(() => []),
-      getEyeTestCTAs().catch(() => []),
-      getLensOptions().catch(() => []),
-    ]);
+    const { getLensOptions } = await import('@/lib/shopify/queries/metaobjects');
+    const lensOptions = await getLensOptions().catch(() => []);
 
     return (
-      <ProductClient
-        product={product}
-        recommendations={recommendations}
-        eyeTestCTAs={eyeTestCTAs}
-        lensOptions={lensOptions}
-      />
+      <>
+        <ProductClient product={product} lensOptions={lensOptions} />
+        <Suspense fallback={<div className="px-4 md:px-8 py-12 space-y-8">
+          <div className="h-64 bg-[#F5F5F9] animate-pulse rounded" />
+          <div className="h-48 bg-[#F5F5F9] animate-pulse rounded" />
+        </div>}>
+          <BelowFoldData productId={product.id} handle={handle} />
+        </Suspense>
+      </>
     );
   } catch (error) {
     console.error('Product page error:', error);

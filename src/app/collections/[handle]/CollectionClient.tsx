@@ -41,6 +41,7 @@ export default function CollectionClient({
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [pageInfo, setPageInfo] = useState(initialPageInfo);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [filters, setFilters] = useState<ActiveFilters>(initialFilters);
 
@@ -96,36 +97,23 @@ export default function CollectionClient({
 
     setIsLoadingMore(true);
     try {
-      const sortKeyMap: Record<string, { sortKey: string; reverse: boolean }> = {
-        relevance: { sortKey: 'COLLECTION_DEFAULT', reverse: false },
-        'price-asc': { sortKey: 'PRICE', reverse: false },
-        'price-desc': { sortKey: 'PRICE', reverse: true },
-        newest: { sortKey: 'CREATED', reverse: true },
-      };
-      const sortConfig = sortKeyMap[sort];
+      const params = new URLSearchParams();
+      params.set('cursor', pageInfo.endCursor);
+      params.set('sort', sort);
+      if (filters.shape.length > 0) params.set('shape', filters.shape.join(','));
+      if (filters.colour.length > 0) params.set('colour', filters.colour.join(','));
+      if (filters.material.length > 0) params.set('material', filters.material.join(','));
+      if (filters.size.length > 0) params.set('size', filters.size.join(','));
 
-      // Build tag filters
-      const tagFilters: Array<{ tag: string }> = [];
-      filters.shape.forEach((v) => tagFilters.push({ tag: `shape:${v}` }));
-      filters.colour.forEach((v) => tagFilters.push({ tag: `colour:${v}` }));
-      filters.material.forEach((v) => tagFilters.push({ tag: `material:${v}` }));
-      filters.size.forEach((v) => tagFilters.push({ tag: `size:${v}` }));
+      const res = await fetch(`/api/collections/${collectionHandle}/products?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to load');
 
-      // Use dynamic import to call the server function from client
-      const { getCollectionProducts } = await import('@/lib/shopify/queries/collection');
-      const result = await getCollectionProducts({
-        handle: collectionHandle,
-        first: 24,
-        after: pageInfo.endCursor,
-        sortKey: sortConfig.sortKey as 'COLLECTION_DEFAULT' | 'PRICE' | 'TITLE' | 'CREATED' | 'BEST_SELLING',
-        reverse: sortConfig.reverse,
-        filters: tagFilters.length > 0 ? tagFilters : undefined,
-      });
-
+      const result = await res.json();
       setProducts((prev) => [...prev, ...result.products]);
       setPageInfo(result.pageInfo);
-    } catch (error) {
-      console.error('Failed to load more products:', error);
+      setLoadError(null);
+    } catch {
+      setLoadError('Failed to load more products.');
     } finally {
       setIsLoadingMore(false);
     }
@@ -174,8 +162,20 @@ export default function CollectionClient({
         </div>
       )}
 
+      {loadError && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-sm text-red-600">{loadError}</p>
+          <button
+            onClick={loadMore}
+            className="px-6 py-2 border border-black text-sm hover:bg-black hover:text-white transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Fallback load more button */}
-      {pageInfo.hasNextPage && !isLoadingMore && (
+      {pageInfo.hasNextPage && !isLoadingMore && !loadError && (
         <div className="mt-4 flex justify-center">
           <button
             onClick={loadMore}

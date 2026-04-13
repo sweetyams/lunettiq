@@ -39,6 +39,14 @@ vi.mock('@/context/CartContext', () => ({
   useCart: () => mockCartValue,
 }));
 
+vi.mock('@/context/CartDrawerContext', () => ({
+  useCartDrawer: () => ({
+    isOpen: mockCartValue.isOpen,
+    openCart: mockOpenCart,
+    closeCart: mockCloseCart,
+  }),
+}));
+
 import Header from './Header';
 import PrimaryNav from './PrimaryNav';
 import MegaNav from './MegaNav';

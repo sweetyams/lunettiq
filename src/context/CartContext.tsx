@@ -119,10 +119,7 @@ async function fetchCart(cartId: string): Promise<ShopifyCart | null> {
 
 interface CartContextValue {
   cart: ShopifyCart | null;
-  isOpen: boolean;
   isLoading: boolean;
-  openCart: () => void;
-  closeCart: () => void;
   addToCart: (variantId: string, quantity: number, attributes?: CartLineAttribute[]) => Promise<void>;
   updateLineItem: (lineId: string, quantity: number) => Promise<void>;
   removeLineItem: (lineId: string) => Promise<void>;
@@ -142,7 +139,6 @@ export function useCart(): CartContextValue {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<ShopifyCart | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const initialised = useRef(false);
 
@@ -166,9 +162,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setIsLoading(false));
   }, []);
-
-  const openCart = useCallback(() => setIsOpen(true), []);
-  const closeCart = useCallback(() => setIsOpen(false), []);
 
   /**
    * Ensures a cart exists. Creates one if needed.
@@ -251,10 +244,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         cart,
-        isOpen,
         isLoading,
-        openCart,
-        closeCart,
         addToCart,
         updateLineItem,
         removeLineItem,

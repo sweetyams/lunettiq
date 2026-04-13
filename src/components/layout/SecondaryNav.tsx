@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+import { useCartDrawer } from '@/context/CartDrawerContext';
 
 export default function SecondaryNav() {
-  const { cart, openCart } = useCart();
+  const { cart } = useCart();
+  const { openCart } = useCartDrawer();
   const cartCount = cart?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
   return (
     <nav className="flex items-center gap-4" aria-label="Secondary navigation">

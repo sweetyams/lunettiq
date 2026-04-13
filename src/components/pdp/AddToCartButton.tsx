@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { LensConfiguration } from '@/types/configurator';
 import type { LensOption } from '@/types/metaobjects';
 import { useCart } from '@/context/CartContext';
+import { useCartDrawer } from '@/context/CartDrawerContext';
 import { serializeConfig } from '@/lib/configurator/serialize';
 
 interface AddToCartButtonProps {
@@ -23,7 +24,8 @@ export default function AddToCartButton({
   lensOptions,
   frameBasePrice,
 }: AddToCartButtonProps) {
-  const { addToCart, openCart } = useCart();
+  const { addToCart } = useCart();
+  const { openCart } = useCartDrawer();
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

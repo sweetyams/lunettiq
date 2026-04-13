@@ -1,13 +1,29 @@
+import withBundleAnalyzer from '@next/bundle-analyzer';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [
+    loader: 'custom',
+    loaderFile: './src/lib/shopify-image-loader.ts',
+  },
+  async headers() {
+    return [
       {
-        protocol: 'https',
-        hostname: 'cdn.shopify.com',
+        source: '/api/metaobjects/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=3600, stale-while-revalidate=86400',
+          },
+        ],
       },
-    ],
+    ];
   },
 };
 
-export default nextConfig;
+const config =
+  process.env.ANALYZE === 'true'
+    ? withBundleAnalyzer({ enabled: true })(nextConfig)
+    : nextConfig;
+
+export default config;

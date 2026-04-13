@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "analyze": "ANALYZE=true next build",
+    "perf:measure": "next build && lhci autorun"
   },
   "dependencies": {
     "next": "14.2.35",
@@ -15,6 +17,8 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
+    "@next/bundle-analyzer": "^16.2.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
