@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
@@ -206,6 +207,24 @@ export default function CartDrawer() {
   const currency = cart?.cost.subtotalAmount.currencyCode ?? 'CAD';
   const isEmpty = lines.length === 0;
 
+  // Animated subtotal
+  const [displaySubtotal, setDisplaySubtotal] = useState(subtotal);
+  const prevSubtotal = useRef(subtotal);
+  useEffect(() => {
+    if (prevSubtotal.current === subtotal) return;
+    const from = prevSubtotal.current;
+    const diff = subtotal - from;
+    const duration = 300;
+    const start = performance.now();
+    function tick(now: number) {
+      const progress = Math.min((now - start) / duration, 1);
+      setDisplaySubtotal(from + diff * progress);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    prevSubtotal.current = subtotal;
+  }, [subtotal]);
+
   return (
     <>
       {/* Overlay */}
@@ -261,17 +280,24 @@ export default function CartDrawer() {
                 </Link>
               </div>
             ) : (
-              <div>
+              <AnimatePresence initial={false}>
                 {lines.map((item) => (
-                  <LineItem
+                  <motion.div
                     key={item.id}
-                    item={item}
-                    onQuantityChange={handleQuantityChange}
-                    onRemove={handleRemove}
-                    isLoading={isLoading}
-                  />
+                    initial={{ opacity: 0, x: 40 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
+                    <LineItem
+                      item={item}
+                      onQuantityChange={handleQuantityChange}
+                      onRemove={handleRemove}
+                      isLoading={isLoading}
+                    />
+                  </motion.div>
                 ))}
-              </div>
+              </AnimatePresence>
             )}
           </div>
 
@@ -281,7 +307,7 @@ export default function CartDrawer() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-semibold">
-                  ${subtotal.toFixed(2)} {currency}
+                  ${displaySubtotal.toFixed(2)} {currency}
                 </span>
               </div>
               <button

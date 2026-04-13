@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Collection, Product } from '@/types/shopify';
 import type { SortOption } from '@/types/filters';
@@ -191,22 +191,24 @@ export default function CollectionClient({
 
 // IntersectionObserver-based infinite scroll trigger
 function InfiniteScrollTrigger({ onIntersect }: { onIntersect: () => void }) {
-  const ref = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting) {
-            onIntersect();
-          }
-        },
-        { rootMargin: '200px' }
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    },
-    [onIntersect]
-  );
+  const ref = useRef<HTMLDivElement>(null);
+  const onIntersectRef = useRef(onIntersect);
+  onIntersectRef.current = onIntersect;
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          onIntersectRef.current();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return <div ref={ref} className="h-1" />;
 }

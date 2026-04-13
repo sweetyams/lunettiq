@@ -19,7 +19,7 @@ export default function HeroSection({ heroes }: HeroSectionProps) {
   return (
     <section className="relative w-full">
       <div className="flex flex-col md:flex-row w-full">
-        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!leftLoaded ? 'animate-pulse' : ''}`}>
+        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!leftLoaded ? 'skeleton-shimmer' : ''}`}>
           {activeHero.imageLeft && (
             <Image
               src={activeHero.imageLeft}
@@ -32,7 +32,7 @@ export default function HeroSection({ heroes }: HeroSectionProps) {
             />
           )}
         </div>
-        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!rightLoaded ? 'animate-pulse' : ''}`}>
+        <div className={`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${!rightLoaded ? 'skeleton-shimmer' : ''}`}>
           {activeHero.imageRight && (
             <Image
               src={activeHero.imageRight}

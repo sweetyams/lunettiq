@@ -1,10 +1,10 @@
-import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { getHomepageHeroes, getCategoryPanels, getEditorialPanels } from '@/lib/shopify/queries/metaobjects';
 import { getCollectionProducts } from '@/lib/shopify/queries/collection';
 import HeroSection from '@/components/home/HeroSection';
 import CategoryPanels from '@/components/home/CategoryPanels';
 import ProductRow from '@/components/home/ProductRow';
+import Reveal from '@/components/shared/Reveal';
 import LazyLoad from '@/components/shared/LazyLoad';
 import type { HomepageHero, CategoryPanel as CategoryPanelType, EditorialPanel as EditorialPanelType } from '@/types/metaobjects';
 import type { Product } from '@/types/shopify';
@@ -60,27 +60,41 @@ export default async function HomePage() {
     <>
       <HeroSection heroes={heroes} />
 
-      {primaryCategories.length > 0 && <CategoryPanels panels={primaryCategories} />}
+      <Reveal>
+        {primaryCategories.length > 0 && <CategoryPanels panels={primaryCategories} />}
+      </Reveal>
 
-      <ProductRow products={firstRowProducts} />
+      <Reveal>
+        <ProductRow products={firstRowProducts} />
+      </Reveal>
 
-      {secondaryCategories.length > 0 && <CategoryPanels panels={secondaryCategories} />}
+      <Reveal>
+        {secondaryCategories.length > 0 && <CategoryPanels panels={secondaryCategories} />}
+      </Reveal>
 
-      <ProductRow products={secondRowProducts} />
+      <Reveal>
+        <ProductRow products={secondRowProducts} />
+      </Reveal>
 
       <LazyLoad>
-        {fullBleedPanel && <EditorialPanel panel={fullBleedPanel} />}
+        <Reveal>
+          {fullBleedPanel && <EditorialPanel panel={fullBleedPanel} />}
+        </Reveal>
       </LazyLoad>
 
       <LazyLoad>
-        {twoUpPanels.length >= 2 && <EditorialTwoUp panels={twoUpPanels} />}
+        <Reveal>
+          {twoUpPanels.length >= 2 && <EditorialTwoUp panels={twoUpPanels} />}
+        </Reveal>
       </LazyLoad>
 
       <LazyLoad>
-        <StoreTeaser
-          image={storeTeaserPanel?.image}
-          title={storeTeaserPanel?.title || 'Visit Our Stores'}
-        />
+        <Reveal>
+          <StoreTeaser
+            image={storeTeaserPanel?.image}
+            title={storeTeaserPanel?.title || 'Visit Our Stores'}
+          />
+        </Reveal>
       </LazyLoad>
     </>
   );

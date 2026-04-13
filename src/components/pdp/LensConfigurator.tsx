@@ -1,6 +1,7 @@
 'use client';
 
-import { useReducer, useCallback, useMemo, useEffect } from 'react';
+import { useReducer, useCallback, useMemo, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type {
   LensConfiguration,
   LensType,
@@ -283,10 +284,22 @@ export default function LensConfigurator({
 }: LensConfiguratorProps) {
   const [state, dispatch] = useReducer(configuratorReducer, initialState);
   const { config, currentStep, readersMagnification } = state;
+  const prevStepRef = useRef(currentStep);
 
   const steps = useMemo(() => stepsForType(config.lensType), [config.lensType]);
 
-  // Notify parent of config changes
+  // Track direction for slide animation
+  const direction = useMemo(() => {
+    const allSteps = stepsForType(config.lensType);
+    const prevIdx = allSteps.indexOf(prevStepRef.current);
+    const currIdx = allSteps.indexOf(currentStep);
+    return currIdx >= prevIdx ? 1 : -1;
+  }, [currentStep, config.lensType]);
+
+  useEffect(() => {
+    prevStepRef.current = currentStep;
+  }, [currentStep]);
+
   useEffect(() => {
     onConfigChange?.(config, currentStep);
   }, [config, currentStep, onConfigChange]);
@@ -298,36 +311,25 @@ export default function LensConfigurator({
   const goNext = useCallback(() => dispatch({ type: 'NEXT_STEP' }), []);
   const goPrev = useCallback(() => dispatch({ type: 'PREV_STEP' }), []);
 
-  return (
-    <div className="border border-gray-200 rounded-lg p-4">
-      <h3 className="text-sm font-semibold mb-2">Configure Your Lenses</h3>
+  const stepVariants = {
+    enter: (d: number) => ({ x: d * 60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (d: number) => ({ x: d * -60, opacity: 0 }),
+  };
 
-      <StepIndicator
-        steps={steps}
-        currentStep={currentStep}
-        config={config}
-        onStepClick={goToStep}
-      />
-
-      {/* Running price — always visible */}
-      <RunningPriceTotal
-        config={config}
-        lensOptions={lensOptions}
-        frameBasePrice={frameBasePrice}
-      />
-
-      {/* Step content */}
-      <div className="mt-4">
-        {currentStep === 'lensType' && (
+  function renderStep() {
+    switch (currentStep) {
+      case 'lensType':
+        return (
           <LensTypeStep
             selected={config.lensType}
             isSunglasses={isSunglasses}
             lensOptions={lensOptions}
             onSelect={(lt) => dispatch({ type: 'SET_LENS_TYPE', payload: lt })}
           />
-        )}
-
-        {currentStep === 'lensIndex' && (
+        );
+      case 'lensIndex':
+        return (
           <LensIndexStep
             selected={config.lensIndex}
             lensType={config.lensType}
@@ -338,9 +340,9 @@ export default function LensConfigurator({
             }}
             onBack={goPrev}
           />
-        )}
-
-        {currentStep === 'coatings' && (
+        );
+      case 'coatings':
+        return (
           <CoatingsStep
             selectedCoatings={config.coatings}
             sunOptions={config.sunOptions}
@@ -352,9 +354,9 @@ export default function LensConfigurator({
             onNext={goNext}
             onBack={goPrev}
           />
-        )}
-
-        {currentStep === 'prescription' && (
+        );
+      case 'prescription':
+        return (
           <PrescriptionStep
             lensType={config.lensType}
             prescription={config.prescription}
@@ -369,9 +371,9 @@ export default function LensConfigurator({
             }
             onBack={goPrev}
           />
-        )}
-
-        {currentStep === 'summary' && (
+        );
+      case 'summary':
+        return (
           <ConfigSummary
             config={config}
             lensOptions={lensOptions}
@@ -382,7 +384,41 @@ export default function LensConfigurator({
             onEdit={goToStep}
             onBack={goPrev}
           />
-        )}
+        );
+    }
+  }
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold mb-2">Configure Your Lenses</h3>
+
+      <StepIndicator
+        steps={steps}
+        currentStep={currentStep}
+        config={config}
+        onStepClick={goToStep}
+      />
+
+      <RunningPriceTotal
+        config={config}
+        lensOptions={lensOptions}
+        frameBasePrice={frameBasePrice}
+      />
+
+      <div className="mt-4 overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+          >
+            {renderStep()}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

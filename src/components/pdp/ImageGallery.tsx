@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import type { Image as ShopifyImage, ProductVariant } from '@/types/shopify';
 
@@ -9,6 +10,7 @@ interface ImageGalleryProps {
   variants: ProductVariant[];
   selectedColour: string | null;
   productTitle: string;
+  productHandle?: string;
 }
 
 export default function ImageGallery({
@@ -16,6 +18,7 @@ export default function ImageGallery({
   variants,
   selectedColour,
   productTitle,
+  productHandle,
 }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef(0);
@@ -86,14 +89,26 @@ export default function ImageGallery({
         aria-label={`${productTitle} image gallery`}
         aria-roledescription="carousel"
       >
-        <Image
-          src={displayImages[currentIndex].url}
-          alt={displayImages[currentIndex].altText || `${productTitle} image ${currentIndex + 1}`}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, 50vw"
-          priority={currentIndex === 0}
-        />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={displayImages[currentIndex].url}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0"
+          >
+            <Image
+              src={displayImages[currentIndex].url}
+              alt={displayImages[currentIndex].altText || `${productTitle} image ${currentIndex + 1}`}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority={currentIndex === 0}
+              style={currentIndex === 0 && productHandle ? { viewTransitionName: `product-image-${productHandle}` } : undefined}
+            />
+          </motion.div>
+        </AnimatePresence>
 
         {/* Chevron arrows */}
         {displayImages.length > 1 && (

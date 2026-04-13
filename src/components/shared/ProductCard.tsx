@@ -41,7 +41,7 @@ function ProductCard({ product, className, prefetch }: ProductCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`relative bg-[#F5F5F9] overflow-hidden ${!loaded ? 'animate-pulse' : ''}`}
+        className={`relative bg-[#F5F5F9] overflow-hidden ${!loaded ? 'skeleton-shimmer' : ''}`}
         style={{ aspectRatio: '463/579' }}
       >
         <div className="absolute top-2 right-2 z-10">
@@ -57,6 +57,7 @@ function ProductCard({ product, className, prefetch }: ProductCardProps) {
             }`}
             sizes="(max-width: 768px) 50vw, 25vw"
             onLoad={() => setLoaded(true)}
+            style={{ viewTransitionName: `product-image-${product.handle}` }}
           />
         )}
         {hasSecondImage && (

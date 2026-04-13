@@ -20,12 +20,51 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* View Transition: product image morph between PLP → PDP */
+::view-transition-old(product-image) {
+  animation: fade-and-scale-out 0.3s ease-in-out both;
+}
+::view-transition-new(product-image) {
+  animation: fade-and-scale-in 0.3s ease-in-out both;
+}
+@keyframes fade-and-scale-out {
+  to { opacity: 0; transform: scale(0.95); }
+}
+@keyframes fade-and-scale-in {
+  from { opacity: 0; transform: scale(1.05); }
+}
+
+/* Project Lobster-style shimmer skeleton */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 37%,
+    #f0f0f0 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Animated number counter for cart/price */
+@keyframes count-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.price-pop {
+  animation: count-pop 0.3s ease-out;
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Hide scrollbar for swipeable carousels */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

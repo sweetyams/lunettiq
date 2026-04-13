@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import type { LensConfiguration, LensIndex, LensCoating, MirrorCoating } from '@/types/configurator';
 import type { LensOption } from '@/types/metaobjects';
 import { matchIndex } from './LensIndexStep';
@@ -77,10 +77,37 @@ export default function RunningPriceTotal({
     [config, lensOptions, frameBasePrice]
   );
 
+  const [display, setDisplay] = useState(total);
+  const prevTotal = useRef(total);
+  const [pop, setPop] = useState(false);
+
+  useEffect(() => {
+    if (prevTotal.current === total) return;
+    const from = prevTotal.current;
+    const diff = total - from;
+    const duration = 300;
+    const start = performance.now();
+
+    setPop(true);
+    const timeout = setTimeout(() => setPop(false), 300);
+
+    function tick(now: number) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      setDisplay(from + diff * progress);
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+    prevTotal.current = total;
+    return () => clearTimeout(timeout);
+  }, [total]);
+
   return (
     <div className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded text-sm">
       <span className="text-gray-600">Running Total</span>
-      <span className="font-semibold">${total.toFixed(2)}</span>
+      <span className={`font-semibold ${pop ? 'price-pop' : ''}`}>
+        ${display.toFixed(2)}
+      </span>
     </div>
   );
 }

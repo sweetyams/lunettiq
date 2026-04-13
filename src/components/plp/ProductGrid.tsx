@@ -5,6 +5,8 @@ import type { Product } from '@/types/shopify';
 import type { EditorialPanel as EditorialPanelType } from '@/types/metaobjects';
 import ProductCard from '@/components/shared/ProductCard';
 import EditorialPanel from '@/components/home/EditorialPanel';
+import { StaggerContainer, StaggerItem } from '@/components/shared/Stagger';
+import Reveal from '@/components/shared/Reveal';
 
 interface ProductGridProps {
   products: Product[];
@@ -49,21 +51,23 @@ export default function ProductGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+    <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
       {gridItems.map((item) => {
         if (item.type === 'editorial') {
           return (
-            <div key={item.key} className="col-span-1 sm:col-span-2 lg:col-span-3">
-              <EditorialPanel panel={item.panel} />
-            </div>
+            <Reveal key={item.key}>
+              <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+                <EditorialPanel panel={item.panel} />
+              </div>
+            </Reveal>
           );
         }
         return (
-          <div key={item.key}>
+          <StaggerItem key={item.key}>
             <ProductCard product={item.product} className="w-full" prefetch={false} />
-          </div>
+          </StaggerItem>
         );
       })}
-    </div>
+    </StaggerContainer>
   );
 }

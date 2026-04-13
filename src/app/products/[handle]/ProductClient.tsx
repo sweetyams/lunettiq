@@ -15,12 +15,13 @@ import AddToCartButton from '@/components/pdp/AddToCartButton';
 import LazyLoad from '@/components/shared/LazyLoad';
 
 const LensConfigurator = dynamic(() => import('@/components/pdp/LensConfigurator'), {
-  loading: () => <div className="h-48 bg-[#F5F5F9] animate-pulse rounded" />,
+  loading: () => <div className="h-48 skeleton-shimmer rounded" />,
 });
 
 const Recommendations = dynamic(() => import('@/components/pdp/Recommendations'), { ssr: false });
 const OnFacesSection = dynamic(() => import('@/components/pdp/OnFacesSection'), { ssr: false });
 const EyeTestCTABlock = dynamic(() => import('@/components/pdp/EyeTestCTA'), { ssr: false });
+const VirtualTryOn = dynamic(() => import('@/components/pdp/VirtualTryOn'), { ssr: false });
 
 interface ProductClientProps {
   product: Product;
@@ -134,7 +135,16 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
             variants={product.variants}
             selectedColour={selectedColour}
             productTitle={product.title}
+            productHandle={product.handle}
           />
+          {product.images[0] && (
+            <div className="mt-4">
+              <VirtualTryOn
+                frameImageUrl={product.images[0].url}
+                frameName={product.title}
+              />
+            </div>
+          )}
         </div>
 
         <div className="w-full md:w-1/2 px-4 md:px-8 py-4 md:py-8">
