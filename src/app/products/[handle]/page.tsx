@@ -10,7 +10,7 @@ interface ProductPageProps {
   params: { handle: string };
 }
 
-async function BelowFoldData({ productId, handle }: { productId: string; handle: string }) {
+async function BelowFoldData({ productId }: { productId: string }) {
   const { getProductRecommendations } = await import('@/lib/shopify/queries/product');
   const { getEyeTestCTAs } = await import('@/lib/shopify/queries/metaobjects');
 
@@ -39,7 +39,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="h-64 bg-[#F5F5F9] animate-pulse rounded" />
           <div className="h-48 bg-[#F5F5F9] animate-pulse rounded" />
         </div>}>
-          <BelowFoldData productId={product.id} handle={handle} />
+          <BelowFoldData productId={product.id} />
         </Suspense>
       </>
     );
