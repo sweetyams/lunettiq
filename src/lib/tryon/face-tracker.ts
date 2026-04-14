@@ -8,7 +8,7 @@ import type { FaceLandmarker as FaceLandmarkerType } from '@mediapipe/tasks-visi
 let landmarker: FaceLandmarkerType | null = null;
 let initPromise: Promise<FaceLandmarkerType> | null = null;
 
-const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm';
+const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm';
 const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
 export async function init(): Promise<FaceLandmarkerType> {
@@ -16,17 +16,35 @@ export async function init(): Promise<FaceLandmarkerType> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
-    const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
-    landmarker = await FaceLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-      runningMode: 'VIDEO',
-      numFaces: 1,
-      minFaceDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-      outputFacialTransformationMatrixes: true,
-    });
-    return landmarker;
+    try {
+      const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+      const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
+
+      // Try GPU first, fall back to CPU
+      try {
+        landmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          minFaceDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      } catch {
+        landmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          minFaceDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+      }
+
+      return landmarker;
+    } catch (err) {
+      // Reset so user can retry
+      initPromise = null;
+      throw err;
+    }
   })();
 
   return initPromise;

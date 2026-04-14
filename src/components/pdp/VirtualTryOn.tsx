@@ -138,12 +138,18 @@ export default function VirtualTryOn({ frameImageUrl, frameName }: VirtualTryOnP
 
       rafRef.current = requestAnimationFrame(renderLoop);
     } catch (err) {
+      // Stop any partially started camera
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+
       setStatus('error');
-      setErrorMsg(
-        err instanceof DOMException && err.name === 'NotAllowedError'
-          ? 'Camera access denied. Please allow camera permissions.'
-          : 'Failed to start try-on. Please try again.'
-      );
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setErrorMsg('Camera access denied. Please allow camera permissions.');
+      } else if (err instanceof DOMException && err.name === 'NotFoundError') {
+        setErrorMsg('No camera found on this device.');
+      } else {
+        setErrorMsg(`Try-on failed: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`);
+      }
     }
   }, []);
 
