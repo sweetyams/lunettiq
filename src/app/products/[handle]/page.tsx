@@ -4,7 +4,7 @@ import { getProductByHandle } from '@/lib/shopify/queries/product';
 import ProductClient from './ProductClient';
 import { BelowFoldPDP } from './ProductClient';
 
-export const revalidate = 60;
+export const revalidate = process.env.NODE_ENV === 'development' ? 0 : 60;
 
 interface ProductPageProps {
   params: { handle: string };

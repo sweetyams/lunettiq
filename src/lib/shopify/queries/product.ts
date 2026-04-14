@@ -78,6 +78,13 @@ const PRODUCT_BY_HANDLE_QUERY = `
       }
       tryOnImage: metafield(namespace: "custom", key: "tryon_image") {
         value
+        reference {
+          ... on MediaImage {
+            image {
+              url
+            }
+          }
+        }
       }
       collections(first: 10) {
         nodes {
@@ -142,7 +149,7 @@ interface RawProductResponse {
     bridgeWidth: { value: string } | null;
     lensWidth: { value: string } | null;
     templeLength: { value: string } | null;
-    tryOnImage: { value: string } | null;
+    tryOnImage: { value: string; reference?: { image?: { url: string } } } | null;
     collections: { nodes: Product['collections'] };
   } | null;
 }
@@ -169,7 +176,7 @@ function parseMetafields(raw: RawProductResponse['product']): Product['metafield
     bridgeWidth: raw.bridgeWidth ? Number(raw.bridgeWidth.value) : undefined,
     lensWidth: raw.lensWidth ? Number(raw.lensWidth.value) : undefined,
     templeLength: raw.templeLength ? Number(raw.templeLength.value) : undefined,
-    tryOnImage: raw.tryOnImage?.value ?? undefined,
+    tryOnImage: raw.tryOnImage?.reference?.image?.url ?? raw.tryOnImage?.value ?? undefined,
   };
 }
 
