@@ -84,5 +84,8 @@ export const POST = handler(async (request) => {
     staffId: session.userId, surface: 'web', locationId: session.locationIds[0],
   });
 
+  const { notifyStaff } = await import('@/lib/crm/notify');
+  await notifyStaff({ title: `New client: ${firstName} ${lastName}`, body: email || undefined, type: 'client', entityType: 'client', entityId: shopifyId });
+
   return jsonOk({ shopifyCustomerId: shopifyId }, 201);
 });

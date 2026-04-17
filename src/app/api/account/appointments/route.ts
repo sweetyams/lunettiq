@@ -116,5 +116,10 @@ export async function POST(request: NextRequest) {
     locationId,
   }).returning();
 
+  // Notify staff about customer-booked appointment
+  const { notifyStaff } = await import('@/lib/crm/notify');
+  const time = start.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  await notifyStaff({ title: `Online booking: ${title || 'Appointment'}`, body: `${customer.name} · ${time}`, type: 'appointment', entityType: 'appointment', entityId: row.id });
+
   return NextResponse.json({ data: row }, { status: 201 });
 }

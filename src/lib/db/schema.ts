@@ -458,6 +458,22 @@ export const tryOnSessions = pgTable('try_on_sessions', {
   index('idx_tryon_customer').on(t.shopifyCustomerId, t.startedAt),
 ]);
 
+// ─── Notifications ───────────────────────────────────────
+
+export const notifications = pgTable('notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull(),
+  title: text('title').notNull(),
+  body: text('body'),
+  type: text('type').notNull().default('info'),
+  entityType: text('entity_type'),
+  entityId: text('entity_id'),
+  readAt: timestamp('read_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+}, (t) => [
+  index('idx_notifications_user').on(t.userId, t.createdAt),
+]);
+
 // ─── AI Request Tracking ─────────────────────────────────
 
 export const aiRequests = pgTable('ai_requests', {

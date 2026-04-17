@@ -89,6 +89,11 @@ export const POST = handler(async (request) => {
     staffId: session.userId, surface: 'web', locationId,
   });
 
+  // Notify staff
+  const { notifyStaff } = await import('@/lib/crm/notify');
+  const time = startsAt.toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  await notifyStaff({ title: `New appointment: ${body.title}`, body: `${time}${body.customerId ? '' : ' · walk-in'}`, type: 'appointment', entityType: 'appointment', entityId: row.id });
+
   return jsonOk(row, 201);
 });
 

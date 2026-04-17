@@ -399,4 +399,56 @@ export const creditReconciliation = inngest.createFunction(
   }
 );
 
-export const functions = [syncCustomer, syncOrder, syncProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation];
+// ─── Daily email digest ──────────────────────────────
+
+export const dailyDigest = inngest.createFunction(
+  { id: 'daily-digest', retries: 1, triggers: [{ cron: '0 8 * * *' }] },
+  async () => {
+    const { notifications } = await import('@/lib/db/schema');
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    // Get all unread notifications from last 24h grouped by user
+    const recent = await db.select().from(notifications)
+      .where(sql`${notifications.createdAt} >= ${yesterday.toISOString()}`);
+
+    const byUser = new Map<string, typeof recent>();
+    for (const n of recent) {
+      if (!byUser.has(n.userId)) byUser.set(n.userId, []);
+      byUser.get(n.userId)!.push(n);
+    }
+
+    // Get staff emails from Clerk
+    const secret = process.env.CLERK_SECRET_KEY;
+    if (!secret) return { sent: 0 };
+
+    const res = await fetch('https://api.clerk.com/v1/users?limit=50', { headers: { Authorization: `Bearer ${secret}` } });
+    if (!res.ok) return { sent: 0 };
+    const users = ((await res.json()).data || []) as Array<{ id: string; email_addresses: Array<{ email_address: string }>; first_name: string }>;
+
+    let sent = 0;
+    for (const user of users) {
+      const userNotifs = byUser.get(user.id);
+      if (!userNotifs?.length) continue;
+
+      const email = user.email_addresses[0]?.email_address;
+      if (!email) continue;
+
+      const unread = userNotifs.filter(n => !n.readAt);
+      if (!unread.length) continue;
+
+      // Build summary
+      const lines = unread.slice(0, 20).map(n => `• ${n.title}${n.body ? ` — ${n.body}` : ''}`).join('\n');
+      const subject = `Lunettiq CRM: ${unread.length} notification${unread.length > 1 ? 's' : ''} today`;
+      const body = `Hi ${user.first_name || 'there'},\n\nHere's your daily summary:\n\n${lines}${unread.length > 20 ? `\n\n...and ${unread.length - 20} more` : ''}\n\nView all in the CRM: ${process.env.NEXT_PUBLIC_APP_URL || 'https://lunettiq.vercel.app'}/crm\n\n— Lunettiq CRM`;
+
+      // Send via Inngest send event (or log for now)
+      console.log(`[daily-digest] Would email ${email}: ${subject}`);
+      console.log(body);
+      sent++;
+    }
+
+    return { sent, totalNotifications: recent.length };
+  }
+);
+
+export const functions = [syncCustomer, syncOrder, syncProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest];
