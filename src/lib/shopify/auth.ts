@@ -71,7 +71,7 @@ export async function buildAuthorizeRedirectUrl(state: string, nonce: string): P
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const challenge = btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(digest)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
   const redirectUri = getRedirectUri();
 

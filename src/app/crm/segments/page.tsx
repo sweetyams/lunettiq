@@ -5,7 +5,7 @@ import { useToast } from '@/components/crm/CrmShell';
 
 interface Segment { id: string; name: string; description: string | null; memberCount: number; updatedAt: string }
 interface Condition { field: string; operator: string; value: string }
-interface AISuggestion { name: string; description: string; rules: { logic: string; conditions: Condition[] }; reasoning: string }
+interface AISuggestion { name: string; description: string; rules: { logic: string; conditions: Condition[] }; reasoning: string; suggestedAction?: string; actualSize?: number }
 
 const FIELDS = [
   { value: 'order_count', label: 'Orders', group: 'Commercial' },

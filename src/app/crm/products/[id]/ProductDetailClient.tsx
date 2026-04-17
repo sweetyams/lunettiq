@@ -12,6 +12,7 @@ interface Product {
   productType: string | null;
   tags: string[] | null;
   images: unknown;
+  metafields: unknown;
   priceMin: string | null;
   priceMax: string | null;
 }
