@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
 import { clientLinks, customersProjection, auditLog } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';

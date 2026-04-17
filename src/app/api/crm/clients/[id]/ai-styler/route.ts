@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { customersProjection, ordersProjection, interactions, productFeedback } from '@/lib/db/schema';

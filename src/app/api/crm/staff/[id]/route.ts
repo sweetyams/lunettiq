@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { writeAudit } from '@/lib/crm/audit';
 import { isValidRole } from '@/lib/crm/permissions';

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonList, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';

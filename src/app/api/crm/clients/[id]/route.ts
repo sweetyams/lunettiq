@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { customersProjection, ordersProjection, interactions, secondSightIntakes, appointments, preferencesDerived, auditLog } from '@/lib/db/schema';

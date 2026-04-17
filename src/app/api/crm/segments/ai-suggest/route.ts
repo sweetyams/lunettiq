@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import Anthropic from '@anthropic-ai/sdk';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
