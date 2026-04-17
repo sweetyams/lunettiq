@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import {
   generateRandomString,
   buildAuthorizeRedirectUrl,
@@ -21,7 +22,11 @@ export async function GET() {
 
   setOAuthStateCookies(state, nonce);
 
-  const authorizeUrl = await buildAuthorizeRedirectUrl(state, nonce);
+  const { url, verifier } = await buildAuthorizeRedirectUrl(state, nonce);
 
-  return NextResponse.redirect(authorizeUrl);
+  // Store verifier in cookie for token exchange
+  const cookieStore = cookies();
+  cookieStore.set('lunettiq_oauth_verifier', verifier, { httpOnly: true, secure: false, sameSite: 'lax', path: '/', maxAge: 300 });
+
+  return NextResponse.redirect(url);
 }

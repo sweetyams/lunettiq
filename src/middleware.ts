@@ -64,7 +64,12 @@ async function handleAccountAuth(request: NextRequest): Promise<NextResponse> {
 export default clerkMiddleware(async (_auth, request) => {
   const { pathname } = request.nextUrl;
 
-  // Storefront account routes — Shopify Customer Accounts auth
+    // Skip auth API routes entirely
+    if (pathname.startsWith('/api/auth')) {
+      return NextResponse.next();
+    }
+
+    // Storefront account routes — Shopify Customer Accounts auth
   if (pathname.startsWith('/account')) {
     return handleAccountAuth(request);
   }
@@ -81,5 +86,5 @@ export default clerkMiddleware(async (_auth, request) => {
 });
 
 export const config = {
-  matcher: ['/account/:path*', '/crm/:path*', '/api/crm/:path*'],
+  matcher: ['/account', '/account/:path*', '/crm/:path*', '/api/crm/:path*'],
 };

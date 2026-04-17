@@ -14,7 +14,6 @@ export const ACCESS_TOKEN_COOKIE = 'lunettiq_access_token';
 export const REFRESH_TOKEN_COOKIE = 'lunettiq_refresh_token';
 const STATE_COOKIE = 'lunettiq_oauth_state';
 const NONCE_COOKIE = 'lunettiq_oauth_nonce';
-const VERIFIER_COOKIE = 'lunettiq_oauth_verifier';
 
 // Cookie max ages (seconds)
 const ACCESS_TOKEN_MAX_AGE = 3600; // 1 hour
@@ -64,22 +63,22 @@ export function generateRandomString(length = 32): string {
 
 /**
  * Build the full Shopify OAuth authorize redirect URL with PKCE.
+ * Returns { url, verifier } so the verifier can be stored.
  */
-export async function buildAuthorizeRedirectUrl(state: string, nonce: string): Promise<string> {
+export async function buildAuthorizeRedirectUrl(state: string, nonce: string): Promise<{ url: string; verifier: string }> {
   const verifier = generateRandomString(64);
-  // Store verifier in cookie for token exchange
-  const cookieStore = cookies();
-  cookieStore.set(VERIFIER_COOKIE, verifier, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/', maxAge: 300 });
 
   const encoder = new TextEncoder();
   const data = encoder.encode(verifier);
   const digest = await crypto.subtle.digest('SHA-256', data);
   const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
+  const redirectUri = getRedirectUri();
+
   const params = new URLSearchParams({
     client_id: getClientId(),
     response_type: 'code',
-    redirect_uri: getRedirectUri(),
+    redirect_uri: redirectUri,
     scope: 'openid email https://api.customers.com/auth/customer.graphql',
     state,
     nonce,
@@ -87,22 +86,18 @@ export async function buildAuthorizeRedirectUrl(state: string, nonce: string): P
     code_challenge_method: 'S256',
   });
 
-  return `${getAuthorizeUrl()}?${params.toString()}`;
+  return { url: `${getAuthorizeUrl()}?${params.toString()}`, verifier };
 }
 
 /**
  * Exchange an authorization code for access and refresh tokens.
  */
-export async function exchangeCodeForTokens(code: string): Promise<{
+export async function exchangeCodeForTokens(code: string, verifier?: string): Promise<{
   access_token: string;
   refresh_token: string;
   expires_in: number;
   id_token?: string;
 }> {
-  const cookieStore = cookies();
-  const verifier = cookieStore.get(VERIFIER_COOKIE)?.value;
-  cookieStore.delete(VERIFIER_COOKIE);
-
   const params: Record<string, string> = {
     grant_type: 'authorization_code',
     client_id: getClientId(),
@@ -121,6 +116,7 @@ export async function exchangeCodeForTokens(code: string): Promise<{
 
   if (!response.ok) {
     const errorBody = await response.text();
+    console.error('[token exchange] params:', JSON.stringify({ ...params, code: params.code?.slice(0, 20) + '...' }));
     throw new Error(`Token exchange failed (${response.status}): ${errorBody}`);
   }
 

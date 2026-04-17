@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import {
   getAndClearOAuthState,
   exchangeCodeForTokens,
@@ -23,26 +24,21 @@ export async function GET(request: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-  // If the user cancelled or Shopify returned an error, redirect home silently (Req 22.6)
   if (error || !code || !state) {
     return NextResponse.redirect(`${baseUrl}/`);
   }
 
-  // Verify state matches what we stored
-  const storedState = getAndClearOAuthState();
-  if (!storedState || storedState !== state) {
-    // State mismatch — possible CSRF. Redirect home silently (Req 22.6)
-    return NextResponse.redirect(`${baseUrl}/`);
-  }
+  // Get verifier from cookie
+  const cookieStore = cookies();
+  const verifier = cookieStore.get('lunettiq_oauth_verifier')?.value;
+  cookieStore.delete('lunettiq_oauth_verifier');
 
   try {
-    const tokens = await exchangeCodeForTokens(code);
-
+    const tokens = await exchangeCodeForTokens(code, verifier);
     setAuthTokenCookies(tokens.access_token, tokens.refresh_token);
-
     return NextResponse.redirect(`${baseUrl}/account`);
-  } catch {
-    // Token exchange failed — redirect home silently (Req 22.6)
-    return NextResponse.redirect(`${baseUrl}/`);
+  } catch (err) {
+    console.error('[auth/callback] Token exchange failed:', err);
+    return NextResponse.redirect(`${baseUrl}/?auth_error=1`);
   }
 }

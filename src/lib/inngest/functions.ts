@@ -203,7 +203,7 @@ export const syncCollection = inngest.createFunction(
   }
 );
 
-import { TIERS, getTierFromTags, TierKey } from '@/lib/crm/loyalty-config';
+import { TIERS, getTierFromTags } from '@/lib/crm/loyalty-config';
 
 // ─── Dedup scan ──────────────────────────────────────────
 
@@ -304,7 +304,7 @@ export const monthlyCredits = inngest.createFunction(
   { id: 'monthly-credits', retries: 2, triggers: [{ cron: '0 6 1 * *' }] },
   async () => {
     let issued = 0;
-    for (const [tierKey, config] of Object.entries(TIERS)) {
+    for (const [, config] of Object.entries(TIERS)) {
       const members = await db.select({ id: customersProjection.shopifyCustomerId })
         .from(customersProjection)
         .where(sql`${config.tag} = ANY(${customersProjection.tags})`);
@@ -383,7 +383,7 @@ export const creditReconciliation = inngest.createFunction(
       if (drift < 0.01) continue;
 
       if (drift < 5) {
-        const correction = ledgerBalance - shopifyBalance;
+        // const correction = ledgerBalance - shopifyBalance;
         // Auto-correct: trust the ledger
         await db.insert(creditsLedger).values({
           shopifyCustomerId: m.id, transactionType: 'adjustment',
