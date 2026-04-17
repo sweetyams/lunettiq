@@ -32,8 +32,8 @@ export function LogInteractionModal({ customerId, open, onClose, onSaved }: Prop
       toast('Interaction logged');
       onSaved();
       onClose();
-    } catch (e: any) {
-      toast(e.message, 'error');
+    } catch (e) {
+      toast((e as Error).message, 'error');
     } finally {
       setSaving(false);
     }

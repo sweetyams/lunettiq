@@ -10,7 +10,7 @@ interface Props {
   onSave: (fields: Field[]) => void;
 }
 
-export function CustomFields({ customerId: _, fields, onSave }: Props) {
+export function CustomFields({ fields, onSave }: Props) {
   const [adding, setAdding] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');

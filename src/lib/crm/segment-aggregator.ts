@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import { customersProjection, ordersProjection, interactions } from '@/lib/db/schema';
+import { customersProjection, ordersProjection } from '@/lib/db/schema';
 import { sql, gte, lt, and } from 'drizzle-orm';
 
 export interface AggregatedStats {
