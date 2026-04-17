@@ -49,7 +49,7 @@ export const GET = handler(async (_request, ctx) => {
   const totalTryOns = feedback.reduce((s, f) => s + (f.tryOnCount ?? 0), 0);
 
   // --- Pairs-with: co-purchased products ---
-  const buyerIds = [...new Set(productOrders.map(o => o.customerId).filter(Boolean))] as string[];
+  const buyerIds = Array.from(new Set(productOrders.map(o => o.customerId).filter(Boolean))) as string[];
   let pairsWith: Array<{ productId: string; title: string; count: number }> = [];
   if (buyerIds.length) {
     const buyerOrders = await db.select({ items: ordersProjection.lineItems }).from(ordersProjection)
