@@ -35,6 +35,14 @@ export interface ProductMetafields {
   bridgeWidth?: number;      // mm
   lensWidth?: number;        // mm
   templeLength?: number;     // mm
+  frameWidth?: number;       // mm
+  lensHeight?: number;       // mm
+  acetateSource?: string;    // e.g. "Mazzucchelli (Italy)"
+  hingeType?: string;        // e.g. "OBE spring hinge, teflon-coated screws"
+  lensCoating?: string;      // e.g. "Anti-reflective + anti-scratch"
+  uvProtection?: string;     // e.g. "100% UVA/UVB"
+  includedAccessories?: string; // e.g. "Hard case, microfibre cloth"
+  warranty?: string;         // e.g. "2 years"
   tryOnImage?: string;       // Front-facing transparent PNG for virtual try-on
 }
 

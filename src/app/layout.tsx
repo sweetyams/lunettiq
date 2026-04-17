@@ -1,14 +1,6 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
-import AnnouncementBar from '@/components/layout/AnnouncementBar';
-import Header from '@/components/layout/Header';
-import MobileNav from '@/components/layout/MobileNav';
-import Footer from '@/components/layout/Footer';
-import { CartProvider } from '@/context/CartContext';
-import { CartDrawerProvider } from '@/context/CartDrawerContext';
-import { WishlistProvider } from '@/context/WishlistContext';
-import CartDrawer from '@/components/cart/CartDrawer';
 
 const geistSans = localFont({
   src: './fonts/GeistVF.woff',
@@ -22,9 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Lunettiq — Premium Eyewear',
-  description:
-    'Discover premium optical and sun eyewear from Lunettiq. Handcrafted frames, prescription lenses, and personalised styling.',
+  title: 'Lunettiq',
+  description: 'Premium eyewear',
 };
 
 export default function RootLayout({
@@ -34,21 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <CartProvider>
-          <CartDrawerProvider>
-            <WishlistProvider>
-              <AnnouncementBar />
-              <Header />
-              <MobileNav />
-              <main className="min-h-screen">{children}</main>
-              <Footer />
-              <CartDrawer />
-            </WishlistProvider>
-          </CartDrawerProvider>
-        </CartProvider>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
       </body>
     </html>
   );

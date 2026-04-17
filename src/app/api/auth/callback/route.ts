@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state');
   const error = searchParams.get('error');
 
-  const baseUrl = request.nextUrl.origin;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   // If the user cancelled or Shopify returned an error, redirect home silently (Req 22.6)
   if (error || !code || !state) {

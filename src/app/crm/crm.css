@@ -1,0 +1,195 @@
+/* ─── Lunettiq CRM Design System ─────────────────────────
+   Attio-inspired: Inter font, monochrome, clean, friendly
+   Completely isolated from storefront styles
+   ──────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Surface */
+  --crm-bg: #fafafa;
+  --crm-surface: #ffffff;
+  --crm-surface-hover: #f5f5f5;
+  --crm-surface-active: #efefef;
+  --crm-surface-raised: #ffffff;
+
+  /* Borders */
+  --crm-border: #e5e5e5;
+  --crm-border-light: #f0f0f0;
+  --crm-border-focus: #a3a3a3;
+
+  /* Text */
+  --crm-text-primary: #171717;
+  --crm-text-secondary: #737373;
+  --crm-text-tertiary: #a3a3a3;
+  --crm-text-inverse: #ffffff;
+
+  /* Accent */
+  --crm-accent: #2563eb;
+  --crm-accent-light: #eff6ff;
+  --crm-accent-hover: #1d4ed8;
+
+  /* Status */
+  --crm-success: #16a34a;
+  --crm-success-light: #f0fdf4;
+  --crm-warning: #d97706;
+  --crm-warning-light: #fffbeb;
+  --crm-error: #dc2626;
+  --crm-error-light: #fef2f2;
+
+  /* Spacing scale (4px base) */
+  --crm-space-1: 4px;
+  --crm-space-2: 8px;
+  --crm-space-3: 12px;
+  --crm-space-4: 16px;
+  --crm-space-5: 20px;
+  --crm-space-6: 24px;
+  --crm-space-8: 32px;
+  --crm-space-10: 40px;
+  --crm-space-12: 48px;
+
+  /* Radii */
+  --crm-radius-sm: 4px;
+  --crm-radius-md: 6px;
+  --crm-radius-lg: 8px;
+  --crm-radius-xl: 12px;
+  --crm-radius-full: 9999px;
+
+  /* Shadows */
+  --crm-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --crm-shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+  --crm-shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+  --crm-shadow-overlay: 0 8px 32px rgba(0,0,0,0.12);
+
+  /* Typography */
+  --crm-font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --crm-text-xs: 11px;
+  --crm-text-sm: 13px;
+  --crm-text-base: 14px;
+  --crm-text-lg: 16px;
+  --crm-text-xl: 20px;
+  --crm-text-2xl: 24px;
+
+  /* Sidebar */
+  --crm-sidebar-width: 220px;
+  --crm-sidebar-collapsed: 56px;
+}
+
+/* ─── CRM Root Reset ──────────────────────────────────── */
+.crm-root {
+  font-family: var(--crm-font);
+  font-size: var(--crm-text-base);
+  line-height: 1.5;
+  color: var(--crm-text-primary);
+  background: var(--crm-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.crm-root * {
+  border-color: var(--crm-border);
+}
+
+/* ─── Utility Classes ─────────────────────────────────── */
+.crm-card {
+  background: var(--crm-surface);
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-lg);
+}
+
+.crm-input {
+  font-family: var(--crm-font);
+  font-size: var(--crm-text-sm);
+  padding: 6px 10px;
+  border: 1px solid var(--crm-border);
+  border-radius: var(--crm-radius-md);
+  background: var(--crm-surface);
+  color: var(--crm-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.crm-input:focus {
+  border-color: var(--crm-border-focus);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+}
+.crm-input::placeholder {
+  color: var(--crm-text-tertiary);
+}
+
+select.crm-input {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+.crm-btn {
+  font-family: var(--crm-font);
+  font-size: var(--crm-text-sm);
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--crm-radius-md);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+}
+.crm-btn-primary {
+  background: var(--crm-text-primary);
+  color: var(--crm-text-inverse);
+}
+.crm-btn-primary:hover { background: #262626; }
+.crm-btn-secondary {
+  background: var(--crm-surface);
+  color: var(--crm-text-primary);
+  border: 1px solid var(--crm-border);
+}
+.crm-btn-secondary:hover { background: var(--crm-surface-hover); }
+.crm-btn-ghost {
+  background: transparent;
+  color: var(--crm-text-secondary);
+}
+.crm-btn-ghost:hover { background: var(--crm-surface-hover); color: var(--crm-text-primary); }
+
+.crm-badge {
+  font-size: var(--crm-text-xs);
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--crm-radius-full);
+  display: inline-flex;
+  align-items: center;
+}
+
+.crm-table {
+  width: 100%;
+  font-size: var(--crm-text-sm);
+  border-collapse: collapse;
+}
+.crm-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-weight: 500;
+  font-size: var(--crm-text-xs);
+  color: var(--crm-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--crm-border);
+  background: var(--crm-bg);
+}
+.crm-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--crm-border-light);
+}
+.crm-table tbody tr:hover {
+  background: var(--crm-surface-hover);
+}
+
+/* ─── Scrollbar ───────────────────────────────────────── */
+.crm-root ::-webkit-scrollbar { width: 6px; height: 6px; }
+.crm-root ::-webkit-scrollbar-track { background: transparent; }
+.crm-root ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
+.crm-root ::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }

@@ -14,15 +14,15 @@ export const ACCESS_TOKEN_COOKIE = 'lunettiq_access_token';
 export const REFRESH_TOKEN_COOKIE = 'lunettiq_refresh_token';
 const STATE_COOKIE = 'lunettiq_oauth_state';
 const NONCE_COOKIE = 'lunettiq_oauth_nonce';
+const VERIFIER_COOKIE = 'lunettiq_oauth_verifier';
 
 // Cookie max ages (seconds)
 const ACCESS_TOKEN_MAX_AGE = 3600; // 1 hour
 const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 3600; // 30 days
 
 function getShopId(): string {
-  const domain = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!;
-  // Extract shop name from domain (e.g., "my-store" from "my-store.myshopify.com")
-  return domain.replace('.myshopify.com', '');
+  // Customer Account API uses numeric store ID, not the handle
+  return process.env.SHOPIFY_STORE_ID || process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!.replace('.myshopify.com', '');
 }
 
 function getClientId(): string {
@@ -35,6 +35,10 @@ function getClientSecret(): string {
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+}
+
+function getRedirectUri(): string {
+  return process.env.SHOPIFY_OAUTH_REDIRECT_URI || `${getBaseUrl()}/api/auth/callback`;
 }
 
 export function getAuthorizeUrl(): string {
@@ -59,16 +63,28 @@ export function generateRandomString(length = 32): string {
 }
 
 /**
- * Build the full Shopify OAuth authorize redirect URL.
+ * Build the full Shopify OAuth authorize redirect URL with PKCE.
  */
-export function buildAuthorizeRedirectUrl(state: string, nonce: string): string {
+export async function buildAuthorizeRedirectUrl(state: string, nonce: string): Promise<string> {
+  const verifier = generateRandomString(64);
+  // Store verifier in cookie for token exchange
+  const cookieStore = cookies();
+  cookieStore.set(VERIFIER_COOKIE, verifier, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const, path: '/', maxAge: 300 });
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
   const params = new URLSearchParams({
     client_id: getClientId(),
     response_type: 'code',
-    redirect_uri: `${getBaseUrl()}/api/auth/callback`,
-    scope: 'openid email customer-account-api:full',
+    redirect_uri: getRedirectUri(),
+    scope: 'openid email https://api.customers.com/auth/customer.graphql',
     state,
     nonce,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
   });
 
   return `${getAuthorizeUrl()}?${params.toString()}`;
@@ -83,18 +99,24 @@ export async function exchangeCodeForTokens(code: string): Promise<{
   expires_in: number;
   id_token?: string;
 }> {
-  const body = new URLSearchParams({
+  const cookieStore = cookies();
+  const verifier = cookieStore.get(VERIFIER_COOKIE)?.value;
+  cookieStore.delete(VERIFIER_COOKIE);
+
+  const params: Record<string, string> = {
     grant_type: 'authorization_code',
     client_id: getClientId(),
-    client_secret: getClientSecret(),
-    redirect_uri: `${getBaseUrl()}/api/auth/callback`,
+    redirect_uri: getRedirectUri(),
     code,
-  });
+  };
+  if (verifier) params.code_verifier = verifier;
+  const secret = getClientSecret();
+  if (secret) params.client_secret = secret;
 
   const response = await fetch(getTokenUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
+    body: new URLSearchParams(params).toString(),
   });
 
   if (!response.ok) {
@@ -113,17 +135,18 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
   refresh_token: string;
   expires_in: number;
 }> {
-  const body = new URLSearchParams({
+  const params: Record<string, string> = {
     grant_type: 'refresh_token',
     client_id: getClientId(),
-    client_secret: getClientSecret(),
     refresh_token: refreshToken,
-  });
+  };
+  const secret = getClientSecret();
+  if (secret) params.client_secret = secret;
 
   const response = await fetch(getTokenUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
+    body: new URLSearchParams(params).toString(),
   });
 
   if (!response.ok) {

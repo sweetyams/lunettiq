@@ -76,6 +76,30 @@ const PRODUCT_BY_HANDLE_QUERY = `
       templeLength: metafield(namespace: "custom", key: "temple_length") {
         value
       }
+      frameWidth: metafield(namespace: "custom", key: "frame_width") {
+        value
+      }
+      lensHeight: metafield(namespace: "custom", key: "lens_height") {
+        value
+      }
+      acetateSource: metafield(namespace: "custom", key: "acetate_source") {
+        value
+      }
+      hingeType: metafield(namespace: "custom", key: "hinge_type") {
+        value
+      }
+      lensCoating: metafield(namespace: "custom", key: "lens_coating") {
+        value
+      }
+      uvProtection: metafield(namespace: "custom", key: "uv_protection") {
+        value
+      }
+      includedAccessories: metafield(namespace: "custom", key: "included_accessories") {
+        value
+      }
+      warranty: metafield(namespace: "custom", key: "warranty") {
+        value
+      }
       tryOnImage: metafield(namespace: "custom", key: "tryon_image") {
         value
         reference {
@@ -149,6 +173,14 @@ interface RawProductResponse {
     bridgeWidth: { value: string } | null;
     lensWidth: { value: string } | null;
     templeLength: { value: string } | null;
+    frameWidth: { value: string } | null;
+    lensHeight: { value: string } | null;
+    acetateSource: { value: string } | null;
+    hingeType: { value: string } | null;
+    lensCoating: { value: string } | null;
+    uvProtection: { value: string } | null;
+    includedAccessories: { value: string } | null;
+    warranty: { value: string } | null;
     tryOnImage: { value: string; reference?: { image?: { url: string } } } | null;
     collections: { nodes: Product['collections'] };
   } | null;
@@ -176,6 +208,14 @@ function parseMetafields(raw: RawProductResponse['product']): Product['metafield
     bridgeWidth: raw.bridgeWidth ? Number(raw.bridgeWidth.value) : undefined,
     lensWidth: raw.lensWidth ? Number(raw.lensWidth.value) : undefined,
     templeLength: raw.templeLength ? Number(raw.templeLength.value) : undefined,
+    frameWidth: raw.frameWidth ? Number(raw.frameWidth.value) : undefined,
+    lensHeight: raw.lensHeight ? Number(raw.lensHeight.value) : undefined,
+    acetateSource: raw.acetateSource?.value ?? undefined,
+    hingeType: raw.hingeType?.value ?? undefined,
+    lensCoating: raw.lensCoating?.value ?? undefined,
+    uvProtection: raw.uvProtection?.value ?? undefined,
+    includedAccessories: raw.includedAccessories?.value ?? undefined,
+    warranty: raw.warranty?.value ?? undefined,
     tryOnImage: raw.tryOnImage?.reference?.image?.url ?? raw.tryOnImage?.value ?? undefined,
   };
 }

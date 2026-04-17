@@ -12,8 +12,14 @@
     "perf:measure": "next build && lhci autorun"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@clerk/nextjs": "^6.39.2",
     "@mediapipe/tasks-vision": "^0.10.34",
+    "@neondatabase/serverless": "^1.0.2",
+    "@upstash/redis": "^1.37.0",
+    "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
+    "inngest": "^4.2.4",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18"
@@ -27,6 +33,8 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^6.0.1",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "fast-check": "^4.6.0",

@@ -1,0 +1,727 @@
+<h2 class="sr-only">Segments canvas with AI-suggested segment cards, a detailed segment view with composition analysis, overlap map, and action rail.</h2>
+
+<style>
+  .ls { font-family: var(--font-sans); color: #0A0A0A; font-size: 13px; line-height: 1.5; --ink: #0A0A0A; --paper: #FFFFFF; --line: rgba(10,10,10,0.12); --line-2: rgba(10,10,10,0.2); --mute: rgba(10,10,10,0.55); --mute-2: rgba(10,10,10,0.35); --shade: #F5F5F2; }
+  .ls-wrap { background: var(--paper); border: 0.5px solid var(--line); overflow: hidden; position: relative; }
+
+  .ls-top { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 12px 18px; border-bottom: 0.5px solid var(--line); }
+  .ls-crumb { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--mute); letter-spacing: 0.3px; text-transform: uppercase; }
+  .ls-crumb .cur { color: var(--ink); }
+  .ls-cmdk { background: transparent; border: 0.5px solid var(--line-2); padding: 6px 12px; font-size: 12px; color: var(--mute); cursor: pointer; display: flex; align-items: center; gap: 10px; justify-self: center; min-width: 320px; font-family: inherit; transition: border-color 0.12s; }
+  .ls-cmdk:hover { border-color: var(--ink); color: var(--ink); }
+  .ls-cmdk kbd { font-family: var(--font-mono); font-size: 10px; border: 0.5px solid var(--line-2); padding: 1px 6px; }
+
+  .ls-hero { padding: 20px 18px; border-bottom: 0.5px solid var(--line); display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; }
+  .ls-hero-title { font-size: 24px; font-weight: 500; letter-spacing: -0.5px; margin: 0; }
+  .ls-hero-sub { font-size: 12px; color: var(--mute); margin-top: 3px; }
+  .ls-hero-actions { display: flex; gap: 8px; }
+
+  .ls-btn { background: transparent; border: 0.5px solid var(--line-2); padding: 6px 12px; font-size: 12px; font-family: inherit; color: var(--ink); cursor: pointer; transition: all 0.12s; }
+  .ls-btn:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .ls-btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .ls-btn-primary:hover { background: transparent; color: var(--ink); }
+  .ls-btn-sm { padding: 4px 9px; font-size: 11px; }
+
+  /* View switcher */
+  .ls-views { display: flex; padding: 0 18px; border-bottom: 0.5px solid var(--line); overflow-x: auto; }
+  .ls-view { padding: 10px 14px; font-size: 12px; color: var(--mute); cursor: pointer; background: transparent; border: none; border-bottom: 1.5px solid transparent; font-family: inherit; margin-bottom: -0.5px; white-space: nowrap; transition: color 0.12s; }
+  .ls-view:hover { color: var(--ink); }
+  .ls-view.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+  .ls-view-count { font-size: 10px; border: 0.5px solid var(--line-2); padding: 0 5px; font-weight: 400; color: var(--mute); margin-left: 6px; }
+  .ls-view.on .ls-view-count { border-color: var(--ink); color: var(--ink); }
+
+  /* Main canvas */
+  .ls-canvas { padding: 16px 18px 24px; }
+
+  /* AI Suggest section */
+  .ls-ai-hero { border: 0.5px solid var(--ink); padding: 16px; margin-bottom: 16px; }
+  .ls-ai-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 0.5px solid var(--line); }
+  .ls-ai-who { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ls-ai-dot { width: 6px; height: 6px; background: var(--ink); }
+  .ls-ai-ctx { font-size: 10px; color: var(--mute); font-family: var(--font-mono); }
+  .ls-ai-intro { font-size: 13px; line-height: 1.6; margin-bottom: 14px; }
+  .ls-ai-intro strong { font-weight: 500; }
+
+  /* Suggestion grid */
+  .ls-sug-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; border: 0.5px solid var(--line); }
+  @media (max-width: 900px) { .ls-sug-grid { grid-template-columns: 1fr; } }
+  .ls-sug { padding: 14px 16px; border-right: 0.5px solid var(--line); border-bottom: 0.5px solid var(--line); cursor: pointer; transition: background 0.12s; position: relative; }
+  .ls-sug:nth-child(2n) { border-right: none; }
+  .ls-sug:nth-last-child(-n+2) { border-bottom: none; }
+  .ls-sug:hover { background: var(--shade); }
+  .ls-sug-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 10px; }
+  .ls-sug-cat { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); font-weight: 500; }
+  .ls-sug-cat.opp::before { content: '◆ '; }
+  .ls-sug-cat.diag::before { content: '! '; }
+  .ls-sug-cat.lifecycle::before { content: '○ '; }
+  .ls-sug-cat.cluster::before { content: '▦ '; }
+  .ls-sug-size { font-size: 11px; font-family: var(--font-mono); color: var(--mute); white-space: nowrap; }
+  .ls-sug-size strong { font-weight: 500; color: var(--ink); }
+  .ls-sug-title { font-size: 14px; font-weight: 500; margin: 4px 0 6px; letter-spacing: -0.2px; }
+  .ls-sug-desc { font-size: 12px; color: var(--mute); line-height: 1.55; margin-bottom: 10px; }
+  .ls-sug-desc strong { color: var(--ink); font-weight: 500; }
+  .ls-sug-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 0.5px solid var(--line); }
+  .ls-sug-action { font-size: 11px; color: var(--mute); font-family: var(--font-mono); }
+  .ls-sug-action strong { font-weight: 500; color: var(--ink); }
+  .ls-sug-chips { display: flex; gap: 4px; }
+  .ls-sug-chip { font-size: 10px; padding: 3px 8px; border: 0.5px solid var(--line-2); color: var(--ink); background: transparent; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .ls-sug-chip:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  .ls-ai-more { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--line); }
+  .ls-ai-input { display: flex; flex: 1; margin-right: 10px; border: 0.5px solid var(--line-2); }
+  .ls-ai-input input { flex: 1; background: transparent; border: none; outline: none; font-family: inherit; font-size: 12px; padding: 7px 12px; color: var(--ink); }
+  .ls-ai-input input::placeholder { color: var(--mute-2); }
+  .ls-ai-send { background: var(--ink); color: var(--paper); border: none; padding: 7px 14px; cursor: pointer; font-size: 12px; font-family: inherit; }
+
+  /* Saved segments table */
+  .ls-section-head { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 0 10px; }
+  .ls-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--mute); font-weight: 500; }
+  .ls-section-tools { display: flex; gap: 6px; }
+  .ls-mini-btn { background: transparent; border: none; padding: 2px 6px; font-size: 11px; color: var(--mute); cursor: pointer; font-family: inherit; }
+  .ls-mini-btn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .ls-mini-btn.on { color: var(--ink); font-weight: 500; }
+
+  .ls-seg-table { border: 0.5px solid var(--line); }
+  .ls-seg-row { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 14px; align-items: center; padding: 12px 14px; border-top: 0.5px solid var(--line); cursor: pointer; transition: background 0.1s; }
+  .ls-seg-row:first-child { border-top: none; }
+  .ls-seg-row:hover { background: var(--shade); }
+  .ls-seg-row.open { background: var(--shade); }
+  .ls-seg-name { font-size: 13px; font-weight: 500; min-width: 0; }
+  .ls-seg-desc { font-size: 11px; color: var(--mute); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ls-seg-col { font-size: 11px; font-family: var(--font-mono); color: var(--mute); text-align: right; white-space: nowrap; }
+  .ls-seg-col strong { color: var(--ink); font-weight: 500; }
+  .ls-seg-col.tag { font-family: var(--font-sans); text-transform: uppercase; font-size: 10px; letter-spacing: 0.4px; padding: 2px 7px; border: 0.5px solid var(--line-2); }
+  .ls-seg-col.tag.opp { border-color: var(--ink); color: var(--ink); font-weight: 500; }
+  .ls-seg-trend { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); }
+  .ls-seg-trend.up::before { content: '↑'; font-weight: 500; color: var(--ink); }
+  .ls-seg-trend.down::before { content: '↓'; }
+  .ls-seg-trend.flat::before { content: '–'; }
+
+  /* Expanded segment detail */
+  .ls-detail { padding: 16px; border-top: 0.5px solid var(--line); background: var(--paper); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 16px; }
+  @media (max-width: 900px) { .ls-detail { grid-template-columns: 1fr; } }
+  .ls-detail.hidden { display: none; }
+
+  .ls-detail-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+  /* AI diagnosis inside detail */
+  .ls-diag { border: 0.5px solid var(--ink); padding: 14px 16px; }
+  .ls-diag-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .ls-diag-thought { font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+  .ls-diag-thought em { background: var(--shade); font-style: normal; padding: 0 4px; cursor: pointer; border-bottom: 0.5px solid var(--ink); }
+  .ls-diag-thought em:hover { background: var(--ink); color: var(--paper); }
+  .ls-diag-thought strong { font-weight: 500; }
+  .ls-diag-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ls-diag-chip { font-size: 11px; padding: 5px 10px; background: transparent; border: 0.5px solid var(--line-2); color: var(--ink); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .ls-diag-chip:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Rules block */
+  .ls-block { border: 0.5px solid var(--line); padding: 14px 16px; background: var(--paper); }
+  .ls-block-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .ls-block-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--mute); font-weight: 500; }
+
+  .ls-rule { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 0.5px solid var(--line); font-size: 12px; }
+  .ls-rule:first-child { border-top: none; padding-top: 2px; }
+  .ls-rule-cond { font-family: var(--font-mono); font-size: 10px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.4px; }
+  .ls-rule-cond.and { color: var(--ink); font-weight: 500; }
+  .ls-rule-txt { }
+  .ls-rule-txt strong { font-weight: 500; }
+  .ls-rule-txt .op { color: var(--mute); margin: 0 4px; }
+  .ls-rule-rm { background: transparent; border: none; color: var(--mute); cursor: pointer; padding: 2px 6px; font-size: 12px; font-family: inherit; }
+  .ls-rule-rm:hover { color: var(--ink); }
+  .ls-rule-add { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; padding: 10px 0 2px; border-top: 0.5px solid var(--line); margin-top: 4px; }
+  .ls-rule-add-btn { background: transparent; border: 0.5px dashed var(--line-2); padding: 5px 10px; font-size: 11px; color: var(--mute); cursor: pointer; font-family: inherit; }
+  .ls-rule-add-btn:hover { border-style: solid; border-color: var(--ink); color: var(--ink); }
+
+  /* Composition block — 2 chart cols */
+  .ls-comp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ls-comp-sub { background: var(--paper); border: 0.5px solid var(--line); padding: 12px 14px; }
+  .ls-comp-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); margin-bottom: 10px; font-weight: 500; }
+  .ls-bar-row { display: grid; grid-template-columns: 80px 1fr 38px; gap: 8px; align-items: center; padding: 5px 0; font-size: 11px; }
+  .ls-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ls-bar-track { height: 4px; background: var(--shade); position: relative; }
+  .ls-bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--ink); }
+  .ls-bar-val { font-family: var(--font-mono); color: var(--mute); text-align: right; }
+
+  /* Member list inside detail */
+  .ls-mem-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .ls-mem-row { display: grid; grid-template-columns: 26px 1fr auto auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 0.5px solid var(--line); font-size: 12px; }
+  .ls-mem-row:first-child { border-top: none; padding-top: 2px; }
+  .ls-mem-av { width: 22px; height: 22px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; letter-spacing: 0.4px; }
+  .ls-mem-av.out { background: var(--paper); border: 0.5px solid var(--ink); color: var(--ink); }
+  .ls-mem-name { font-weight: 500; }
+  .ls-mem-why { font-size: 10px; color: var(--mute); margin-top: 1px; font-family: var(--font-mono); }
+  .ls-mem-ltv { font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+  .ls-mem-tier { font-size: 9px; text-transform: uppercase; letter-spacing: 0.4px; padding: 1px 6px; border: 0.5px solid var(--line-2); color: var(--mute); font-weight: 500; }
+  .ls-mem-tier.cult { border-color: var(--ink); color: var(--ink); }
+
+  /* Overlap map */
+  .ls-overlap { font-size: 11px; }
+  .ls-overlap svg { width: 100%; height: 140px; }
+  .ls-overlap-legend { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--mute); margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line); font-family: var(--font-mono); }
+  .ls-overlap-legend strong { color: var(--ink); font-weight: 500; }
+
+  /* Action rail */
+  .ls-rail { display: flex; flex-direction: column; gap: 12px; }
+  .ls-act-list { }
+  .ls-act { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; background: transparent; border: 0.5px solid var(--line-2); border-top-width: 0; cursor: pointer; font-family: inherit; text-align: left; color: var(--ink); transition: all 0.12s; width: 100%; }
+  .ls-act:first-child { border-top-width: 0.5px; }
+  .ls-act:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .ls-act-title { font-size: 12px; font-weight: 500; }
+  .ls-act-sub { font-size: 10px; color: var(--mute); font-family: var(--font-mono); margin-top: 1px; }
+  .ls-act:hover .ls-act-sub { color: rgba(255,255,255,0.7); }
+  .ls-act-arrow { font-size: 13px; opacity: 0.4; }
+  .ls-act:hover .ls-act-arrow { opacity: 1; }
+
+  .ls-vital-grid { display: grid; grid-template-columns: 1fr 1fr; border: 0.5px solid var(--line); }
+  .ls-vital { padding: 10px 12px; border-right: 0.5px solid var(--line); border-bottom: 0.5px solid var(--line); }
+  .ls-vital:nth-child(2n) { border-right: none; }
+  .ls-vital:nth-last-child(-n+2) { border-bottom: none; }
+  .ls-vital-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); font-weight: 500; }
+  .ls-vital-v { font-size: 15px; font-weight: 500; margin-top: 2px; font-family: var(--font-mono); }
+  .ls-vital-s { font-size: 10px; color: var(--mute); margin-top: 1px; }
+
+  .ls-sync { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 0.5px solid var(--line); font-size: 11px; color: var(--mute); }
+  .ls-sync-dot { width: 6px; height: 6px; background: var(--ink); }
+
+  .ls-toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: var(--paper); padding: 9px 16px; font-size: 12px; opacity: 0; transition: all 0.2s; z-index: 20; pointer-events: none; }
+  .ls-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+
+<div class="ls"><div class="ls-wrap">
+
+<div class="ls-top">
+  <div class="ls-crumb">
+    <span>CRM</span>
+    <span>/</span>
+    <span class="cur">Segments</span>
+  </div>
+  <button class="ls-cmdk" onclick="sendPrompt('Find a segment or run a flow')">
+    <span>⌕</span>
+    <span>Find a segment, describe a group, or ask AI</span>
+    <kbd>⌘K</kbd>
+  </button>
+  <div></div>
+</div>
+
+<div class="ls-hero">
+  <div>
+    <h1 class="ls-hero-title">Segments</h1>
+    <div class="ls-hero-sub">Group clients by rules · let AI surface patterns you didn't ask for</div>
+  </div>
+  <div class="ls-hero-actions">
+    <button class="ls-btn" onclick="sendPrompt('Analyze Lunettiq\'s customer base and suggest fresh segments')">◆ AI analyze</button>
+    <button class="ls-btn ls-btn-primary" onclick="toast('Segment builder opened')">+ New segment</button>
+  </div>
+</div>
+
+<div class="ls-views">
+  <button class="ls-view on" onclick="switchView(this)">All <span class="ls-view-count">18</span></button>
+  <button class="ls-view" onclick="switchView(this)">Opportunity <span class="ls-view-count">5</span></button>
+  <button class="ls-view" onclick="switchView(this)">Diagnostic <span class="ls-view-count">4</span></button>
+  <button class="ls-view" onclick="switchView(this)">Lifecycle <span class="ls-view-count">6</span></button>
+  <button class="ls-view" onclick="switchView(this)">AI clusters <span class="ls-view-count">3</span></button>
+  <button class="ls-view" onclick="toast('New view — name to save')">+ view</button>
+</div>
+
+<div class="ls-canvas">
+
+<!-- AI SUGGEST SECTION -->
+<div class="ls-ai-hero">
+  <div class="ls-ai-head">
+    <div class="ls-ai-who"><span class="ls-ai-dot"></span>Analyst · looking at your base</div>
+    <div class="ls-ai-ctx">99 clients · 142 orders · 90 days</div>
+  </div>
+  <div class="ls-ai-intro">
+    I looked across your orders, try-ons, emails, and Rx activity. <strong>Four patterns</strong> stand out that you don't currently have segments for. Two are problems to fix, two are opportunities to act on.
+  </div>
+
+  <div class="ls-sug-grid">
+
+    <div class="ls-sug" onclick="toast('Opening suggestion detail')">
+      <div class="ls-sug-head">
+        <div class="ls-sug-cat diag">Diagnostic · attention</div>
+        <div class="ls-sug-size"><strong>14</strong> clients · 14%</div>
+      </div>
+      <div class="ls-sug-title">Loved but didn't commit</div>
+      <div class="ls-sug-desc">
+        Clients who loved a frame in a try-on session over the last 30 days but walked out without it. <strong>Marie Dubois</strong> and 13 others. Average gap before eventual purchase: 18 days — some have been sitting longer than that.
+      </div>
+      <div class="ls-sug-foot">
+        <div class="ls-sug-action">Suggests <strong>in-store SMS</strong> · personal</div>
+        <div class="ls-sug-chips">
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); toast('Saved as segment')">Save</button>
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); sendPrompt('Refine the loved-but-didn\'t-commit segment')">Refine</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ls-sug" onclick="toast('Opening suggestion detail')">
+      <div class="ls-sug-head">
+        <div class="ls-sug-cat opp">Opportunity · time-boxed</div>
+        <div class="ls-sug-size"><strong>22</strong> clients · 22%</div>
+      </div>
+      <div class="ls-sug-title">Second-pair window open</div>
+      <div class="ls-sug-desc">
+        Bought between 6 and 12 months ago, opened at least one email in the last 30 days, haven't bought since. Classic second-pair moment. Skew: <strong>CULT 68%</strong>, Plateau 73%.
+      </div>
+      <div class="ls-sug-foot">
+        <div class="ls-sug-action">Suggests <strong>editorial email</strong> · curated 3-frame pick</div>
+        <div class="ls-sug-chips">
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); toast('Saved as segment')">Save</button>
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); sendPrompt('Draft the second-pair window email')">Draft email</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ls-sug" onclick="toast('Opening suggestion detail')">
+      <div class="ls-sug-head">
+        <div class="ls-sug-cat diag">Diagnostic · churn risk</div>
+        <div class="ls-sug-size"><strong>6</strong> CULT members · silent</div>
+      </div>
+      <div class="ls-sug-title">CULT gone quiet</div>
+      <div class="ls-sug-desc">
+        Paying CULT members who haven't opened an email, visited, or engaged in <strong>60+ days</strong>. These are actively costing credits they're not using. 2 are at <strong>90+ days</strong> — likely already churned but still billing.
+      </div>
+      <div class="ls-sug-foot">
+        <div class="ls-sug-action">Suggests <strong>owner outreach</strong> · before they cancel</div>
+        <div class="ls-sug-chips">
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); toast('Saved as segment')">Save</button>
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); sendPrompt('Why have these 6 CULT members gone quiet?')">Why?</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ls-sug" onclick="toast('Opening suggestion detail')">
+      <div class="ls-sug-head">
+        <div class="ls-sug-cat cluster">Cluster · behavioural</div>
+        <div class="ls-sug-size"><strong>9</strong> clients · pattern found</div>
+      </div>
+      <div class="ls-sug-title">The 2-week commit cohort</div>
+      <div class="ls-sug-desc">
+        AI spotted a group with a distinct pattern: they try a frame, leave without buying, and return within 10–18 days to purchase the one they loved. <strong>Marie Dubois</strong> is the archetype. These clients don't respond to discounts — they respond to being remembered.
+      </div>
+      <div class="ls-sug-foot">
+        <div class="ls-sug-action">Suggests <strong>wait-then-text</strong> at day 10</div>
+        <div class="ls-sug-chips">
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); toast('Saved as segment')">Save</button>
+          <button class="ls-sug-chip" onclick="event.stopPropagation(); sendPrompt('Show me what this cohort has in common')">Explore</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="ls-ai-more">
+    <div class="ls-ai-input">
+      <input type="text" placeholder="Describe a group in your own words... (eg. clients who only buy sun, not rx)" id="aiDescribe" onkeypress="if(event.key==='Enter' && this.value){sendPrompt('Build me a segment: ' + this.value); this.value='';}">
+      <button class="ls-ai-send" onclick="const v=document.getElementById('aiDescribe').value; if(v){sendPrompt('Build me a segment: ' + v); document.getElementById('aiDescribe').value='';}">→</button>
+    </div>
+    <button class="ls-btn ls-btn-sm" onclick="sendPrompt('Suggest 4 more segments I haven\'t thought of')">More ideas</button>
+  </div>
+</div>
+
+<!-- SAVED SEGMENTS -->
+<div class="ls-section-head">
+  <div class="ls-section-title">Saved segments · 7</div>
+  <div class="ls-section-tools">
+    <button class="ls-mini-btn on">updated</button>
+    <button class="ls-mini-btn">size</button>
+    <button class="ls-mini-btn">trend</button>
+  </div>
+</div>
+
+<div class="ls-seg-table">
+
+  <div class="ls-seg-row open" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">Premium underperforms</div>
+      <div class="ls-seg-desc">LTV > $500 · only 7% of base · flagged by AI on Apr 12</div>
+    </div>
+    <div class="ls-seg-col tag">diagnostic</div>
+    <div class="ls-seg-col"><strong>7</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend flat">0 wk</span></div>
+    <div class="ls-seg-col">synced to Klaviyo</div>
+  </div>
+
+  <!-- Expanded detail -->
+  <div class="ls-detail" id="detail-1">
+    <div class="ls-detail-main">
+
+      <!-- AI Diagnosis -->
+      <div class="ls-diag">
+        <div class="ls-diag-head">
+          <div class="ls-ai-who"><span class="ls-ai-dot"></span>Why this segment matters</div>
+          <div class="ls-ai-ctx">updated Apr 12 · data fresh</div>
+        </div>
+        <div class="ls-diag-thought">
+          Only <strong>7 of 99</strong> clients (7%) have lifetime value above $500. For a luxury eyewear brand at this AOV, this premium tier should represent <strong>15–20%</strong> of the base. The math: your top 7% drive <em onclick="sendPrompt('Show me the Pareto breakdown of Lunettiq\'s customer base')">~52% of revenue</em> — healthy concentration — but the top band itself is too thin.
+          <br><br>
+          What this means practically: there aren't enough clients in the <strong>$500–$1000 LTV band</strong> being pushed into <strong>$1000+</strong>. Second-pair conversion is the lever. <em onclick="sendPrompt('Who\'s in the $500-1000 LTV band?')">24 clients</em> sit in the "almost premium" zone — if a third of them buy one more frame, the premium tier doubles.
+        </div>
+        <div class="ls-diag-chips">
+          <button class="ls-diag-chip" onclick="sendPrompt('Who are the 24 clients in the $500-1000 LTV band and what\'s their most likely next purchase?')">Who's close?</button>
+          <button class="ls-diag-chip" onclick="sendPrompt('Draft a second-pair campaign for the $500-1000 LTV band')">Draft activation</button>
+          <button class="ls-diag-chip" onclick="sendPrompt('Why aren\'t near-premium clients converting to premium?')">Why the gap?</button>
+        </div>
+      </div>
+
+      <!-- Rule definition -->
+      <div class="ls-block">
+        <div class="ls-block-head">
+          <div class="ls-block-label">Rules · how they qualify</div>
+          <button class="ls-mini-btn" onclick="sendPrompt('Refine this segment')">refine with AI</button>
+        </div>
+        <div class="ls-rule">
+          <div class="ls-rule-cond">where</div>
+          <div class="ls-rule-txt"><strong>lifetime value</strong><span class="op">is greater than</span><strong>$500</strong></div>
+          <button class="ls-rule-rm">×</button>
+        </div>
+        <div class="ls-rule">
+          <div class="ls-rule-cond and">and</div>
+          <div class="ls-rule-txt"><strong>membership status</strong><span class="op">is not</span><strong>cancelled</strong></div>
+          <button class="ls-rule-rm">×</button>
+        </div>
+        <div class="ls-rule-add">
+          <div></div>
+          <button class="ls-rule-add-btn" onclick="toast('Rule picker')">+ add condition</button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Composition -->
+      <div class="ls-block">
+        <div class="ls-block-head">
+          <div class="ls-block-label">Composition · what's in here</div>
+        </div>
+        <div class="ls-comp">
+          <div class="ls-comp-sub">
+            <div class="ls-comp-title">By tier</div>
+            <div class="ls-bar-row"><div class="ls-bar-label">CULT</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 71%;"></div></div><div class="ls-bar-val">5</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">VAULT</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 14%;"></div></div><div class="ls-bar-val">1</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Essential</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 14%;"></div></div><div class="ls-bar-val">1</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Non-member</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 0%;"></div></div><div class="ls-bar-val">0</div></div>
+          </div>
+          <div class="ls-comp-sub">
+            <div class="ls-comp-title">By location</div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Plateau</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 86%;"></div></div><div class="ls-bar-val">6</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">DIX30</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 14%;"></div></div><div class="ls-bar-val">1</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Mile-End</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 0%;"></div></div><div class="ls-bar-val">0</div></div>
+          </div>
+          <div class="ls-comp-sub">
+            <div class="ls-comp-title">By LTV band</div>
+            <div class="ls-bar-row"><div class="ls-bar-label">$500–1k</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 71%;"></div></div><div class="ls-bar-val">5</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">$1k–2k</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 29%;"></div></div><div class="ls-bar-val">2</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">$2k+</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 0%;"></div></div><div class="ls-bar-val">0</div></div>
+          </div>
+          <div class="ls-comp-sub">
+            <div class="ls-comp-title">Engagement</div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Email opens</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 82%;"></div></div><div class="ls-bar-val">82%</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">SMS consent</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 43%;"></div></div><div class="ls-bar-val">3</div></div>
+            <div class="ls-bar-row"><div class="ls-bar-label">Try-on 30d</div><div class="ls-bar-track"><div class="ls-bar-fill" style="width: 57%;"></div></div><div class="ls-bar-val">4</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members -->
+      <div class="ls-block">
+        <div class="ls-mem-head">
+          <div class="ls-block-label">Members · 7</div>
+          <div style="display: flex; gap: 6px;">
+            <button class="ls-mini-btn on">LTV</button>
+            <button class="ls-mini-btn">recency</button>
+            <button class="ls-mini-btn">name</button>
+          </div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">AK</div>
+          <div>
+            <div class="ls-mem-name">Avinash Sathish Kumar</div>
+            <div class="ls-mem-why">5 orders · last Mar 28 · opened 4/5 emails</div>
+          </div>
+          <div class="ls-mem-tier cult">CULT</div>
+          <div class="ls-mem-ltv">$1,584</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Avinash')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">EP</div>
+          <div>
+            <div class="ls-mem-name">Erfan Ghaffari Pour</div>
+            <div class="ls-mem-why">3 orders · last Feb 14 · Second Sight trade-in</div>
+          </div>
+          <div class="ls-mem-tier cult">CULT</div>
+          <div class="ls-mem-ltv">$1,060</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Erfan')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">GL</div>
+          <div>
+            <div class="ls-mem-name">Gautier Lemyze-Young</div>
+            <div class="ls-mem-why">2 orders · last Nov 22 · idle 146d · nudge window</div>
+          </div>
+          <div class="ls-mem-tier cult">CULT</div>
+          <div class="ls-mem-ltv">$767</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Gautier')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">JS</div>
+          <div>
+            <div class="ls-mem-name">Jeanne Shih</div>
+            <div class="ls-mem-why">3 orders · last Jan 12 · tried 4 frames Mar 30</div>
+          </div>
+          <div class="ls-mem-tier cult">CULT</div>
+          <div class="ls-mem-ltv">$750</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Jeanne')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">AC</div>
+          <div>
+            <div class="ls-mem-name">Alexander Corcoran</div>
+            <div class="ls-mem-why">2 orders · last Dec 8 · Rx due for renewal</div>
+          </div>
+          <div class="ls-mem-tier">VAULT</div>
+          <div class="ls-mem-ltv">$654</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Alexander')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av out">CL</div>
+          <div>
+            <div class="ls-mem-name">Camila Lopez-Bosch</div>
+            <div class="ls-mem-why">2 orders · last Oct 4 · email consent off</div>
+          </div>
+          <div class="ls-mem-tier">Essential</div>
+          <div class="ls-mem-ltv">$510</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Camila')">→</button></div>
+        </div>
+
+        <div class="ls-mem-row">
+          <div class="ls-mem-av">ME</div>
+          <div>
+            <div class="ls-mem-name">Keisha Epps</div>
+            <div class="ls-mem-why">3 orders · last Mar 3 · opened 6/6 emails · no SMS</div>
+          </div>
+          <div class="ls-mem-tier cult">CULT</div>
+          <div class="ls-mem-ltv">$509</div>
+          <div><button class="ls-mini-btn" onclick="event.stopPropagation(); toast('Opened Keisha')">→</button></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RAIL -->
+    <div class="ls-rail">
+
+      <div class="ls-vital-grid">
+        <div class="ls-vital">
+          <div class="ls-vital-l">Total LTV</div>
+          <div class="ls-vital-v">$6,834</div>
+          <div class="ls-vital-s">48% of brand</div>
+        </div>
+        <div class="ls-vital">
+          <div class="ls-vital-l">Avg LTV</div>
+          <div class="ls-vital-v">$976</div>
+          <div class="ls-vital-s">vs $143 base</div>
+        </div>
+        <div class="ls-vital">
+          <div class="ls-vital-l">90d spend</div>
+          <div class="ls-vital-v">$2,140</div>
+          <div class="ls-vital-s">6 orders</div>
+        </div>
+        <div class="ls-vital">
+          <div class="ls-vital-l">Idle</div>
+          <div class="ls-vital-v">42d</div>
+          <div class="ls-vital-s">median</div>
+        </div>
+      </div>
+
+      <div class="ls-block" style="padding: 0;">
+        <div style="padding: 14px 16px 10px; border-bottom: 0.5px solid var(--line);">
+          <div class="ls-block-label">Act on this segment</div>
+        </div>
+        <div class="ls-act-list">
+          <button class="ls-act" onclick="sendPrompt('Draft a personalized email for the Premium Underperforms segment')">
+            <div>
+              <div class="ls-act-title">Draft campaign with AI</div>
+              <div class="ls-act-sub">email · personalized per member</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+          <button class="ls-act" onclick="toast('Klaviyo list updated · 7 profiles')">
+            <div>
+              <div class="ls-act-title">Sync to Klaviyo</div>
+              <div class="ls-act-sub">already linked · refresh</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+          <button class="ls-act" onclick="toast('Tag picker opened')">
+            <div>
+              <div class="ls-act-title">Bulk apply tag</div>
+              <div class="ls-act-sub">7 clients · audited</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+          <button class="ls-act" onclick="toast('7 appointment invites drafted')">
+            <div>
+              <div class="ls-act-title">Invite to fitting</div>
+              <div class="ls-act-sub">staff-led · personal</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+          <button class="ls-act" onclick="toast('CSV generated')">
+            <div>
+              <div class="ls-act-title">Export CSV</div>
+              <div class="ls-act-sub">full profile dump</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+          <button class="ls-act" onclick="toast('Alert created — Benjamin + you')">
+            <div>
+              <div class="ls-act-title">Alert when changes</div>
+              <div class="ls-act-sub">new member · lost member</div>
+            </div>
+            <div class="ls-act-arrow">→</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Overlap map -->
+      <div class="ls-block">
+        <div class="ls-block-head">
+          <div class="ls-block-label">Overlap with other segments</div>
+        </div>
+        <div class="ls-overlap">
+          <svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="100" cy="70" r="42" fill="#0A0A0A" opacity="0.85"/>
+            <circle cx="150" cy="58" r="32" fill="none" stroke="#0A0A0A" stroke-width="0.8"/>
+            <circle cx="145" cy="95" r="28" fill="none" stroke="#0A0A0A" stroke-width="0.8" stroke-dasharray="3,2"/>
+            <text x="90" y="74" text-anchor="middle" fill="#FFF" font-size="9" font-weight="500">Premium</text>
+            <text x="90" y="84" text-anchor="middle" fill="#FFF" font-size="8" opacity="0.75">7</text>
+            <text x="168" y="45" text-anchor="middle" fill="#0A0A0A" font-size="9">CULT silent</text>
+            <text x="168" y="56" text-anchor="middle" fill="#0A0A0A" font-size="8" opacity="0.55">3 shared</text>
+            <text x="168" y="112" text-anchor="middle" fill="#0A0A0A" font-size="9">Rx renewal</text>
+            <text x="168" y="123" text-anchor="middle" fill="#0A0A0A" font-size="8" opacity="0.55">2 shared</text>
+          </svg>
+        </div>
+        <div class="ls-overlap-legend">
+          <div><strong>3 of 7</strong> also in CULT gone quiet</div>
+          <div><strong>2 of 7</strong> also Rx renewal due</div>
+          <div><strong>1 of 7</strong> in all three · priority</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Other segments -->
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">CULT renewal window · 30 days</div>
+      <div class="ls-seg-desc">CULT members whose annual renewal hits in next 30 days</div>
+    </div>
+    <div class="ls-seg-col tag">lifecycle</div>
+    <div class="ls-seg-col"><strong>11</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend up">+3 wk</span></div>
+    <div class="ls-seg-col">auto-syncs</div>
+  </div>
+
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">Birthday this month</div>
+      <div class="ls-seg-desc">Birthday within next 30 days · CULT and VAULT priority</div>
+    </div>
+    <div class="ls-seg-col tag">lifecycle</div>
+    <div class="ls-seg-col"><strong>8</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend flat">–</span></div>
+    <div class="ls-seg-col">evergreen</div>
+  </div>
+
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">High-engagement non-members</div>
+      <div class="ls-seg-desc">Opens > 60% · clicks > 3 · no account yet · Ava-pattern</div>
+    </div>
+    <div class="ls-seg-col tag opp">opportunity</div>
+    <div class="ls-seg-col"><strong>19</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend up">+5 wk</span></div>
+    <div class="ls-seg-col">synced</div>
+  </div>
+
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">Senna lovers · didn't buy</div>
+      <div class="ls-seg-desc">Loved Senna in a try-on · didn't purchase within 14 days</div>
+    </div>
+    <div class="ls-seg-col tag">product</div>
+    <div class="ls-seg-col"><strong>14</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend up">+2 wk</span></div>
+    <div class="ls-seg-col">synced</div>
+  </div>
+
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">Lapsed Rx · renewal due</div>
+      <div class="ls-seg-desc">Rx on file expires within 90 days · no booking yet</div>
+    </div>
+    <div class="ls-seg-col tag">lifecycle</div>
+    <div class="ls-seg-col"><strong>12</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend flat">–</span></div>
+    <div class="ls-seg-col">auto-syncs</div>
+  </div>
+
+  <div class="ls-seg-row" onclick="toggleSeg(this)">
+    <div>
+      <div class="ls-seg-name">Second Sight regulars</div>
+      <div class="ls-seg-desc">3+ trade-ins · treats frames as rotatable wardrobe</div>
+    </div>
+    <div class="ls-seg-col tag">product</div>
+    <div class="ls-seg-col"><strong>6</strong> clients</div>
+    <div class="ls-seg-col"><span class="ls-seg-trend flat">–</span></div>
+    <div class="ls-seg-col">manual</div>
+  </div>
+
+</div>
+
+</div>
+
+<div class="ls-toast" id="toast">Done</div>
+
+</div></div>
+
+<script>
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.__lsT);
+    window.__lsT = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function switchView(el) {
+    document.querySelectorAll('.ls-view').forEach(v => v.classList.remove('on'));
+    el.classList.add('on');
+  }
+
+  function toggleSeg(row) {
+    const isOpen = row.classList.contains('open');
+    document.querySelectorAll('.ls-seg-row').forEach(r => r.classList.remove('open'));
+    document.querySelectorAll('.ls-detail').forEach(d => d.style.display = 'none');
+    if (!isOpen) {
+      row.classList.add('open');
+      const next = row.nextElementSibling;
+      if (next && next.classList.contains('ls-detail')) {
+        next.style.display = 'grid';
+      } else {
+        toast('Detail view not yet built for this segment');
+      }
+    }
+  }
+
+  // Initial state: first segment open
+  document.getElementById('detail-1').style.display = 'grid';
+</script>

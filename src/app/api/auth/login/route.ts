@@ -21,7 +21,7 @@ export async function GET() {
 
   setOAuthStateCookies(state, nonce);
 
-  const authorizeUrl = buildAuthorizeRedirectUrl(state, nonce);
+  const authorizeUrl = await buildAuthorizeRedirectUrl(state, nonce);
 
   return NextResponse.redirect(authorizeUrl);
 }

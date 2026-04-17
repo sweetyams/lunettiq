@@ -1,0 +1,764 @@
+<h2 class="sr-only">Product canvas for Senna Black in the Lunettiq CRM — velocity, funnel, buyer archetype, hot clients, head-to-head frames, returns, and AI diagnosis.</h2>
+
+<style>
+  .lp { font-family: var(--font-sans); color: #0A0A0A; font-size: 13px; line-height: 1.5; --ink: #0A0A0A; --paper: #FFFFFF; --line: rgba(10,10,10,0.12); --line-2: rgba(10,10,10,0.2); --mute: rgba(10,10,10,0.55); --mute-2: rgba(10,10,10,0.35); --shade: #F5F5F2; }
+  .lp-wrap { background: var(--paper); border: 0.5px solid var(--line); overflow: hidden; position: relative; }
+
+  .lp-top { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 12px 18px; border-bottom: 0.5px solid var(--line); }
+  .lp-crumb { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--mute); letter-spacing: 0.3px; text-transform: uppercase; }
+  .lp-crumb .cur { color: var(--ink); }
+  .lp-cmdk { background: transparent; border: 0.5px solid var(--line-2); padding: 6px 12px; font-size: 12px; color: var(--mute); cursor: pointer; display: flex; align-items: center; gap: 10px; justify-self: center; min-width: 320px; font-family: inherit; transition: border-color 0.12s; }
+  .lp-cmdk:hover { border-color: var(--ink); color: var(--ink); }
+  .lp-cmdk kbd { font-family: var(--font-mono); font-size: 10px; border: 0.5px solid var(--line-2); padding: 1px 6px; }
+  .lp-top-actions { display: flex; gap: 6px; }
+
+  /* Hero */
+  .lp-hero { display: grid; grid-template-columns: 220px 1fr auto; gap: 24px; align-items: center; padding: 22px 18px 18px; border-bottom: 0.5px solid var(--line); }
+  .lp-hero-img { aspect-ratio: 5 / 3; background: var(--ink); display: flex; align-items: center; justify-content: center; cursor: zoom-in; }
+  .lp-hero-meta { min-width: 0; }
+  .lp-tier { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; padding: 2px 8px; border: 0.5px solid var(--ink); font-weight: 500; margin-bottom: 6px; }
+  .lp-hero-name { font-size: 26px; font-weight: 500; letter-spacing: -0.6px; margin: 0; }
+  .lp-hero-sub { font-size: 12px; color: var(--mute); margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .lp-hero-sub .d { width: 2px; height: 2px; background: currentColor; }
+
+  .lp-hero-stats { display: flex; }
+  .lp-hs { padding: 0 16px; border-left: 0.5px solid var(--line); }
+  .lp-hs:first-child { border-left: none; padding-left: 0; }
+  .lp-hs-v { font-size: 20px; font-weight: 500; line-height: 1.1; }
+  .lp-hs-v .unit { font-size: 12px; color: var(--mute); font-weight: 400; }
+  .lp-hs-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); margin-top: 3px; }
+  .lp-hs-t { font-size: 10px; color: var(--mute); margin-top: 1px; font-family: var(--font-mono); }
+  .lp-hs-t.strong { color: var(--ink); font-weight: 500; }
+  .lp-hs-t.warn::before { content: '!'; display: inline-block; width: 12px; height: 12px; line-height: 11px; text-align: center; border: 0.5px solid var(--ink); margin-right: 4px; vertical-align: middle; font-size: 9px; font-weight: 500; }
+
+  /* Variants strip */
+  .lp-variants { display: flex; gap: 0; padding: 0 18px; border-bottom: 0.5px solid var(--line); overflow-x: auto; }
+  .lp-var { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 12px; color: var(--mute); cursor: pointer; border: none; background: transparent; border-bottom: 1.5px solid transparent; font-family: inherit; margin-bottom: -0.5px; white-space: nowrap; transition: color 0.12s; }
+  .lp-var:hover { color: var(--ink); }
+  .lp-var.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+  .lp-var-sw { width: 14px; height: 14px; border: 0.5px solid var(--line-2); }
+  .lp-var-sw.black { background: #0A0A0A; }
+  .lp-var-sw.tortoise { background: linear-gradient(135deg, #6B4423 30%, #8a5a30 100%); }
+  .lp-var-sw.crystal { background: #E8E3D6; }
+  .lp-var-sw.olive { background: #4a5d3a; }
+  .lp-var-stock { font-size: 10px; color: var(--mute); font-family: var(--font-mono); padding: 0 5px; border: 0.5px solid var(--line); }
+
+  /* Canvas */
+  .lp-canvas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 0; }
+  @media (max-width: 900px) { .lp-canvas { grid-template-columns: 1fr; } }
+  .lp-main { padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 12px; min-width: 0; border-right: 0.5px solid var(--line); }
+  .lp-rail { padding: 16px 18px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+  .lp-block { background: var(--paper); border: 0.5px solid var(--line); padding: 14px 16px; }
+  .lp-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .lp-block-head.nb { margin-bottom: 10px; padding-bottom: 0; border-bottom: none; }
+  .lp-block-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--mute); font-weight: 500; }
+  .lp-block-tools { display: flex; gap: 4px; }
+  .lp-mini-btn { background: transparent; border: none; padding: 2px 6px; font-size: 11px; color: var(--mute); cursor: pointer; font-family: inherit; }
+  .lp-mini-btn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+  .lp-mini-btn.on { color: var(--ink); font-weight: 500; }
+
+  /* AI block */
+  .lp-ai { border: 0.5px solid var(--ink); padding: 14px 16px; }
+  .lp-ai-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .lp-ai-who { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .lp-ai-dot { width: 6px; height: 6px; background: var(--ink); }
+  .lp-ai-ctx { font-size: 10px; color: var(--mute); font-family: var(--font-mono); }
+  .lp-ai-thought { font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+  .lp-ai-thought em { background: var(--shade); font-style: normal; padding: 0 4px; cursor: pointer; border-bottom: 0.5px solid var(--ink); }
+  .lp-ai-thought em:hover { background: var(--ink); color: var(--paper); }
+  .lp-ai-thought strong { font-weight: 500; }
+  .lp-ai-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .lp-ai-chip { font-size: 11px; padding: 5px 10px; background: transparent; border: 0.5px solid var(--line-2); color: var(--ink); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .lp-ai-chip:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Funnel */
+  .lp-funnel { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 0.5px solid var(--line); }
+  .lp-fnl-step { padding: 14px 14px; border-right: 0.5px solid var(--line); position: relative; }
+  .lp-fnl-step:last-child { border-right: none; }
+  .lp-fnl-step .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); font-weight: 500; }
+  .lp-fnl-step .v { font-size: 22px; font-weight: 500; margin-top: 4px; line-height: 1; }
+  .lp-fnl-step .v .unit { font-size: 11px; color: var(--mute); font-weight: 400; }
+  .lp-fnl-step .r { font-size: 10px; color: var(--mute); margin-top: 4px; font-family: var(--font-mono); }
+  .lp-fnl-step .r.good { color: var(--ink); font-weight: 500; }
+  .lp-fnl-step .r.weak::before { content: '↓ '; }
+  .lp-fnl-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--ink); }
+
+  /* Velocity panel */
+  .lp-velo { display: grid; grid-template-columns: 1fr 1.4fr; gap: 14px; }
+  .lp-velo-nums { display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+  .lp-velo-num { }
+  .lp-velo-num .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); font-weight: 500; }
+  .lp-velo-num .v { font-size: 20px; font-weight: 500; line-height: 1.1; margin-top: 3px; }
+  .lp-velo-num .s { font-size: 10px; color: var(--mute); font-family: var(--font-mono); margin-top: 2px; }
+  .lp-velo-num .s.up::before { content: '↑ '; color: var(--ink); font-weight: 500; }
+  .lp-velo-chart { border: 0.5px solid var(--line); padding: 10px; position: relative; min-height: 140px; }
+  .lp-velo-chart svg { width: 100%; height: 130px; }
+  .lp-velo-axis { display: flex; justify-content: space-between; font-size: 9px; color: var(--mute); font-family: var(--font-mono); text-transform: uppercase; margin-top: 4px; }
+
+  /* Archetype */
+  .lp-archetype { font-size: 13px; line-height: 1.6; }
+  .lp-archetype strong { font-weight: 500; }
+  .lp-archetype-tags { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  .lp-archetype-tag { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 0.5px solid var(--line); min-width: 90px; }
+  .lp-archetype-tag .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); }
+  .lp-archetype-tag .v { font-size: 13px; font-weight: 500; }
+
+  /* Clients list (hot clients) */
+  .lp-client { display: grid; grid-template-columns: 28px 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 0.5px solid var(--line); }
+  .lp-client:first-child { border-top: none; padding-top: 2px; }
+  .lp-client-av { width: 24px; height: 24px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; letter-spacing: 0.5px; }
+  .lp-client-av.out { background: var(--paper); border: 0.5px solid var(--ink); color: var(--ink); }
+  .lp-client-meta { min-width: 0; }
+  .lp-client-name { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lp-client-why { font-size: 11px; color: var(--mute); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lp-client-score { font-size: 11px; font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+  .lp-client-act { display: flex; gap: 0; }
+  .lp-iconbtn { background: transparent; border: 0.5px solid var(--line-2); padding: 3px 7px; font-size: 10px; color: var(--mute); cursor: pointer; font-family: inherit; border-right-width: 0; }
+  .lp-iconbtn:last-child { border-right-width: 0.5px; }
+  .lp-iconbtn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+  /* Head-to-head */
+  .lp-h2h { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .lp-h2h-card { border: 0.5px solid var(--line); padding: 10px 12px; }
+  .lp-h2h-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); font-weight: 500; margin-bottom: 8px; }
+  .lp-h2h-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 0.5px solid var(--line); }
+  .lp-h2h-row:first-of-type { border-top: none; padding-top: 0; }
+  .lp-h2h-sw { width: 24px; height: 14px; border: 0.5px solid var(--ink); }
+  .lp-h2h-name { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lp-h2h-rate { font-size: 11px; font-family: var(--font-mono); color: var(--mute); }
+  .lp-h2h-rate.win { color: var(--ink); font-weight: 500; }
+
+  /* Pair-with */
+  .lp-pair { display: flex; flex-direction: column; gap: 8px; }
+  .lp-pair-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; }
+  .lp-pair-sw { width: 24px; height: 14px; border: 0.5px solid var(--ink); }
+  .lp-pair-name { font-size: 12px; }
+  .lp-pair-count { font-size: 10px; color: var(--mute); font-family: var(--font-mono); }
+
+  /* Returns */
+  .lp-returns { display: flex; flex-direction: column; gap: 8px; }
+  .lp-return-row { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; }
+  .lp-return-reason { font-size: 11px; color: var(--ink); }
+  .lp-return-bar { height: 2px; background: var(--shade); position: relative; }
+  .lp-return-bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--ink); }
+  .lp-return-count { font-size: 10px; color: var(--mute); font-family: var(--font-mono); }
+
+  /* Sentiment donut (pure B/W) */
+  .lp-sent { display: grid; grid-template-columns: 90px 1fr; gap: 14px; align-items: center; }
+  .lp-sent svg { width: 90px; height: 90px; }
+  .lp-sent-legend { display: flex; flex-direction: column; gap: 6px; font-size: 11px; }
+  .lp-sent-row { display: flex; align-items: center; gap: 8px; }
+  .lp-sent-sw { width: 10px; height: 10px; flex-shrink: 0; }
+  .lp-sent-sw.love { background: var(--ink); }
+  .lp-sent-sw.meh { background: var(--paper); border: 0.5px solid var(--ink); }
+  .lp-sent-sw.no { background: var(--paper); border: 0.5px solid var(--ink); position: relative; }
+  .lp-sent-sw.no::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(45deg, transparent 44%, var(--ink) 44%, var(--ink) 56%, transparent 56%); }
+  .lp-sent-label { flex: 1; }
+  .lp-sent-val { font-family: var(--font-mono); color: var(--mute); }
+
+  /* Inventory */
+  .lp-inv-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 0.5px solid var(--line); font-size: 12px; }
+  .lp-inv-row:first-child { border-top: none; padding-top: 2px; }
+  .lp-inv-loc { }
+  .lp-inv-count { font-family: var(--font-mono); font-weight: 500; }
+  .lp-inv-state { font-size: 10px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.3px; }
+  .lp-inv-state.hold { color: var(--ink); font-weight: 500; border: 0.5px solid var(--ink); padding: 1px 5px; }
+
+  /* Rail actions */
+  .lp-act-list { display: flex; flex-direction: column; gap: 0; }
+  .lp-act { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; background: transparent; border: 0.5px solid var(--line-2); border-top-width: 0; cursor: pointer; font-family: inherit; text-align: left; color: var(--ink); transition: all 0.12s; }
+  .lp-act:first-child { border-top-width: 0.5px; }
+  .lp-act:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .lp-act-title { font-size: 12px; font-weight: 500; }
+  .lp-act-sub { font-size: 10px; color: var(--mute); font-family: var(--font-mono); margin-top: 1px; }
+  .lp-act:hover .lp-act-sub { color: rgba(255,255,255,0.7); }
+  .lp-act-arrow { font-size: 14px; opacity: 0.4; }
+  .lp-act:hover .lp-act-arrow { opacity: 1; }
+
+  /* Margin block */
+  .lp-margin { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 0.5px solid var(--line); }
+  .lp-margin-cell { background: var(--paper); padding: 10px 12px; }
+  .lp-margin-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); font-weight: 500; }
+  .lp-margin-v { font-size: 17px; font-weight: 500; margin-top: 3px; font-family: var(--font-mono); }
+  .lp-margin-s { font-size: 10px; color: var(--mute); margin-top: 1px; }
+
+  /* Attach rates */
+  .lp-attach { }
+  .lp-attach-row { display: grid; grid-template-columns: 1fr auto 40px; gap: 10px; align-items: center; padding: 7px 0; border-top: 0.5px solid var(--line); }
+  .lp-attach-row:first-child { border-top: none; padding-top: 2px; }
+  .lp-attach-l { font-size: 12px; }
+  .lp-attach-v { font-size: 11px; font-family: var(--font-mono); font-weight: 500; }
+  .lp-attach-bar { height: 2px; background: var(--shade); position: relative; }
+  .lp-attach-bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--ink); }
+
+  .lp-btn { background: transparent; border: 0.5px solid var(--line-2); padding: 5px 11px; font-size: 12px; font-family: inherit; color: var(--ink); cursor: pointer; transition: all 0.12s; }
+  .lp-btn:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .lp-btn-sm { padding: 3px 9px; font-size: 11px; }
+  .lp-btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .lp-btn-primary:hover { background: transparent; color: var(--ink); }
+
+  .lp-toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: var(--paper); padding: 9px 16px; font-size: 12px; opacity: 0; transition: all 0.2s; z-index: 20; pointer-events: none; }
+  .lp-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+
+<div class="lp"><div class="lp-wrap">
+
+<div class="lp-top">
+  <div class="lp-crumb">
+    <span>Products</span>
+    <span>/</span>
+    <span>Optical</span>
+    <span>/</span>
+    <span>Signature</span>
+    <span>/</span>
+    <span class="cur">Senna</span>
+  </div>
+  <button class="lp-cmdk" onclick="sendPrompt('Ask Claude anything about the Senna frame')">
+    <span>⌕</span>
+    <span>Ask about Senna, jump anywhere, or run a flow</span>
+    <kbd>⌘K</kbd>
+  </button>
+  <div class="lp-top-actions">
+    <button class="lp-btn lp-btn-sm" onclick="toast('Link copied')">Share</button>
+  </div>
+</div>
+
+<div class="lp-hero">
+  <div class="lp-hero-img" onclick="toast('Opening gallery')">
+    <svg width="160" height="70" viewBox="0 0 160 70">
+      <rect x="5" y="12" width="58" height="46" rx="22" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
+      <rect x="97" y="12" width="58" height="46" rx="22" fill="none" stroke="#FFFFFF" stroke-width="1.8"/>
+      <line x1="63" y1="34" x2="97" y2="34" stroke="#FFFFFF" stroke-width="1.8"/>
+      <path d="M 5 22 Q 2 14 8 10" fill="none" stroke="#FFFFFF" stroke-width="1.2" opacity="0.7"/>
+      <path d="M 155 22 Q 158 14 152 10" fill="none" stroke="#FFFFFF" stroke-width="1.2" opacity="0.7"/>
+    </svg>
+  </div>
+  <div class="lp-hero-meta">
+    <div class="lp-tier">◆ SIGNATURE · optical</div>
+    <h1 class="lp-hero-name">Senna</h1>
+    <div class="lp-hero-sub">
+      <span>SKU LNT-SEN</span>
+      <span class="d"></span>
+      <span>4 colours</span>
+      <span class="d"></span>
+      <span>Italian acetate · hand-polished</span>
+      <span class="d"></span>
+      <span>46-22-145</span>
+      <span class="d"></span>
+      <span>Launched Sep 2024</span>
+    </div>
+  </div>
+  <div class="lp-hero-stats">
+    <div class="lp-hs">
+      <div class="lp-hs-v">$285</div>
+      <div class="lp-hs-l">retail</div>
+      <div class="lp-hs-t">margin 68%</div>
+    </div>
+    <div class="lp-hs">
+      <div class="lp-hs-v">14</div>
+      <div class="lp-hs-l">in stock</div>
+      <div class="lp-hs-t strong">2 on hold</div>
+    </div>
+    <div class="lp-hs">
+      <div class="lp-hs-v">142</div>
+      <div class="lp-hs-l">units ltd</div>
+      <div class="lp-hs-t">+18 last 30d</div>
+    </div>
+    <div class="lp-hs">
+      <div class="lp-hs-v">B+</div>
+      <div class="lp-hs-l">health</div>
+      <div class="lp-hs-t warn">trying → buy gap</div>
+    </div>
+  </div>
+</div>
+
+<div class="lp-variants">
+  <button class="lp-var on" onclick="switchVar(this)"><span class="lp-var-sw black"></span>Black <span class="lp-var-stock">8</span></button>
+  <button class="lp-var" onclick="switchVar(this)"><span class="lp-var-sw tortoise"></span>Tortoise <span class="lp-var-stock">3</span></button>
+  <button class="lp-var" onclick="switchVar(this)"><span class="lp-var-sw crystal"></span>Crystal <span class="lp-var-stock">2</span></button>
+  <button class="lp-var" onclick="switchVar(this)"><span class="lp-var-sw olive"></span>Olive <span class="lp-var-stock">1</span></button>
+</div>
+
+<div class="lp-canvas">
+<div class="lp-main">
+
+<!-- AI Diagnosis -->
+<div class="lp-ai">
+  <div class="lp-ai-head">
+    <div class="lp-ai-who"><span class="lp-ai-dot"></span>Diagnosis</div>
+    <div class="lp-ai-ctx">context · 1,284 tries · 142 sold · 8 returned</div>
+  </div>
+  <div class="lp-ai-thought">
+    Senna sells, but it <strong>loses people at the try-to-buy handoff</strong>. 34% of clients who try it love it, which is strong — but only 11% of those lovers buy within the same session. The pattern: they want time. Average gap from first try-on to eventual purchase is <em onclick="sendPrompt('Show me the Senna purchase lag distribution')">18 days</em>. Marie Dubois is one of three CULT clients currently in that gap.
+    <br><br>
+    <strong>Black</strong> sells 3× the others. <strong>Olive</strong> has tried 9 times this quarter and sold twice — consider whether it's a range problem or a display problem. The frame pairs unusually well with <em onclick="toast('Opening Marais')">Marais Crystal</em> as a second pair.
+  </div>
+  <div class="lp-ai-chips">
+    <button class="lp-ai-chip" onclick="sendPrompt('Who should I follow up with on Senna right now?')">Who to follow up</button>
+    <button class="lp-ai-chip" onclick="sendPrompt('Why does Senna lose people at the try-to-buy step?')">Why the gap?</button>
+    <button class="lp-ai-chip" onclick="sendPrompt('Should we cut the Olive colourway?')">Cut Olive?</button>
+    <button class="lp-ai-chip" onclick="sendPrompt('Draft a re-engagement email to the 14 people who tried Senna but didn\'t buy')">Draft re-engagement</button>
+  </div>
+</div>
+
+<!-- Funnel -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">How is it performing · funnel</div>
+    <div class="lp-block-tools">
+      <button class="lp-mini-btn">7d</button>
+      <button class="lp-mini-btn">30d</button>
+      <button class="lp-mini-btn on">90d</button>
+      <button class="lp-mini-btn">1yr</button>
+    </div>
+  </div>
+  <div class="lp-funnel">
+    <div class="lp-fnl-step">
+      <div class="l">Viewed</div>
+      <div class="v">2,104</div>
+      <div class="r">PDP · 6.2 avg/day</div>
+      <div class="lp-funnel-bar" style="width: 100%;"></div>
+      <div class="lp-fnl-bar" style="width: 100%;"></div>
+    </div>
+    <div class="lp-fnl-step">
+      <div class="l">Tried on</div>
+      <div class="v">387 <span class="unit">· 18%</span></div>
+      <div class="r good">strong</div>
+      <div class="lp-fnl-bar" style="width: 18%;"></div>
+    </div>
+    <div class="lp-fnl-step">
+      <div class="l">Loved</div>
+      <div class="v">131 <span class="unit">· 34%</span></div>
+      <div class="r good">well above avg 22%</div>
+      <div class="lp-fnl-bar" style="width: 6%;"></div>
+    </div>
+    <div class="lp-fnl-step">
+      <div class="l">Purchased</div>
+      <div class="v">42 <span class="unit">· 11%</span></div>
+      <div class="r weak">of lovers · avg 28%</div>
+      <div class="lp-fnl-bar" style="width: 2%;"></div>
+    </div>
+  </div>
+  <div style="font-size: 11px; color: var(--mute); margin-top: 10px; font-family: var(--font-mono);">14 clients currently in the love-but-not-bought window · <a href="#" style="color: var(--ink);" onclick="toast('Opened 14 clients'); return false;">see them →</a></div>
+</div>
+
+<!-- Velocity -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Velocity · 12 weeks</div>
+    <div class="lp-block-tools">
+      <button class="lp-mini-btn on">units</button>
+      <button class="lp-mini-btn">revenue</button>
+      <button class="lp-mini-btn">try-ons</button>
+    </div>
+  </div>
+  <div class="lp-velo">
+    <div class="lp-velo-nums">
+      <div class="lp-velo-num">
+        <div class="l">Last 7d</div>
+        <div class="v">6</div>
+        <div class="s up">vs 4 prior week</div>
+      </div>
+      <div class="lp-velo-num">
+        <div class="l">Last 30d</div>
+        <div class="v">18</div>
+        <div class="s up">vs 13 prior month</div>
+      </div>
+      <div class="lp-velo-num">
+        <div class="l">Last 90d</div>
+        <div class="v">42</div>
+        <div class="s">tracking ahead</div>
+      </div>
+    </div>
+    <div class="lp-velo-chart">
+      <svg viewBox="0 0 420 130" preserveAspectRatio="none">
+        <line x1="0" y1="110" x2="420" y2="110" stroke="#0A0A0A" stroke-width="0.5" opacity="0.2"/>
+        <line x1="0" y1="75" x2="420" y2="75" stroke="#0A0A0A" stroke-width="0.3" opacity="0.15" stroke-dasharray="2,3"/>
+        <line x1="0" y1="40" x2="420" y2="40" stroke="#0A0A0A" stroke-width="0.3" opacity="0.15" stroke-dasharray="2,3"/>
+        <rect x="8" y="92" width="22" height="18" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="38" y="88" width="22" height="22" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="68" y="94" width="22" height="16" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="98" y="82" width="22" height="28" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="128" y="78" width="22" height="32" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="158" y="70" width="22" height="40" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="188" y="72" width="22" height="38" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="218" y="64" width="22" height="46" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="248" y="58" width="22" height="52" fill="#0A0A0A" opacity="0.85"/>
+        <rect x="278" y="54" width="22" height="56" fill="#0A0A0A" opacity="0.9"/>
+        <rect x="308" y="48" width="22" height="62" fill="#0A0A0A"/>
+        <rect x="338" y="42" width="22" height="68" fill="#0A0A0A"/>
+        <text x="349" y="35" text-anchor="middle" font-size="9" fill="#0A0A0A" font-family="var(--font-mono)" font-weight="500">6</text>
+      </svg>
+      <div class="lp-velo-axis"><span>W1</span><span>W4</span><span>W8</span><span>W12 · now</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Buyer archetype -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Who buys it · archetype</div>
+    <button class="lp-mini-btn" onclick="sendPrompt('Rewrite the Senna buyer archetype based on the last 90 days of sales')">refresh</button>
+  </div>
+  <div class="lp-archetype">
+    Sells primarily to <strong>30–45</strong>, <strong>oval</strong>-faced <strong>CULT members</strong> at <strong>Plateau</strong>. Usually their <strong>second pair</strong>, bought with <strong>blue-light</strong> lenses. Tends to be chosen by clients who already own a round or oval frame and want something with more presence — but not aggressive.
+  </div>
+  <div class="lp-archetype-tags">
+    <div class="lp-archetype-tag"><div class="l">Face shape</div><div class="v">oval · 68%</div></div>
+    <div class="lp-archetype-tag"><div class="l">Age band</div><div class="v">30–45</div></div>
+    <div class="lp-archetype-tag"><div class="l">Tier mix</div><div class="v">CULT 71%</div></div>
+    <div class="lp-archetype-tag"><div class="l">Location</div><div class="v">Plateau 76%</div></div>
+    <div class="lp-archetype-tag"><div class="l">Pair number</div><div class="v">2nd pair · 58%</div></div>
+    <div class="lp-archetype-tag"><div class="l">Lens add</div><div class="v">Blue-light 62%</div></div>
+  </div>
+</div>
+
+<!-- Hot clients -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Who to reach out to · 14 in the gap</div>
+    <div class="lp-block-tools">
+      <button class="lp-mini-btn on">AI ranked</button>
+      <button class="lp-mini-btn">recency</button>
+      <button class="lp-mini-btn">LTV</button>
+    </div>
+  </div>
+  <div>
+    <div class="lp-client">
+      <div class="lp-client-av">MD</div>
+      <div class="lp-client-meta">
+        <div class="lp-client-name">Marie Dubois · <span style="font-weight: 400; color: var(--mute); font-size: 11px;">CULT · $2,840 LTV</span></div>
+        <div class="lp-client-why">Tried Senna 3× · last Apr 15 · bought Draper instead · 2-week commit pattern</div>
+      </div>
+      <div class="lp-client-score">94</div>
+      <div class="lp-client-act">
+        <button class="lp-iconbtn" onclick="toast('Drafted text to Marie')" title="Text">SMS</button>
+        <button class="lp-iconbtn" onclick="toast('Held Senna Black for Marie · 48h')" title="Hold">HOLD</button>
+        <button class="lp-iconbtn" onclick="toast('Opened Marie')" title="Open">→</button>
+      </div>
+    </div>
+    <div class="lp-client">
+      <div class="lp-client-av">CB</div>
+      <div class="lp-client-meta">
+        <div class="lp-client-name">Claire Beaumont · <span style="font-weight: 400; color: var(--mute); font-size: 11px;">CULT · $1,620 LTV</span></div>
+        <div class="lp-client-why">Said "less serious" at last fitting · oval face · hasn't tried Senna yet</div>
+      </div>
+      <div class="lp-client-score">89</div>
+      <div class="lp-client-act">
+        <button class="lp-iconbtn" onclick="toast('Drafted email to Claire')">EMAIL</button>
+        <button class="lp-iconbtn" onclick="toast('Added to Claire\'s try-on queue')">KIT</button>
+        <button class="lp-iconbtn" onclick="toast('Opened Claire')">→</button>
+      </div>
+    </div>
+    <div class="lp-client">
+      <div class="lp-client-av">TL</div>
+      <div class="lp-client-meta">
+        <div class="lp-client-name">Thomas Lefèvre · <span style="font-weight: 400; color: var(--mute); font-size: 11px;">Essential · $680 LTV</span></div>
+        <div class="lp-client-why">Tried Senna Black twice in Feb · saved it · Rx due for renewal</div>
+      </div>
+      <div class="lp-client-score">82</div>
+      <div class="lp-client-act">
+        <button class="lp-iconbtn" onclick="toast('Drafted text to Thomas')">SMS</button>
+        <button class="lp-iconbtn" onclick="toast('Held Senna for Thomas')">HOLD</button>
+        <button class="lp-iconbtn" onclick="toast('Opened Thomas')">→</button>
+      </div>
+    </div>
+    <div class="lp-client">
+      <div class="lp-client-av out">AG</div>
+      <div class="lp-client-meta">
+        <div class="lp-client-name">Ava Gagnon · <span style="font-weight: 400; color: var(--mute); font-size: 11px;">non-member · $0 LTV</span></div>
+        <div class="lp-client-why">Klaviyo · opened Spring Archive 3× · clicked Senna every time · no account</div>
+      </div>
+      <div class="lp-client-score">76</div>
+      <div class="lp-client-act">
+        <button class="lp-iconbtn" onclick="toast('Drafted email to Ava')">EMAIL</button>
+        <button class="lp-iconbtn" onclick="toast('Added to CULT-prospect segment')">SEG</button>
+        <button class="lp-iconbtn" onclick="toast('Opened Ava')">→</button>
+      </div>
+    </div>
+    <div style="text-align: center; padding: 12px 0 2px; border-top: 0.5px solid var(--line); margin-top: 8px;">
+      <button class="lp-mini-btn" onclick="toast('Showing all 14')">show 10 more</button>
+    </div>
+  </div>
+</div>
+
+<!-- Head to head + pair with -->
+<div class="lp-h2h">
+  <div class="lp-block">
+    <div class="lp-block-head nb">
+      <div class="lp-block-label">Usually chosen over</div>
+    </div>
+    <div class="lp-h2h-row">
+      <div class="lp-h2h-sw" style="background: var(--ink);"></div>
+      <div class="lp-h2h-name">Astoria · Navy</div>
+      <div class="lp-h2h-rate win">Senna wins 68%</div>
+    </div>
+    <div class="lp-h2h-row">
+      <div class="lp-h2h-sw" style="background: repeating-linear-gradient(135deg, #0A0A0A 0 3px, #FFFFFF 3px 6px);"></div>
+      <div class="lp-h2h-name">Draper · Tortoise</div>
+      <div class="lp-h2h-rate win">Senna wins 61%</div>
+    </div>
+    <div class="lp-h2h-row">
+      <div class="lp-h2h-sw"></div>
+      <div class="lp-h2h-name">Marais · Crystal</div>
+      <div class="lp-h2h-rate">53/47 split</div>
+    </div>
+  </div>
+  <div class="lp-block">
+    <div class="lp-block-head nb">
+      <div class="lp-block-label">Pairs well as 2nd pair with</div>
+    </div>
+    <div class="lp-pair">
+      <div class="lp-pair-row">
+        <div class="lp-pair-sw"></div>
+        <div class="lp-pair-name">Marais · Crystal</div>
+        <div class="lp-pair-count">18 pairs</div>
+      </div>
+      <div class="lp-pair-row">
+        <div class="lp-pair-sw" style="background: repeating-linear-gradient(135deg, #0A0A0A 0 3px, #FFFFFF 3px 6px);"></div>
+        <div class="lp-pair-name">Promenade · Sun</div>
+        <div class="lp-pair-count">11 pairs</div>
+      </div>
+      <div class="lp-pair-row">
+        <div class="lp-pair-sw" style="background: var(--ink);"></div>
+        <div class="lp-pair-name">St Laurent · Gold</div>
+        <div class="lp-pair-count">7 pairs</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Returns + sentiment -->
+<div class="lp-h2h">
+  <div class="lp-block">
+    <div class="lp-block-head nb">
+      <div class="lp-block-label">Why it comes back · 8 returns</div>
+    </div>
+    <div class="lp-returns">
+      <div class="lp-return-row">
+        <div class="lp-return-reason">Colour off</div>
+        <div class="lp-return-bar"><div class="lp-return-bar-fill" style="width: 50%;"></div></div>
+        <div class="lp-return-count">4</div>
+      </div>
+      <div class="lp-return-row">
+        <div class="lp-return-reason">Too heavy</div>
+        <div class="lp-return-bar"><div class="lp-return-bar-fill" style="width: 37.5%;"></div></div>
+        <div class="lp-return-count">3</div>
+      </div>
+      <div class="lp-return-row">
+        <div class="lp-return-reason">Fit / bridge</div>
+        <div class="lp-return-bar"><div class="lp-return-bar-fill" style="width: 12.5%;"></div></div>
+        <div class="lp-return-count">1</div>
+      </div>
+      <div style="font-size: 11px; color: var(--mute); margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line);">
+        Return rate <strong style="color: var(--ink); font-weight: 500;">5.6%</strong> · below brand avg of 9.1%. Weight feedback clusters on Olive variant only.
+      </div>
+    </div>
+  </div>
+  <div class="lp-block">
+    <div class="lp-block-head nb">
+      <div class="lp-block-label">Sentiment · 387 try-ons</div>
+    </div>
+    <div class="lp-sent">
+      <svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="38" fill="none" stroke="#0A0A0A" stroke-width="16" stroke-dasharray="81.1 238.8" transform="rotate(-90 50 50)"/>
+        <circle cx="50" cy="50" r="38" fill="none" stroke="#0A0A0A" stroke-width="16" stroke-dasharray="119.3 238.8" stroke-dashoffset="-81.1" opacity="0.25" transform="rotate(-90 50 50)"/>
+        <circle cx="50" cy="50" r="38" fill="none" stroke="#0A0A0A" stroke-width="16" stroke-dasharray="38.4 238.8" stroke-dashoffset="-200.4" opacity="0.5" transform="rotate(-90 50 50)"/>
+        <text x="50" y="52" text-anchor="middle" font-size="15" font-weight="500" fill="#0A0A0A">34%</text>
+        <text x="50" y="65" text-anchor="middle" font-size="8" fill="#0A0A0A" opacity="0.55">loved it</text>
+      </svg>
+      <div class="lp-sent-legend">
+        <div class="lp-sent-row"><span class="lp-sent-sw love"></span><span class="lp-sent-label">Loved</span><span class="lp-sent-val">131 · 34%</span></div>
+        <div class="lp-sent-row"><span class="lp-sent-sw meh"></span><span class="lp-sent-label">Neutral</span><span class="lp-sent-val">194 · 50%</span></div>
+        <div class="lp-sent-row"><span class="lp-sent-sw no"></span><span class="lp-sent-label">Disliked</span><span class="lp-sent-val">62 · 16%</span></div>
+        <div style="font-size: 10px; color: var(--mute); margin-top: 6px; font-family: var(--font-mono);">avg try time 2m 48s · long</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div class="lp-rail">
+
+<!-- Primary actions -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Do something</div>
+  </div>
+  <div class="lp-act-list">
+    <button class="lp-act" onclick="toast('Recommend · pick client')">
+      <div>
+        <div class="lp-act-title">Recommend to a client</div>
+        <div class="lp-act-sub">logs interaction + optional SMS</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+    <button class="lp-act" onclick="toast('Hold dialog opened')">
+      <div>
+        <div class="lp-act-title">Hold a unit · 48h</div>
+        <div class="lp-act-sub">reserves 1 from inventory</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+    <button class="lp-act" onclick="toast('Fitting kit builder')">
+      <div>
+        <div class="lp-act-title">Add to fitting kit</div>
+        <div class="lp-act-sub">for tablet queue</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+    <button class="lp-act" onclick="sendPrompt('Help me broadcast Senna Black to the right segment')">
+      <div>
+        <div class="lp-act-title">Broadcast to segment</div>
+        <div class="lp-act-sub">via Klaviyo · AI picks angle</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+    <button class="lp-act" onclick="toast('Reorder brief opened')">
+      <div>
+        <div class="lp-act-title">Reorder inventory</div>
+        <div class="lp-act-sub">AI suggests 24 units</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+    <button class="lp-act" onclick="toast('Flagged for review · owner notified')">
+      <div>
+        <div class="lp-act-title">Flag for range review</div>
+        <div class="lp-act-sub">owner-visible</div>
+      </div>
+      <div class="lp-act-arrow">→</div>
+    </button>
+  </div>
+</div>
+
+<!-- Inventory -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Inventory · Black variant</div>
+    <button class="lp-mini-btn" onclick="toast('All variants view')">all</button>
+  </div>
+  <div>
+    <div class="lp-inv-row">
+      <div class="lp-inv-loc">Plateau</div>
+      <div class="lp-inv-count">5</div>
+      <div class="lp-inv-state">in rack</div>
+    </div>
+    <div class="lp-inv-row">
+      <div class="lp-inv-loc">Plateau</div>
+      <div class="lp-inv-count">1</div>
+      <div class="lp-inv-state hold">hold · MD</div>
+    </div>
+    <div class="lp-inv-row">
+      <div class="lp-inv-loc">Plateau</div>
+      <div class="lp-inv-count">1</div>
+      <div class="lp-inv-state hold">hold · TL</div>
+    </div>
+    <div class="lp-inv-row">
+      <div class="lp-inv-loc">DIX30</div>
+      <div class="lp-inv-count">1</div>
+      <div class="lp-inv-state">in rack</div>
+    </div>
+    <div class="lp-inv-row">
+      <div class="lp-inv-loc">Warehouse</div>
+      <div class="lp-inv-count">6</div>
+      <div class="lp-inv-state">available</div>
+    </div>
+  </div>
+</div>
+
+<!-- Margin -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Margin · economics</div>
+  </div>
+  <div class="lp-margin">
+    <div class="lp-margin-cell">
+      <div class="lp-margin-l">Retail</div>
+      <div class="lp-margin-v">$285</div>
+      <div class="lp-margin-s">full · $228 CULT</div>
+    </div>
+    <div class="lp-margin-cell">
+      <div class="lp-margin-l">COGS</div>
+      <div class="lp-margin-v">$91</div>
+      <div class="lp-margin-s">acetate · assy · pkg</div>
+    </div>
+    <div class="lp-margin-cell">
+      <div class="lp-margin-l">Margin</div>
+      <div class="lp-margin-v">68%</div>
+      <div class="lp-margin-s">above brand 62%</div>
+    </div>
+    <div class="lp-margin-cell">
+      <div class="lp-margin-l">LTV impact</div>
+      <div class="lp-margin-v">+$340</div>
+      <div class="lp-margin-s">avg 2nd purchase</div>
+    </div>
+  </div>
+</div>
+
+<!-- Attach -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Lens attach rate</div>
+  </div>
+  <div class="lp-attach">
+    <div class="lp-attach-row">
+      <div class="lp-attach-l">Blue-light</div>
+      <div class="lp-attach-v">62%</div>
+      <div class="lp-attach-bar"><div class="lp-attach-bar-fill" style="width: 62%;"></div></div>
+    </div>
+    <div class="lp-attach-row">
+      <div class="lp-attach-l">Rx single vision</div>
+      <div class="lp-attach-v">41%</div>
+      <div class="lp-attach-bar"><div class="lp-attach-bar-fill" style="width: 41%;"></div></div>
+    </div>
+    <div class="lp-attach-row">
+      <div class="lp-attach-l">Rx progressive</div>
+      <div class="lp-attach-v">18%</div>
+      <div class="lp-attach-bar"><div class="lp-attach-bar-fill" style="width: 18%;"></div></div>
+    </div>
+    <div class="lp-attach-row">
+      <div class="lp-attach-l">Anti-reflective</div>
+      <div class="lp-attach-v">84%</div>
+      <div class="lp-attach-bar"><div class="lp-attach-bar-fill" style="width: 84%;"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Second Sight activity -->
+<div class="lp-block">
+  <div class="lp-block-head">
+    <div class="lp-block-label">Second Sight activity</div>
+  </div>
+  <div style="font-size: 12px; line-height: 1.6;">
+    <strong style="font-weight: 500;">4 units</strong> returned via trade-in. All Black. Avg resale lag <span style="font-family: var(--font-mono);">11 days</span>. Resells near-MSRP in the Archive.
+  </div>
+  <div style="margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line); font-size: 11px; color: var(--mute); font-family: var(--font-mono);">
+    Signal · Senna is a keeper. Low trade-in rate + fast resale.
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="lp-toast" id="toast">Done</div>
+
+</div></div>
+
+<script>
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.__lpT);
+    window.__lpT = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function switchVar(el) {
+    document.querySelectorAll('.lp-var').forEach(v => v.classList.remove('on'));
+    el.classList.add('on');
+    const name = el.textContent.trim().split(/\s+/)[0];
+    toast('Variant · ' + name);
+  }
+</script>

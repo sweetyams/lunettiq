@@ -1,0 +1,691 @@
+<h2 class="sr-only">Black and white composable canvas view of Marie Dubois in the Lunettiq CRM with AI agent, try-on deck, relationship graph, and modular blocks.</h2>
+
+<style>
+  .lq { font-family: var(--font-sans); color: #0A0A0A; font-size: 13px; line-height: 1.5; --ink: #0A0A0A; --paper: #FFFFFF; --line: rgba(10,10,10,0.12); --line-2: rgba(10,10,10,0.2); --mute: rgba(10,10,10,0.55); --mute-2: rgba(10,10,10,0.35); --shade: #F4F4F2; }
+  .lq-wrap { background: var(--paper); border: 0.5px solid var(--line); overflow: hidden; position: relative; }
+
+  .lq-top { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 12px 18px; border-bottom: 0.5px solid var(--line); }
+  .lq-breadcrumb { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--mute); letter-spacing: 0.3px; text-transform: uppercase; }
+  .lq-breadcrumb span.cur { color: var(--ink); }
+  .lq-cmdk { background: transparent; border: 0.5px solid var(--line-2); padding: 6px 12px; font-size: 12px; color: var(--mute); cursor: pointer; display: flex; align-items: center; gap: 10px; justify-self: center; min-width: 300px; font-family: inherit; transition: border-color 0.12s; }
+  .lq-cmdk:hover { border-color: var(--ink); color: var(--ink); }
+  .lq-cmdk kbd { font-family: var(--font-mono); font-size: 10px; border: 0.5px solid var(--line-2); padding: 1px 6px; }
+  .lq-top-actions { display: flex; gap: 6px; }
+
+  .lq-hero { padding: 22px 18px 18px; display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; border-bottom: 0.5px solid var(--line); }
+  .lq-hero-left { display: flex; gap: 16px; align-items: center; }
+  .lq-mono { width: 52px; height: 52px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 16px; letter-spacing: 1px; }
+  .lq-hero-name { font-size: 24px; font-weight: 500; letter-spacing: -0.5px; margin: 0; }
+  .lq-hero-sub { font-size: 12px; color: var(--mute); margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .lq-hero-sub .d { width: 2px; height: 2px; background: currentColor; }
+  .lq-hero-sub .on::before { content: ''; display: inline-block; width: 5px; height: 5px; background: var(--ink); margin-right: 5px; vertical-align: middle; }
+
+  .lq-hero-stats { display: flex; }
+  .lq-hs { padding: 0 16px; border-left: 0.5px solid var(--line); }
+  .lq-hs:first-child { border-left: none; padding-left: 0; }
+  .lq-hs-v { font-size: 20px; font-weight: 500; line-height: 1.1; }
+  .lq-hs-v .unit { font-size: 12px; color: var(--mute); font-weight: 400; }
+  .lq-hs-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); margin-top: 3px; }
+  .lq-hs-t { font-size: 10px; color: var(--mute); margin-top: 1px; font-family: var(--font-mono); }
+  .lq-hs-t.warn { color: var(--ink); font-weight: 500; }
+  .lq-hs-t.warn::before { content: '!'; display: inline-block; width: 12px; height: 12px; line-height: 11px; text-align: center; border: 0.5px solid var(--ink); margin-right: 4px; vertical-align: middle; font-size: 9px; }
+
+  .lq-tier { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; padding: 2px 8px; border: 0.5px solid var(--ink); font-weight: 500; margin-bottom: 6px; }
+
+  .lq-modes { display: flex; padding: 0 18px; border-bottom: 0.5px solid var(--line); overflow-x: auto; }
+  .lq-mode { padding: 10px 14px; font-size: 12px; color: var(--mute); cursor: pointer; background: transparent; border: none; border-bottom: 1.5px solid transparent; font-family: inherit; white-space: nowrap; transition: all 0.12s; display: flex; align-items: center; gap: 7px; margin-bottom: -0.5px; }
+  .lq-mode:hover { color: var(--ink); }
+  .lq-mode.on { color: var(--ink); border-bottom-color: var(--ink); font-weight: 500; }
+  .lq-mode-count { font-size: 10px; border: 0.5px solid var(--line-2); padding: 0 5px; font-weight: 400; color: var(--mute); }
+  .lq-mode.on .lq-mode-count { border-color: var(--ink); color: var(--ink); }
+
+  .lq-canvas { padding: 16px 18px 24px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 300px); gap: 16px; min-height: 600px; }
+  @media (max-width: 900px) { .lq-canvas { grid-template-columns: 1fr; } }
+
+  .lq-stack { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+  .lq-block { background: var(--paper); border: 0.5px solid var(--line); padding: 14px 16px; position: relative; }
+  .lq-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .lq-block-head.nb { margin-bottom: 10px; padding-bottom: 0; border-bottom: none; }
+  .lq-block-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--mute); font-weight: 500; }
+  .lq-block-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s; }
+  .lq-block:hover .lq-block-actions { opacity: 1; }
+  .lq-mini-btn { background: transparent; border: none; padding: 2px 6px; font-size: 11px; color: var(--mute); cursor: pointer; font-family: inherit; }
+  .lq-mini-btn:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ===== AI ===== */
+  .lq-ai { border: 0.5px solid var(--ink); padding: 14px 16px; background: var(--paper); }
+  .lq-ai-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 0.5px solid var(--line); }
+  .lq-ai-who { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .lq-ai-dot { width: 6px; height: 6px; background: var(--ink); }
+  .lq-ai-ctx { font-size: 10px; color: var(--mute); font-family: var(--font-mono); }
+  .lq-ai-thought { font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+  .lq-ai-thought em { background: var(--shade); font-style: normal; padding: 0 4px; cursor: pointer; border-bottom: 0.5px solid var(--ink); }
+  .lq-ai-thought em:hover { background: var(--ink); color: var(--paper); }
+  .lq-ai-thought strong { font-weight: 500; }
+  .lq-ai-thought a.link { color: var(--ink); border-bottom: 0.5px dashed var(--line-2); text-decoration: none; cursor: pointer; }
+  .lq-ai-thought a.link:hover { border-bottom-color: var(--ink); border-bottom-style: solid; }
+  .lq-ai-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .lq-ai-chip { font-size: 11px; padding: 5px 10px; background: transparent; border: 0.5px solid var(--line-2); color: var(--ink); cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .lq-ai-chip:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .lq-ai-input { display: flex; gap: 0; align-items: center; border: 0.5px solid var(--line-2); }
+  .lq-ai-input input { flex: 1; background: transparent; border: none; outline: none; font-family: inherit; font-size: 13px; padding: 8px 12px; color: var(--ink); }
+  .lq-ai-input input::placeholder { color: var(--mute-2); }
+  .lq-ai-send { background: var(--ink); color: var(--paper); border: none; padding: 8px 14px; cursor: pointer; font-size: 13px; font-family: inherit; }
+
+  /* ===== TRY-ON DECK ===== */
+  .lq-deck-head { padding: 14px 16px 12px; display: flex; justify-content: space-between; align-items: baseline; border-bottom: 0.5px solid var(--line); }
+  .lq-deck { padding: 0; }
+  .lq-deck-title { font-size: 13px; font-weight: 500; }
+  .lq-deck-sub { font-size: 11px; color: var(--mute); }
+  .lq-deck-scroll { display: flex; padding: 0; overflow-x: auto; scrollbar-width: none; }
+  .lq-deck-scroll::-webkit-scrollbar { display: none; }
+  .lq-frame { flex: 0 0 136px; padding: 12px; cursor: pointer; position: relative; border-right: 0.5px solid var(--line); transition: background 0.12s; }
+  .lq-frame:hover { background: var(--shade); }
+  .lq-frame:last-child { border-right: none; }
+  .lq-frame-img { width: 100%; height: 64px; background: var(--shade); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
+  .lq-frame-img.dark { background: var(--ink); }
+  .lq-frame-name { font-size: 12px; font-weight: 500; }
+  .lq-frame-meta { font-size: 11px; color: var(--mute); margin-top: 1px; }
+  .lq-frame-sent { position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+  .lq-sent-love { background: var(--ink); color: var(--paper); }
+  .lq-sent-own { background: var(--ink); color: var(--paper); }
+  .lq-sent-meh { border: 0.5px solid var(--line-2); color: var(--mute); }
+  .lq-sent-no { border: 0.5px solid var(--ink); color: var(--ink); }
+  .lq-frame.disliked { opacity: 0.4; }
+  .lq-frame-trytime { font-size: 10px; color: var(--mute); margin-top: 3px; font-family: var(--font-mono); }
+
+  /* ===== TIMELINE ===== */
+  .lq-time-wrap { padding: 14px 16px; }
+  .lq-compose { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 0.5px solid var(--line-2); padding: 8px 12px; margin-bottom: 14px; }
+  .lq-compose-av { width: 20px; height: 20px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; }
+  .lq-compose input { background: transparent; border: none; outline: none; font-family: inherit; font-size: 13px; }
+  .lq-compose input::placeholder { color: var(--mute-2); }
+  .lq-compose-tools { display: flex; gap: 2px; }
+  .lq-tool-btn { background: transparent; border: 0.5px solid transparent; padding: 2px 7px; font-size: 11px; color: var(--mute); cursor: pointer; font-family: var(--font-mono); }
+  .lq-tool-btn:hover { color: var(--ink); border-color: var(--line-2); }
+
+  .lq-time-filter { display: flex; margin-bottom: 14px; border: 0.5px solid var(--line-2); width: fit-content; }
+  .lq-tf { padding: 5px 12px; font-size: 11px; color: var(--mute); cursor: pointer; border: none; background: transparent; font-family: inherit; border-right: 0.5px solid var(--line-2); }
+  .lq-tf:last-child { border-right: none; }
+  .lq-tf.on { background: var(--ink); color: var(--paper); font-weight: 500; }
+
+  .lq-evt { display: grid; grid-template-columns: 70px 1fr; gap: 14px; padding: 12px 0; align-items: flex-start; border-top: 0.5px solid var(--line); }
+  .lq-evt:first-child { border-top: none; padding-top: 0; }
+  .lq-evt.hidden { display: none; }
+  .lq-evt-when { font-size: 11px; color: var(--mute); font-family: var(--font-mono); padding-top: 1px; }
+  .lq-evt-when strong { color: var(--ink); font-weight: 500; display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+  .lq-evt-body { min-width: 0; }
+  .lq-evt-headline { font-size: 13px; line-height: 1.5; }
+  .lq-evt-headline strong { font-weight: 500; }
+  .lq-evt-meta { font-size: 11px; color: var(--mute); margin-top: 3px; font-family: var(--font-mono); }
+
+  /* ===== RIGHT COL ===== */
+  .lq-r-stack { display: flex; flex-direction: column; gap: 12px; }
+
+  .lq-vitals { display: grid; grid-template-columns: repeat(2, 1fr); border: 0.5px solid var(--line); }
+  .lq-vital { padding: 12px; border-right: 0.5px solid var(--line); border-bottom: 0.5px solid var(--line); }
+  .lq-vital:nth-child(2n) { border-right: none; }
+  .lq-vital:nth-last-child(-n+2) { border-bottom: none; }
+  .lq-vital-l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); }
+  .lq-vital-v { font-size: 16px; font-weight: 500; margin-top: 2px; }
+  .lq-vital-v .unit { font-size: 11px; color: var(--mute); font-weight: 400; }
+  .lq-vital-s { font-size: 10px; color: var(--mute); margin-top: 2px; font-family: var(--font-mono); }
+  .lq-vital-s.strong { color: var(--ink); font-weight: 500; }
+
+  .lq-contact { }
+  .lq-c-row { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; padding: 7px 0; align-items: center; border-top: 0.5px solid var(--line); }
+  .lq-c-row:first-child { border-top: none; padding-top: 2px; }
+  .lq-c-key { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--mute); }
+  .lq-c-val { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lq-c-flag { font-size: 9px; padding: 1px 6px; border: 0.5px solid; font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase; }
+  .lq-c-flag.on { border-color: var(--ink); color: var(--ink); }
+  .lq-c-flag.off { border-color: var(--line-2); color: var(--mute); }
+
+  /* Relationship graph in pure B/W */
+  .lq-rel { padding: 8px 0; }
+  .lq-rel svg { width: 100%; height: 150px; }
+
+  /* Pref canvas — pure grid */
+  .lq-pref-canvas { position: relative; height: 200px; border: 0.5px solid var(--line); background: var(--paper); }
+  .lq-pref-axes { position: absolute; inset: 12px; }
+  .lq-pref-grid { position: absolute; inset: 0; }
+  .lq-pref-grid::before, .lq-pref-grid::after { content: ''; position: absolute; background: var(--line); }
+  .lq-pref-grid::before { left: 50%; top: 0; bottom: 0; width: 0.5px; }
+  .lq-pref-grid::after { top: 50%; left: 0; right: 0; height: 0.5px; }
+  .lq-pref-axis-label { position: absolute; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); font-weight: 500; }
+  .lq-pref-dot { position: absolute; transform: translate(-50%, -50%); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; transition: transform 0.15s; }
+  .lq-pref-dot:hover { transform: translate(-50%, -50%) scale(1.2); z-index: 2; }
+  .lq-pref-dot.bought { width: 24px; height: 24px; background: var(--ink); color: var(--paper); }
+  .lq-pref-dot.loved { width: 22px; height: 22px; border: 1.5px solid var(--ink); background: var(--paper); color: var(--ink); }
+  .lq-pref-dot.tried { width: 18px; height: 18px; border: 0.5px dashed var(--ink); background: var(--paper); color: var(--mute); font-size: 9px; }
+  .lq-pref-dot.rejected { width: 20px; height: 20px; background: var(--paper); color: var(--ink); border: 0.5px solid var(--ink); }
+  .lq-pref-dot.rejected::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(45deg, transparent 48%, var(--ink) 48%, var(--ink) 52%, transparent 52%); }
+  .lq-pref-legend { display: flex; gap: 14px; font-size: 10px; color: var(--mute); margin-top: 8px; flex-wrap: wrap; text-transform: uppercase; letter-spacing: 0.3px; }
+  .lq-pref-leg { display: flex; align-items: center; gap: 6px; }
+  .lq-pref-leg-sw { width: 10px; height: 10px; }
+  .lq-pref-leg-sw.filled { background: var(--ink); }
+  .lq-pref-leg-sw.outline { border: 1px solid var(--ink); background: var(--paper); }
+  .lq-pref-leg-sw.dash { border: 1px dashed var(--ink); background: var(--paper); }
+  .lq-pref-leg-sw.cross { background: var(--paper); border: 0.5px solid var(--ink); position: relative; }
+  .lq-pref-leg-sw.cross::after { content: ''; position: absolute; inset: 0; background-image: linear-gradient(45deg, transparent 44%, var(--ink) 44%, var(--ink) 56%, transparent 56%); }
+
+  /* Fit — grid table */
+  .lq-fit { display: grid; grid-template-columns: 1fr 1fr; border-top: 0.5px solid var(--line); }
+  .lq-fit-cell { padding: 10px 4px; text-align: center; border-right: 0.5px solid var(--line); border-bottom: 0.5px solid var(--line); }
+  .lq-fit-cell:nth-child(2n) { border-right: none; }
+  .lq-fit-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .lq-fit-v { font-size: 16px; font-weight: 500; font-family: var(--font-mono); }
+  .lq-fit-v .unit { font-size: 9px; color: var(--mute); margin-left: 2px; }
+  .lq-fit-l { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); margin-top: 3px; }
+
+  .lq-note { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line); font-size: 11px; color: var(--mute); line-height: 1.55; }
+  .lq-note strong { color: var(--ink); font-weight: 500; }
+
+  /* Signals */
+  .lq-signal { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 0.5px solid var(--line); font-size: 12px; }
+  .lq-signal:first-child { border-top: none; padding-top: 2px; }
+  .lq-signal-bar { width: 40px; height: 2px; background: var(--shade); position: relative; }
+  .lq-signal-fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--ink); }
+  .lq-signal-label strong { font-weight: 500; }
+  .lq-signal-val { font-size: 10px; color: var(--mute); font-family: var(--font-mono); white-space: nowrap; }
+
+  /* Mentions */
+  .lq-mention { display: inline-flex; align-items: center; gap: 4px; padding: 0 4px; border-bottom: 0.5px solid var(--line-2); font-size: 12px; cursor: pointer; transition: border-color 0.12s; }
+  .lq-mention:hover { border-bottom-color: var(--ink); }
+  .lq-mention-sq { width: 10px; height: 10px; background: var(--ink); display: inline-block; }
+  .lq-mention-sq.o { background: var(--paper); border: 0.5px solid var(--ink); }
+
+  .lq-btn { background: transparent; border: 0.5px solid var(--line-2); padding: 5px 11px; font-size: 12px; font-family: inherit; color: var(--ink); cursor: pointer; transition: all 0.12s; }
+  .lq-btn:hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .lq-btn-primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .lq-btn-primary:hover { background: transparent; color: var(--ink); }
+  .lq-btn-sm { padding: 4px 9px; font-size: 11px; }
+
+  .lq-toast { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--ink); color: var(--paper); padding: 9px 16px; font-size: 12px; opacity: 0; transition: all 0.2s; z-index: 20; pointer-events: none; border: 0.5px solid var(--ink); }
+  .lq-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .lq-add-block { padding: 12px; text-align: center; color: var(--mute); font-size: 12px; cursor: pointer; border: 0.5px dashed var(--line-2); font-family: inherit; background: transparent; transition: all 0.12s; width: 100%; }
+  .lq-add-block:hover { border-color: var(--ink); color: var(--ink); border-style: solid; }
+</style>
+
+<div class="lq"><div class="lq-wrap">
+
+<div class="lq-top">
+  <div class="lq-breadcrumb">
+    <span>Clients</span>
+    <span>/</span>
+    <span>High LTV</span>
+    <span>/</span>
+    <span class="cur">Marie Dubois</span>
+  </div>
+  <button class="lq-cmdk" onclick="sendPrompt('Ask Claude anything about Marie Dubois')">
+    <span>⌕</span>
+    <span>Ask about Marie, jump anywhere, or run a flow</span>
+    <kbd>⌘K</kbd>
+  </button>
+  <div class="lq-top-actions">
+    <button class="lq-btn lq-btn-sm" onclick="toast('Link copied')">Share</button>
+  </div>
+</div>
+
+<div class="lq-hero">
+  <div class="lq-hero-left">
+    <div class="lq-mono">MD</div>
+    <div>
+      <div class="lq-tier">◆ CULT · tier 2 of 3</div>
+      <h1 class="lq-hero-name">Marie Dubois</h1>
+      <div class="lq-hero-sub">
+        <span>she / her</span>
+        <span class="d"></span>
+        <span>Member since Nov 2022</span>
+        <span class="d"></span>
+        <span>Plateau regular</span>
+        <span class="d"></span>
+        <span class="on">Active</span>
+      </div>
+    </div>
+  </div>
+  <div class="lq-hero-stats">
+    <div class="lq-hs">
+      <div class="lq-hs-v">$2,840</div>
+      <div class="lq-hs-l">lifetime</div>
+      <div class="lq-hs-t">+ $385 ytd</div>
+    </div>
+    <div class="lq-hs">
+      <div class="lq-hs-v">$247</div>
+      <div class="lq-hs-l">credits</div>
+      <div class="lq-hs-t">+$30 May 1</div>
+    </div>
+    <div class="lq-hs">
+      <div class="lq-hs-v">8<span class="unit">%</span></div>
+      <div class="lq-hs-l">return rate</div>
+      <div class="lq-hs-t">healthy</div>
+    </div>
+    <div class="lq-hs">
+      <div class="lq-hs-v">93</div>
+      <div class="lq-hs-l">days idle</div>
+      <div class="lq-hs-t warn">nudge window</div>
+    </div>
+  </div>
+</div>
+
+<div class="lq-modes">
+  <button class="lq-mode on" onclick="switchMode(this, 'overview')">Overview</button>
+  <button class="lq-mode" onclick="switchMode(this, 'history')">Story <span class="lq-mode-count">47</span></button>
+  <button class="lq-mode" onclick="switchMode(this, 'fitting')">Fitting room</button>
+  <button class="lq-mode" onclick="switchMode(this, 'commercial')">Commercial</button>
+  <button class="lq-mode" onclick="switchMode(this, 'clinical')">Clinical</button>
+  <button class="lq-mode" onclick="toast('New view — name it to save')">+ view</button>
+</div>
+
+<div class="lq-canvas">
+<div class="lq-stack">
+
+<!-- AI -->
+<div class="lq-ai">
+  <div class="lq-ai-head">
+    <div class="lq-ai-who"><span class="lq-ai-dot"></span>Stylist · thinking</div>
+    <div class="lq-ai-ctx">context · 6 orders · 3 try-ons · 22 emails</div>
+  </div>
+  <div class="lq-ai-thought">
+    She loved <em onclick="sendPrompt('Show me Senna Black')">Senna Black</em> in the <a class="link" onclick="toast('Opening Apr 15 session')">April 15 session</a> but walked out with Draper. That's the second time she's hesitated on her loved frame and bought her second choice. Pattern suggests she needs <strong>two weeks</strong> to commit — not a discount.
+    <br><br>
+    The <em onclick="sendPrompt('Why is the summer sun drop a fit for Marie?')">summer sun drop</em> lands May 3. Her husband <a class="link" onclick="toast('Opening Paul Dubois')">Paul</a> is also CULT. There's a <span class="lq-mention" onclick="toast('Opened custom field')"><span class="lq-mention-sq"></span>wedding-season-2026</span> note on file — daughter's wedding in July.
+  </div>
+  <div class="lq-ai-chips">
+    <button class="lq-ai-chip" onclick="sendPrompt('Draft a message to Marie about the summer sun drop that acknowledges her two-week pattern')">Draft the nudge</button>
+    <button class="lq-ai-chip" onclick="sendPrompt('Why has Marie not ordered in 93 days?')">Why the gap?</button>
+    <button class="lq-ai-chip" onclick="sendPrompt('What frames should I hold for Marie?')">Hold frames</button>
+    <button class="lq-ai-chip" onclick="sendPrompt('Should we loop in Paul for the wedding season?')">Loop in Paul?</button>
+  </div>
+  <div class="lq-ai-input">
+    <input type="text" placeholder="Ask anything about Marie..." id="aiAsk" onkeypress="if(event.key==='Enter' && this.value){sendPrompt(this.value); this.value='';}">
+    <button class="lq-ai-send" onclick="const v=document.getElementById('aiAsk').value; if(v){sendPrompt(v); document.getElementById('aiAsk').value='';}">→</button>
+  </div>
+</div>
+
+<!-- DECK -->
+<div class="lq-block lq-deck">
+  <div class="lq-deck-head">
+    <div>
+      <div class="lq-deck-title">Her frame history</div>
+      <div class="lq-deck-sub">12 tried · 2 owned · 1 returned · 3 loved but passed</div>
+    </div>
+    <button class="lq-btn lq-btn-sm" onclick="toast('Starting new try-on session')">+ New fitting</button>
+  </div>
+  <div class="lq-deck-scroll">
+    <div class="lq-frame" onclick="toast('Senna Black')">
+      <div class="lq-frame-img dark">
+        <svg width="64" height="28" viewBox="0 0 64 28"><rect x="1" y="5" width="24" height="18" rx="9" fill="none" stroke="#FFF" stroke-width="1.2"/><rect x="39" y="5" width="24" height="18" rx="9" fill="none" stroke="#FFF" stroke-width="1.2"/><line x1="25" y1="14" x2="39" y2="14" stroke="#FFF" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-love">♥</div>
+      <div class="lq-frame-name">Senna</div>
+      <div class="lq-frame-meta">Black · $285</div>
+      <div class="lq-frame-trytime">tried 3× · Apr 15</div>
+    </div>
+    <div class="lq-frame" onclick="toast('Draper Tortoise — owned')">
+      <div class="lq-frame-img">
+        <svg width="64" height="28" viewBox="0 0 64 28"><rect x="1" y="4" width="26" height="20" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><rect x="37" y="4" width="26" height="20" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><line x1="27" y1="14" x2="37" y2="14" stroke="#0A0A0A" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-own">●</div>
+      <div class="lq-frame-name">Draper</div>
+      <div class="lq-frame-meta">Tortoise · owned</div>
+      <div class="lq-frame-trytime">Apr 8 · $285</div>
+    </div>
+    <div class="lq-frame" onclick="toast('Astoria Navy — owned')">
+      <div class="lq-frame-img">
+        <svg width="64" height="28" viewBox="0 0 64 28"><ellipse cx="13" cy="14" rx="12" ry="9" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><ellipse cx="51" cy="14" rx="12" ry="9" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><line x1="25" y1="14" x2="39" y2="14" stroke="#0A0A0A" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-own">●</div>
+      <div class="lq-frame-name">Astoria</div>
+      <div class="lq-frame-meta">Navy · owned</div>
+      <div class="lq-frame-trytime">Oct 14 · $340</div>
+    </div>
+    <div class="lq-frame disliked" onclick="toast('Promenade — returned')">
+      <div class="lq-frame-img">
+        <svg width="64" height="28" viewBox="0 0 64 28"><path d="M 2 14 Q 12 3 23 14 Q 33 24 43 14 Q 53 3 62 14" fill="none" stroke="#0A0A0A" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-no">↩</div>
+      <div class="lq-frame-name">Promenade</div>
+      <div class="lq-frame-meta">Rose · returned</div>
+      <div class="lq-frame-trytime">Feb 14</div>
+    </div>
+    <div class="lq-frame" onclick="toast('Marais Crystal — loved')">
+      <div class="lq-frame-img">
+        <svg width="64" height="28" viewBox="0 0 64 28"><rect x="1" y="5" width="24" height="18" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><rect x="39" y="5" width="24" height="18" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><line x1="25" y1="14" x2="39" y2="14" stroke="#0A0A0A" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-love">♥</div>
+      <div class="lq-frame-name">Marais</div>
+      <div class="lq-frame-meta">Crystal · $285</div>
+      <div class="lq-frame-trytime">saved</div>
+    </div>
+    <div class="lq-frame" onclick="toast('Astoria Olive — tried once')">
+      <div class="lq-frame-img">
+        <svg width="64" height="28" viewBox="0 0 64 28" opacity="0.55"><ellipse cx="13" cy="14" rx="12" ry="9" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><ellipse cx="51" cy="14" rx="12" ry="9" fill="none" stroke="#0A0A0A" stroke-width="1.2"/><line x1="25" y1="14" x2="39" y2="14" stroke="#0A0A0A" stroke-width="1.2"/></svg>
+      </div>
+      <div class="lq-frame-sent lq-sent-meh">○</div>
+      <div class="lq-frame-name">Astoria</div>
+      <div class="lq-frame-meta">Olive · tried</div>
+      <div class="lq-frame-trytime">1m 05s</div>
+    </div>
+    <div class="lq-frame" style="border-right: 0.5px solid var(--line); display: flex; align-items: center; justify-content: center; flex-direction: column; min-height: 170px; background: var(--shade);" onclick="sendPrompt('Suggest 3 frames Marie should try next visit')">
+      <div style="font-size: 22px; color: var(--mute);">+</div>
+      <div style="font-size: 10px; color: var(--mute); margin-top: 4px; text-align: center; line-height: 1.4;">AI picks for<br>next visit</div>
+    </div>
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div class="lq-block lq-time-wrap">
+  <div class="lq-compose">
+    <div class="lq-compose-av">Y</div>
+    <input type="text" placeholder="Write a note, log a call, @mention or #product..." id="qnote" onkeypress="if(event.key==='Enter'){addNote()}">
+    <div class="lq-compose-tools">
+      <button class="lq-tool-btn">@</button>
+      <button class="lq-tool-btn">#</button>
+      <button class="lq-tool-btn">♪</button>
+    </div>
+  </div>
+  <div class="lq-time-filter">
+    <button class="lq-tf on" data-f="all">Everything</button>
+    <button class="lq-tf" data-f="conv">Conversations</button>
+    <button class="lq-tf" data-f="comm">Commerce</button>
+    <button class="lq-tf" data-f="sys">System</button>
+  </div>
+  <div id="timeline">
+    <div class="lq-evt" data-g="conv">
+      <div class="lq-evt-when"><strong>2d ago</strong>Apr 15</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          <strong>Emma</strong> fit Marie for <span class="lq-mention"><span class="lq-mention-sq o"></span>Senna</span>, <span class="lq-mention"><span class="lq-mention-sq o"></span>Draper</span>, <span class="lq-mention"><span class="lq-mention-sq o"></span>Astoria</span> and <span class="lq-mention"><span class="lq-mention-sq o"></span>Marais</span>. Marie took the session photos home to think.
+        </div>
+        <div class="lq-evt-meta">Fitting · 12 min · Plateau · saved for later</div>
+      </div>
+    </div>
+    <div class="lq-evt" data-g="comm">
+      <div class="lq-evt-when"><strong>9d ago</strong>Apr 8</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          Bought <span class="lq-mention"><span class="lq-mention-sq"></span>Draper Tortoise</span> with <span class="lq-mention"><span class="lq-mention-sq"></span>microfiber cloth</span>. Paid $385 cash — no credits used.
+        </div>
+        <div class="lq-evt-meta">Order #1284 · Plateau · Emma served</div>
+      </div>
+    </div>
+    <div class="lq-evt" data-g="sys">
+      <div class="lq-evt-when"><strong>16d ago</strong>Apr 1</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          CULT monthly credit deposited. Balance is now <strong>$247</strong>.
+        </div>
+        <div class="lq-evt-meta">Automatic · ledger #c-4821</div>
+      </div>
+    </div>
+    <div class="lq-evt" data-g="conv">
+      <div class="lq-evt-when"><strong>20d ago</strong>Mar 28</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          Opened the Spring Archive email twice, spent 4m 22s on <span class="lq-mention"><span class="lq-mention-sq o"></span>Senna</span>'s page. No add-to-cart.
+        </div>
+        <div class="lq-evt-meta">Campaign · spring-archive-2026 · Klaviyo</div>
+      </div>
+    </div>
+    <div class="lq-evt" data-g="conv">
+      <div class="lq-evt-when"><strong>26d ago</strong>Mar 22</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          <strong>Emma</strong> noted: Marie finds heavy acetate uncomfortable at the bridge by end of day. Prefers lighter builds.
+        </div>
+        <div class="lq-evt-meta">Note · Plateau · affects recommendations</div>
+      </div>
+    </div>
+    <div class="lq-evt" data-g="comm">
+      <div class="lq-evt-when"><strong>2mo ago</strong>Feb 14</div>
+      <div class="lq-evt-body">
+        <div class="lq-evt-headline">
+          Returned <span class="lq-mention"><span class="lq-mention-sq"></span>Promenade Rose</span>. Reason: colour didn't work. Not a fit issue. Refunded to credits.
+        </div>
+        <div class="lq-evt-meta">Return #r-218</div>
+      </div>
+    </div>
+  </div>
+  <div style="text-align: center; margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line);">
+    <button class="lq-mini-btn" onclick="toast('Loading older events')">show 41 older events</button>
+  </div>
+</div>
+
+<button class="lq-add-block" onclick="toast('Block library: try-ons, orders, wishlist, custom designs, Second Sight, reports')">+ add block to this view</button>
+
+</div>
+
+<div class="lq-r-stack">
+
+<div class="lq-vitals">
+  <div class="lq-vital">
+    <div class="lq-vital-l">Cadence</div>
+    <div class="lq-vital-v">58<span class="unit">d</span></div>
+    <div class="lq-vital-s strong">reliable</div>
+  </div>
+  <div class="lq-vital">
+    <div class="lq-vital-l">Avg spend</div>
+    <div class="lq-vital-v">$320</div>
+    <div class="lq-vital-s">per order</div>
+  </div>
+  <div class="lq-vital">
+    <div class="lq-vital-l">Open rate</div>
+    <div class="lq-vital-v">82<span class="unit">%</span></div>
+    <div class="lq-vital-s strong">top decile</div>
+  </div>
+  <div class="lq-vital">
+    <div class="lq-vital-l">Pairs owned</div>
+    <div class="lq-vital-v">4</div>
+    <div class="lq-vital-s">2 rx · 2 sun</div>
+  </div>
+</div>
+
+<div class="lq-block">
+  <div class="lq-block-head">
+    <div class="lq-block-label">Reach her</div>
+    <div class="lq-block-actions">
+      <button class="lq-mini-btn" onclick="toast('Consent modal')">edit</button>
+    </div>
+  </div>
+  <div class="lq-contact">
+    <div class="lq-c-row">
+      <div class="lq-c-key">Email</div>
+      <div class="lq-c-val">marie.d@gmail.com</div>
+      <div class="lq-c-flag on">on</div>
+    </div>
+    <div class="lq-c-row">
+      <div class="lq-c-key">Phone</div>
+      <div class="lq-c-val">+1 514 555 0182</div>
+      <div class="lq-c-flag off">sms off</div>
+    </div>
+    <div class="lq-c-row">
+      <div class="lq-c-key">Address</div>
+      <div class="lq-c-val">Le Plateau, H2T</div>
+      <div></div>
+    </div>
+    <div class="lq-c-row">
+      <div class="lq-c-key">Birthday</div>
+      <div class="lq-c-val">Mar 15</div>
+      <div style="font-size: 9px; color: var(--mute); font-family: var(--font-mono);">−34d</div>
+    </div>
+    <div class="lq-c-row">
+      <div class="lq-c-key">Language</div>
+      <div class="lq-c-val">FR primary · EN</div>
+      <div></div>
+    </div>
+  </div>
+</div>
+
+<div class="lq-block">
+  <div class="lq-block-head">
+    <div class="lq-block-label">Her people</div>
+    <div class="lq-block-actions">
+      <button class="lq-mini-btn" onclick="toast('Link client picker')">+ link</button>
+    </div>
+  </div>
+  <div class="lq-rel">
+    <svg viewBox="0 0 280 150" xmlns="http://www.w3.org/2000/svg">
+      <line x1="140" y1="75" x2="60" y2="45" stroke="#0A0A0A" stroke-width="0.5"/>
+      <line x1="140" y1="75" x2="60" y2="110" stroke="#0A0A0A" stroke-width="0.5" stroke-dasharray="2,2"/>
+      <line x1="140" y1="75" x2="220" y2="45" stroke="#0A0A0A" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.5"/>
+      <line x1="140" y1="75" x2="220" y2="110" stroke="#0A0A0A" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.5"/>
+
+      <rect x="120" y="55" width="40" height="40" fill="#0A0A0A"/>
+      <text x="140" y="79" text-anchor="middle" fill="#FFF" font-size="11" font-weight="500">MD</text>
+
+      <rect x="46" y="31" width="28" height="28" fill="#0A0A0A" style="cursor: pointer;" onclick="window.__lqt('Opening Paul Dubois')"/>
+      <text x="60" y="49" text-anchor="middle" fill="#FFF" font-size="9" font-weight="500" style="cursor: pointer;" onclick="window.__lqt('Opening Paul Dubois')">PD</text>
+      <text x="60" y="22" text-anchor="middle" fill="#0A0A0A" font-size="9">Paul · husband</text>
+      <text x="60" y="11" text-anchor="middle" fill="#0A0A0A" font-size="8" font-weight="500" letter-spacing="0.5">CULT</text>
+
+      <rect x="48" y="97" width="24" height="24" fill="none" stroke="#0A0A0A" stroke-width="0.8" style="cursor: pointer;" onclick="window.__lqt('Opening Sophie Dubois')"/>
+      <text x="60" y="113" text-anchor="middle" fill="#0A0A0A" font-size="9" font-weight="500" style="cursor: pointer;" onclick="window.__lqt('Opening Sophie Dubois')">SD</text>
+      <text x="60" y="138" text-anchor="middle" fill="#0A0A0A" font-size="9">Sophie · daughter</text>
+
+      <rect x="210" y="35" width="20" height="20" fill="none" stroke="#0A0A0A" stroke-width="0.5" style="cursor: pointer;" onclick="window.__lqt('Emma · favourite SA')"/>
+      <text x="220" y="49" text-anchor="middle" fill="#0A0A0A" font-size="9" font-weight="500" style="cursor: pointer;" onclick="window.__lqt('Emma · favourite SA')">E</text>
+      <text x="220" y="22" text-anchor="middle" fill="#0A0A0A" font-size="9">Emma · stylist</text>
+      <text x="220" y="32" text-anchor="middle" fill="#0A0A0A" font-size="8" opacity="0.55">4 fittings</text>
+
+      <rect x="210" y="100" width="20" height="20" fill="none" stroke="#0A0A0A" stroke-width="0.5" style="cursor: pointer;" onclick="window.__lqt('Benjamin · optometrist')"/>
+      <text x="220" y="114" text-anchor="middle" fill="#0A0A0A" font-size="9" font-weight="500" style="cursor: pointer;" onclick="window.__lqt('Benjamin · optometrist')">B</text>
+      <text x="220" y="135" text-anchor="middle" fill="#0A0A0A" font-size="9">Benjamin · Rx</text>
+    </svg>
+  </div>
+</div>
+
+<div class="lq-block">
+  <div class="lq-block-head">
+    <div class="lq-block-label">Her style space</div>
+    <div class="lq-block-actions">
+      <button class="lq-mini-btn" onclick="toast('Toggle: stated / derived / combined')">combined</button>
+    </div>
+  </div>
+  <div class="lq-pref-canvas">
+    <div class="lq-pref-axes">
+      <div class="lq-pref-grid"></div>
+      <div class="lq-pref-axis-label" style="top: 2px; left: 50%; transform: translateX(-50%);">round</div>
+      <div class="lq-pref-axis-label" style="bottom: 2px; left: 50%; transform: translateX(-50%);">square</div>
+      <div class="lq-pref-axis-label" style="left: 2px; top: 50%; transform: translateY(-50%) rotate(-90deg); transform-origin: left center;">light</div>
+      <div class="lq-pref-axis-label" style="right: 2px; top: 50%; transform: translateY(-50%) rotate(90deg); transform-origin: right center;">heavy</div>
+
+      <div class="lq-pref-dot bought" style="top: 28%; left: 38%;" onclick="window.__lqt('Astoria Navy · owned')" title="Astoria · owned">A</div>
+      <div class="lq-pref-dot bought" style="top: 58%; left: 42%;" onclick="window.__lqt('Draper Tortoise · owned')" title="Draper · owned">D</div>
+      <div class="lq-pref-dot loved" style="top: 62%; left: 28%;" onclick="window.__lqt('Senna · loved 3×')" title="Senna · loved">S</div>
+      <div class="lq-pref-dot loved" style="top: 22%; left: 22%;" onclick="window.__lqt('Marais · loved, saved')" title="Marais · loved">M</div>
+      <div class="lq-pref-dot tried" style="top: 38%; left: 62%;" onclick="window.__lqt('Astoria Olive · tried once')" title="Astoria Olive · tried">a</div>
+      <div class="lq-pref-dot rejected" style="top: 18%; left: 78%;" onclick="window.__lqt('Promenade · returned')" title="Promenade · returned"></div>
+    </div>
+  </div>
+  <div class="lq-pref-legend">
+    <div class="lq-pref-leg"><span class="lq-pref-leg-sw filled"></span>owned</div>
+    <div class="lq-pref-leg"><span class="lq-pref-leg-sw outline"></span>loved</div>
+    <div class="lq-pref-leg"><span class="lq-pref-leg-sw dash"></span>tried</div>
+    <div class="lq-pref-leg"><span class="lq-pref-leg-sw cross"></span>returned</div>
+  </div>
+</div>
+
+<div class="lq-block">
+  <div class="lq-block-head">
+    <div class="lq-block-label">Fit · measured</div>
+    <div class="lq-block-actions">
+      <button class="lq-mini-btn" onclick="toast('Fit history')">history</button>
+    </div>
+  </div>
+  <div class="lq-fit">
+    <div class="lq-fit-cell">
+      <div class="lq-fit-v">138<span class="unit">mm</span></div>
+      <div class="lq-fit-l">frame width</div>
+    </div>
+    <div class="lq-fit-cell">
+      <div class="lq-fit-v">18<span class="unit">mm</span></div>
+      <div class="lq-fit-l">bridge</div>
+    </div>
+    <div class="lq-fit-cell">
+      <div class="lq-fit-v">145<span class="unit">mm</span></div>
+      <div class="lq-fit-l">temple</div>
+    </div>
+    <div class="lq-fit-cell">
+      <div class="lq-fit-v">oval</div>
+      <div class="lq-fit-l">face shape</div>
+    </div>
+  </div>
+  <div class="lq-note">
+    Rx on file, valid until <strong>Mar 2028</strong>. Last update Mar 10 with Benjamin.
+  </div>
+</div>
+
+<div class="lq-block">
+  <div class="lq-block-head">
+    <div class="lq-block-label">What we've learned</div>
+  </div>
+  <div class="lq-signal">
+    <div class="lq-signal-bar"><div class="lq-signal-fill" style="width: 85%;"></div></div>
+    <div class="lq-signal-label">Needs <strong>2 weeks</strong> to commit</div>
+    <div class="lq-signal-val">3 of 4</div>
+  </div>
+  <div class="lq-signal">
+    <div class="lq-signal-bar"><div class="lq-signal-fill" style="width: 70%;"></div></div>
+    <div class="lq-signal-label">Prefers <strong>lighter</strong> acetate</div>
+    <div class="lq-signal-val">noted</div>
+  </div>
+  <div class="lq-signal">
+    <div class="lq-signal-bar"><div class="lq-signal-fill" style="width: 82%;"></div></div>
+    <div class="lq-signal-label">Engages with <strong>editorial</strong> emails</div>
+    <div class="lq-signal-val">82%</div>
+  </div>
+  <div class="lq-signal">
+    <div class="lq-signal-bar"><div class="lq-signal-fill" style="width: 45%;"></div></div>
+    <div class="lq-signal-label">Buys <strong>second choice</strong> after loving first</div>
+    <div class="lq-signal-val">pattern</div>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="lq-toast" id="toast">Done</div>
+
+</div></div>
+
+<script>
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.__lqToastTimer);
+    window.__lqToastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  window.__lqt = toast;
+
+  function switchMode(el, mode) {
+    document.querySelectorAll('.lq-mode').forEach(m => m.classList.remove('on'));
+    el.classList.add('on');
+    toast('View · ' + mode);
+  }
+
+  document.querySelectorAll('.lq-tf').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lq-tf').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      const f = btn.dataset.f;
+      document.querySelectorAll('.lq-evt').forEach(e => {
+        e.classList.toggle('hidden', f !== 'all' && e.dataset.g !== f);
+      });
+    });
+  });
+
+  function addNote() {
+    const input = document.getElementById('qnote');
+    if (!input.value.trim()) return;
+    const t = document.getElementById('timeline');
+    const v = input.value.replace(/</g, '&lt;');
+    const html = '<div class="lq-evt" data-g="conv"><div class="lq-evt-when"><strong>now</strong>today</div><div class="lq-evt-body"><div class="lq-evt-headline">' + v + '</div><div class="lq-evt-meta">Note · You · Plateau</div></div></div>';
+    t.insertAdjacentHTML('afterbegin', html);
+    input.value = '';
+    toast('Added to Marie\'s timeline');
+  }
+</script>
