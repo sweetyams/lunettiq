@@ -71,6 +71,11 @@ export default clerkMiddleware(async (_auth, request) => {
 
     // Storefront account routes — Shopify Customer Accounts auth
   if (pathname.startsWith('/account')) {
+    if (process.env.DEV_CUSTOMER_ID && process.env.NODE_ENV !== 'production') {
+      const response = NextResponse.next();
+      response.cookies.set(ACCESS_TOKEN_COOKIE, 'dev-bypass', { httpOnly: true, path: '/', maxAge: 86400 });
+      return response;
+    }
     return handleAccountAuth(request);
   }
 

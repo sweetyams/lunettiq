@@ -34,19 +34,20 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
   const { toast } = useToast();
   const [weekStart, setWeekStart] = useState(() => new Date(initialWeekStart));
   const [staffFilter, setStaffFilter] = useState<string | null>(null);
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [panel, setPanel] = useState<Panel>(null);
 
-  const fetchEvents = useCallback(async (week: Date, sid: string | null) => {
+  const fetchEvents = useCallback(async (week: Date, sid: string | null, lid: string | null) => {
     const p = new URLSearchParams({ week: week.toISOString() });
     if (sid) p.set('staffId', sid);
+    if (lid) p.set('locationId', lid);
     const res = await fetch(`/api/crm/appointments?${p}`, { credentials: 'include' });
     if (res.ok) { const d = await res.json(); setEvents(d.data ?? []); }
   }, []);
 
-  // Refetch on week/staff change (skip initial render)
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { if (mounted) fetchEvents(weekStart, staffFilter); else setMounted(true); }, [weekStart, staffFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (mounted) fetchEvents(weekStart, staffFilter, locationFilter); else setMounted(true); }, [weekStart, staffFilter, locationFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleWeekChange(dir: 'prev' | 'next' | 'today') {
     setWeekStart(prev => {
@@ -63,7 +64,7 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) { toast(`Marked as ${status}`); setPanel(null); fetchEvents(weekStart, staffFilter); }
+    if (res.ok) { toast(`Marked as ${status}`); setPanel(null); fetchEvents(weekStart, staffFilter, locationFilter); }
     else { const e = await res.json().catch(() => ({})); toast(e.error || 'Failed', 'error'); }
   }
 
@@ -75,8 +76,12 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
           <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Appointments</h1>
           <button onClick={() => setPanel({ mode: 'create', date: new Date().toISOString().slice(0, 10) })} className="crm-btn crm-btn-primary">+ New</button>
         </div>
-        <div style={{ marginBottom: 'var(--crm-space-4)' }}>
+        <div style={{ marginBottom: 'var(--crm-space-4)', display: 'flex', gap: 'var(--crm-space-3)', alignItems: 'center' }}>
           <StaffPicker staff={staff} value={staffFilter} onChange={setStaffFilter} />
+          <select value={locationFilter ?? ''} onChange={e => setLocationFilter(e.target.value || null)} className="crm-input">
+            <option value="">All locations</option>
+            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}>
           <WeekCalendar
@@ -102,7 +107,7 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
           </div>
 
           {panel.mode === 'view' && (
-            <ViewPanel event={panel.event} onStatusChange={handleStatusChange} />
+            <ViewPanel event={panel.event} locations={locations} onStatusChange={handleStatusChange} />
           )}
           {panel.mode === 'create' && (
             <CreatePanel
@@ -110,7 +115,7 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
               hour={panel.hour}
               staff={staff}
               locations={locations}
-              onCreated={() => { setPanel(null); fetchEvents(weekStart, staffFilter); }}
+              onCreated={() => { setPanel(null); fetchEvents(weekStart, staffFilter, locationFilter); }}
               toast={toast}
             />
           )}
@@ -122,10 +127,11 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
 
 /* ── View Panel ─────────────────────────────────────── */
 
-function ViewPanel({ event, onStatusChange }: { event: CalendarEvent; onStatusChange: (id: string, status: string) => void }) {
+function ViewPanel({ event, locations, onStatusChange }: { event: CalendarEvent; locations: Location[]; onStatusChange: (id: string, status: string) => void }) {
   const s = new Date(event.startsAt), e = new Date(event.endsAt);
   const dateFmt = s.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const timeFmt = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const locName = locations.find(l => l.id === (event as any).locationId)?.name;
 
   const actions: { label: string; status: string; accent?: boolean }[] = [];
   if (event.status === 'scheduled') {
@@ -145,6 +151,8 @@ function ViewPanel({ event, onStatusChange }: { event: CalendarEvent; onStatusCh
       <Field label="Status">
         <span className="crm-badge" style={{ background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)' }}>{event.status}</span>
       </Field>
+      {locName && <Field label="Location">{locName}</Field>}
+      {(event as any).notes && <Field label="Notes">{(event as any).notes}</Field>}
       {actions.length > 0 && (
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)', flexWrap: 'wrap', marginTop: 'var(--crm-space-2)' }}>
           {actions.map(a => (

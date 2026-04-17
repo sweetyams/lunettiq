@@ -11,6 +11,10 @@ function extractId(gid: string): string {
 }
 
 async function requireCustomer() {
+  // Dev bypass
+  if (process.env.DEV_CUSTOMER_ID && process.env.NODE_ENV !== 'production') {
+    return { id: process.env.DEV_CUSTOMER_ID, name: 'Dev User' };
+  }
   const token = getAccessToken();
   if (!token) throw NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const profile = await getCustomerProfile(token);

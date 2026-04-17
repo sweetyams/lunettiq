@@ -60,6 +60,8 @@ export default async function AppointmentsPage() {
     startsAt: r.appointment.startsAt.toISOString(),
     endsAt: r.appointment.endsAt.toISOString(),
     staffId: r.appointment.staffId,
+    locationId: r.appointment.locationId,
+    notes: r.appointment.notes,
   }));
 
   return (

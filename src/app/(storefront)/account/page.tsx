@@ -13,22 +13,19 @@ export default async function AccountPage() {
   let orders = null;
   let loyalty: LoyaltyData | null = null;
 
-  try {
-    profile = await getCustomerProfile(accessToken ?? undefined);
-  } catch {
-    // handled in UI
-  }
-
-  try {
-    orders = await getCustomerOrders(10, accessToken ?? undefined);
-  } catch {
-    // handled in UI
-  }
-
-  try {
-    loyalty = await getCustomerMetafield<LoyaltyData>('custom', 'loyalty', accessToken ?? undefined);
-  } catch {
-    // handled in UI
+  // Dev bypass
+  if (process.env.DEV_CUSTOMER_ID && process.env.NODE_ENV !== 'production') {
+    const { db } = await import('@/lib/db');
+    const { customersProjection } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const c = await db.select().from(customersProjection).where(eq(customersProjection.shopifyCustomerId, process.env.DEV_CUSTOMER_ID)).then(r => r[0]);
+    if (c) {
+      profile = { id: c.shopifyCustomerId, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, defaultAddress: c.defaultAddress as any, addresses: [] };
+    }
+  } else {
+    try { profile = await getCustomerProfile(accessToken ?? undefined); } catch {}
+    try { orders = await getCustomerOrders(10, accessToken ?? undefined); } catch {}
+    try { loyalty = await getCustomerMetafield<LoyaltyData>('custom', 'loyalty', accessToken ?? undefined); } catch {}
   }
 
   return (
