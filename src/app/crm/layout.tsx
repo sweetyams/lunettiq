@@ -3,6 +3,7 @@ import { CrmShell } from '@/components/crm/CrmShell';
 import './crm.css';
 
 export const metadata = { title: 'Lunettiq CRM' };
+export const dynamic = 'force-dynamic';
 
 export default function CrmLayout({ children }: { children: React.ReactNode }) {
   return (
