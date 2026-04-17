@@ -90,6 +90,17 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
             onEventClick={ev => setPanel({ mode: 'view', event: ev })}
             onSlotClick={(date, hour) => setPanel({ mode: 'create', date: date.toISOString().slice(0, 10), hour })}
             onWeekChange={handleWeekChange}
+            onEventMove={async (id, newStart, newEnd) => {
+              const res = await fetch(`/api/crm/appointments/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ startsAt: newStart.toISOString(), endsAt: newEnd.toISOString() }) });
+              if (res.ok) { toast('Appointment moved'); fetchEvents(weekStart, staffFilter, locationFilter); }
+              else { const e = await res.json().catch(() => ({})); toast(e.error || 'Conflict — could not move', 'error'); }
+            }}
+            onEventResize={async (id, newEnd) => {
+              const res = await fetch(`/api/crm/appointments/${id}`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endsAt: newEnd.toISOString() }) });
+              if (res.ok) { toast('Duration updated'); fetchEvents(weekStart, staffFilter, locationFilter); }
+              else toast('Could not resize', 'error');
+            }}
+            onQuickCreate={(start, end) => setPanel({ mode: 'create', date: start.toISOString().slice(0, 10), hour: start.getHours() })}
           />
         </div>
       </div>
