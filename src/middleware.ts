@@ -4,6 +4,22 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 const ACCESS_TOKEN_COOKIE = 'lunettiq_access_token';
 const REFRESH_TOKEN_COOKIE = 'lunettiq_refresh_token';
 
+// Allowed origins for native app CORS
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:8081',   // Expo dev
+  'http://localhost:19006',  // Expo web
+]);
+
+function corsHeaders(origin: string): Record<string, string> {
+  const allowed = ALLOWED_ORIGINS.has(origin) || origin.endsWith('.lunettiq.com');
+  return {
+    'Access-Control-Allow-Origin': allowed ? origin : '',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-CRM-Surface',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
 function getShopId(): string {
   return process.env.SHOPIFY_STORE_ID || process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!.replace('.myshopify.com', '');
 }
@@ -71,7 +87,7 @@ export default clerkMiddleware(async (_auth, request) => {
 
     // Storefront account routes — Shopify Customer Accounts auth
   if (pathname.startsWith('/account')) {
-    if (process.env.DEV_CUSTOMER_ID && process.env.NODE_ENV !== 'production') {
+    if (process.env.DEV_CUSTOMER_ID && (process.env.NODE_ENV !== 'production' || process.env.DEMO_MODE === '1')) {
       const response = NextResponse.next();
       response.cookies.set(ACCESS_TOKEN_COOKIE, 'dev-bypass', { httpOnly: true, path: '/', maxAge: 86400 });
       return response;
@@ -79,11 +95,27 @@ export default clerkMiddleware(async (_auth, request) => {
     return handleAccountAuth(request);
   }
 
-  // CRM routes — surface identification for audit logging
+  // CRM routes — surface identification for audit logging + CORS for native apps
   if (pathname.startsWith('/crm') || pathname.startsWith('/api/crm')) {
     const surface = request.headers.get('x-crm-surface') ?? 'web';
+    const origin = request.headers.get('origin') ?? '';
+
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: corsHeaders(origin),
+      });
+    }
+
     const response = NextResponse.next();
     response.headers.set('x-crm-surface', surface);
+    // Add CORS headers for native app requests
+    if (origin) {
+      for (const [k, v] of Object.entries(corsHeaders(origin))) {
+        response.headers.set(k, v);
+      }
+    }
     return response;
   }
 

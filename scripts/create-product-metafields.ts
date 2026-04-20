@@ -4,6 +4,8 @@
  * Run with: npx tsx scripts/create-product-metafields.ts
  */
 import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
 const SHOP = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!;
 const TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN!;

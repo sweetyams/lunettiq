@@ -93,6 +93,18 @@ export const syncOrder = inngest.createFunction(
           syncedAt: new Date(),
         },
       });
+
+    // Update customer total_spent + order_count
+    const custId = o.customer?.id ? String(o.customer.id) : null;
+    if (custId) {
+      await db.execute(sql`
+        UPDATE customers_projection SET
+          order_count = (SELECT count(*) FROM orders_projection WHERE shopify_customer_id = ${custId}),
+          total_spent = (SELECT coalesce(sum(total_price::numeric), 0) FROM orders_projection WHERE shopify_customer_id = ${custId}),
+          synced_at = now()
+        WHERE shopify_customer_id = ${custId}
+      `);
+    }
   }
 );
 
@@ -112,6 +124,7 @@ export const syncProduct = inngest.createFunction(
       description: p.body_html,
       productType: p.product_type,
       vendor: p.vendor,
+      status: p.status ?? 'active',
       tags: p.tags?.split(', ').filter(Boolean) ?? [],
       images: p.images?.map((i: { src: string }) => i.src) ?? [],
       priceMin,
@@ -175,6 +188,17 @@ export const syncProduct = inngest.createFunction(
       }
       await db.update(productsProjection).set({ metafields: grouped }).where(eq(productsProjection.shopifyProductId, String(p.id)));
     }
+  }
+);
+
+// ─── Product delete ──────────────────────────────────────
+
+export const deleteProduct = inngest.createFunction(
+  { id: 'delete-product', retries: 2, triggers: [{ event: 'shopify/product.deleted' }] },
+  async ({ event }) => {
+    const id = String(event.data.id);
+    await db.delete(productVariantsProjection).where(eq(productVariantsProjection.shopifyProductId, id));
+    await db.delete(productsProjection).where(eq(productsProjection.shopifyProductId, id));
   }
 );
 
@@ -330,7 +354,7 @@ export const monthlyCredits = inngest.createFunction(
 // ─── Birthday credits ────────────────────────────────────
 
 export const birthdayCredits = inngest.createFunction(
-  { id: 'birthday-credits', retries: 2, triggers: [{ cron: '0 7 * * *' }] },
+  { id: 'birthday-credits', retries: 2, triggers: [{ cron: '0 5 * * *' }] }, // 5am UTC = midnight ET (summer)
   async () => {
     const today = new Date();
     const mmdd = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -418,7 +442,8 @@ export const dailyDigest = inngest.createFunction(
     }
 
     // Get staff emails from Clerk
-    const secret = process.env.CLERK_SECRET_KEY;
+    const { getKey } = await import('@/lib/crm/integration-keys');
+    const secret = await getKey('CLERK_SECRET_KEY');
     if (!secret) return { sent: 0 };
 
     const res = await fetch('https://api.clerk.com/v1/users?limit=50', { headers: { Authorization: `Bearer ${secret}` } });
@@ -451,4 +476,646 @@ export const dailyDigest = inngest.createFunction(
   }
 );
 
-export const functions = [syncCustomer, syncOrder, syncProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest];
+// ─── Appointment Reminders ───────────────────────────────
+
+export const appointmentReminders = inngest.createFunction(
+  { id: 'appointment-reminders', retries: 2, triggers: [{ cron: '0 * * * *' }] },
+  async () => {
+    const { appointments, customersProjection, locations } = await import('@/lib/db/schema');
+    const { and, gte, lt, isNull } = await import('drizzle-orm');
+    const { fireKlaviyoEvent } = await import('@/lib/klaviyo/events');
+
+    const now = new Date();
+    const in24h = new Date(now.getTime() + 24 * 3600000);
+    const in25h = new Date(now.getTime() + 25 * 3600000);
+
+    // Find appointments starting in 24–25h that haven't been reminded
+    const rows = await db
+      .select({
+        id: appointments.id,
+        title: appointments.title,
+        startsAt: appointments.startsAt,
+        locationId: appointments.locationId,
+        customerId: appointments.shopifyCustomerId,
+        email: customersProjection.email,
+        firstName: customersProjection.firstName,
+        locationName: locations.name,
+      })
+      .from(appointments)
+      .leftJoin(customersProjection, sql`${appointments.shopifyCustomerId} = ${customersProjection.shopifyCustomerId}`)
+      .leftJoin(locations, sql`${appointments.locationId} = ${locations.id}`)
+      .where(and(
+        gte(appointments.startsAt, in24h),
+        lt(appointments.startsAt, in25h),
+        isNull(appointments.reminderSentAt),
+        sql`${appointments.status} IN ('scheduled', 'confirmed')`,
+      ));
+
+    let sent = 0;
+    for (const r of rows) {
+      if (r.email) {
+        const time = r.startsAt.toLocaleString('en-CA', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        await fireKlaviyoEvent(r.email, 'Appointment Reminder', {
+          appointment_title: r.title,
+          appointment_time: time,
+          location_name: r.locationName,
+          first_name: r.firstName,
+        });
+        sent++;
+      }
+      await db.update(appointments).set({ reminderSentAt: now }).where(sql`${appointments.id} = ${r.id}`);
+    }
+
+    return { checked: rows.length, sent };
+  }
+);
+
+// ─── Points: Purchase Earning ────────────────────────────
+
+export const pointsOnPurchase = inngest.createFunction(
+  { id: 'points-on-purchase', retries: 2, triggers: [{ event: 'shopify/order.created' }] },
+  async ({ event }) => {
+    const { issuePoints, getPointsBalance } = await import('@/lib/crm/points');
+    const o = event.data;
+    const customerId = String(o.customer?.id ?? '');
+    if (!customerId) return { skipped: true };
+
+    const net = Math.floor(Number(o.total_price ?? 0));
+    if (net <= 0) return { skipped: true };
+
+    // 1 pt per $1
+    await issuePoints({ customerId, amount: net, type: 'points_issued_purchase', reason: `${net} pts on order #${o.order_number}`, relatedOrderId: String(o.id) });
+
+    // First purchase bonus
+    const orderCount = o.customer?.orders_count ?? 1;
+    if (orderCount <= 1) {
+      await issuePoints({ customerId, amount: 500, type: 'points_issued_purchase', reason: 'First purchase bonus (500 pts)' });
+    }
+
+    return { customerId, pointsIssued: net + (orderCount <= 1 ? 500 : 0) };
+  }
+);
+
+// ─── Points: Birthday ────────────────────────────────────
+
+export const pointsBirthday = inngest.createFunction(
+  { id: 'points-birthday', retries: 2, triggers: [{ cron: '0 8 * * *' }] },
+  async () => {
+    const { customersProjection } = await import('@/lib/db/schema');
+    const { issuePoints } = await import('@/lib/crm/points');
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    const clients = await db.select({ id: customersProjection.shopifyCustomerId, meta: customersProjection.metafields })
+      .from(customersProjection);
+
+    let sent = 0;
+    for (const c of clients) {
+      const bday = ((c.meta as any)?.custom?.birthday ?? '') as string;
+      if (bday.includes(`-${mm}-${dd}`)) {
+        await issuePoints({ customerId: c.id, amount: 200, type: 'points_issued_birthday', reason: 'Birthday bonus (200 pts)' });
+        sent++;
+      }
+    }
+    return { sent };
+  }
+);
+
+// ─── Points: Expiry Scan (warnings) ─────────────────────
+
+export const pointsExpiryScan = inngest.createFunction(
+  { id: 'points-expiry-scan', retries: 1, triggers: [{ cron: '0 3 * * *' }] },
+  async () => {
+    const { creditsLedger } = await import('@/lib/db/schema');
+    const { and, gte, lt, gt, isNull } = await import('drizzle-orm');
+    const { fireKlaviyoEvent } = await import('@/lib/klaviyo/events');
+    const { customersProjection } = await import('@/lib/db/schema');
+
+    const now = new Date();
+    const warnings = [90, 30, 7];
+    let total = 0;
+
+    for (const days of warnings) {
+      const target = new Date(now.getTime() + days * 86400000);
+      const targetEnd = new Date(target.getTime() + 86400000);
+
+      const expiring = await db.select({
+        customerId: creditsLedger.shopifyCustomerId,
+        amount: creditsLedger.amount,
+        expiresAt: creditsLedger.expiresAt,
+      }).from(creditsLedger).where(and(
+        sql`${creditsLedger.currency} = 'points'`,
+        gt(creditsLedger.amount, sql`0`),
+        gte(creditsLedger.expiresAt, target),
+        lt(creditsLedger.expiresAt, targetEnd),
+      ));
+
+      for (const row of expiring) {
+        const cust = await db.select({ email: customersProjection.email, firstName: customersProjection.firstName })
+          .from(customersProjection).where(sql`${customersProjection.shopifyCustomerId} = ${row.customerId}`).then(r => r[0]);
+        if (cust?.email) {
+          await fireKlaviyoEvent(cust.email, 'Points Expiry Warning', {
+            days_until_expiry: days, points: Number(row.amount), first_name: cust.firstName,
+          });
+          total++;
+        }
+      }
+    }
+    return { warnings: total };
+  }
+);
+
+// ─── Points: Expiry Execute ─────────────────────────────
+
+export const pointsExpiryExecute = inngest.createFunction(
+  { id: 'points-expiry-execute', retries: 1, triggers: [{ cron: '0 4 * * *' }] },
+  async () => {
+    const { creditsLedger } = await import('@/lib/db/schema');
+    const { and, lt, gt } = await import('drizzle-orm');
+    const { getPointsBalance } = await import('@/lib/crm/points');
+
+    const now = new Date();
+    const expired = await db.select({ id: creditsLedger.id, customerId: creditsLedger.shopifyCustomerId, amount: creditsLedger.amount })
+      .from(creditsLedger).where(and(
+        sql`${creditsLedger.currency} = 'points'`,
+        gt(creditsLedger.amount, sql`0`),
+        lt(creditsLedger.expiresAt, now),
+      ));
+
+    let count = 0;
+    for (const row of expired) {
+      const pts = Number(row.amount);
+      const balance = await getPointsBalance(row.customerId);
+      await db.insert(creditsLedger).values({
+        shopifyCustomerId: row.customerId, currency: 'points',
+        transactionType: 'points_expired', amount: String(-pts),
+        runningBalance: String(balance - pts), reason: `${pts} points expired`,
+      });
+      // Zero out the original entry's expiry so it's not re-processed
+      await db.update(creditsLedger).set({ expiresAt: null }).where(sql`${creditsLedger.id} = ${row.id}`);
+      count++;
+    }
+    return { expired: count };
+  }
+);
+
+// ─── Trial Conversion Scan ───────────────────────────────
+
+export const trialConversionScan = inngest.createFunction(
+  { id: 'trial-conversion-scan', retries: 2, triggers: [{ cron: '0 * * * *' }] },
+  async () => {
+    const { membershipTrials } = await import('@/lib/db/schema');
+    const { and, lt } = await import('drizzle-orm');
+    const now = new Date();
+
+    const due = await db.select().from(membershipTrials)
+      .where(and(sql`${membershipTrials.outcome} = 'pending'`, lt(membershipTrials.convertsAt, now)));
+
+    let converted = 0;
+    for (const trial of due) {
+      // Auto-convert to paid
+      await db.update(membershipTrials).set({ outcome: 'converted' }).where(sql`${membershipTrials.id} = ${trial.id}`);
+      converted++;
+    }
+    return { converted };
+  }
+);
+
+// ─── Trial Reminders ─────────────────────────────────────
+
+export const trialReminder = inngest.createFunction(
+  { id: 'trial-reminder', retries: 1, triggers: [{ cron: '0 9 * * *' }] },
+  async () => {
+    const { membershipTrials, customersProjection } = await import('@/lib/db/schema');
+    const { fireKlaviyoEvent } = await import('@/lib/klaviyo/events');
+    const now = new Date();
+    const day23 = new Date(now.getTime() + 8 * 86400000); // 8 days left = day 23
+    const day28 = new Date(now.getTime() + 3 * 86400000); // 3 days left = day 28
+
+    const trials = await db.select().from(membershipTrials).where(sql`${membershipTrials.outcome} = 'pending'`);
+    let sent = 0;
+
+    for (const t of trials) {
+      const daysLeft = Math.round((new Date(t.convertsAt!).getTime() - now.getTime()) / 86400000);
+      if (daysLeft !== 8 && daysLeft !== 3) continue;
+
+      const cust = await db.select({ email: customersProjection.email, firstName: customersProjection.firstName })
+        .from(customersProjection).where(sql`${customersProjection.shopifyCustomerId} = ${t.shopifyCustomerId}`).then(r => r[0]);
+      if (!cust?.email) continue;
+
+      await fireKlaviyoEvent(cust.email, daysLeft === 8 ? 'Trial Reminder Day 23' : 'Trial Reminder Day 28', {
+        days_left: daysLeft, first_name: cust.firstName, credits_used: Number(t.creditsUsedDuringTrial ?? 0),
+      });
+      sent++;
+    }
+    return { sent };
+  }
+);
+
+// ─── Referral Qualification ──────────────────────────────
+
+export const referralQualify = inngest.createFunction(
+  { id: 'referral-qualify', retries: 2, triggers: [{ event: 'loyalty/referral.check' }] },
+  async ({ event }) => {
+    const { referrals: referralsTable, customersProjection, creditsLedger: ledger } = await import('@/lib/db/schema');
+    const { issuePoints, getCreditBalance } = await import('@/lib/crm/points');
+    const { getTierFromTags } = await import('@/lib/crm/loyalty-config');
+    const { and, eq: eqOp } = await import('drizzle-orm');
+
+    const { referredCustomerId, orderId, orderTotal } = event.data;
+    if (!referredCustomerId || Number(orderTotal) < 100) return { skipped: true, reason: 'Under $100' };
+
+    const ref = await db.select().from(referralsTable)
+      .where(and(eqOp(referralsTable.referredCustomerId, referredCustomerId), eqOp(referralsTable.status, 'pending')))
+      .then(r => r[0]);
+    if (!ref) return { skipped: true, reason: 'No pending referral' };
+
+    if (ref.clickedAt && Date.now() - new Date(ref.clickedAt).getTime() > 90 * 86400000) {
+      await db.update(referralsTable).set({ status: 'expired' }).where(eqOp(referralsTable.id, ref.id));
+      return { skipped: true, reason: 'Expired (>90 days)' };
+    }
+
+    // Get referrer tier
+    const referrer = await db.select({ tags: customersProjection.tags })
+      .from(customersProjection).where(eqOp(customersProjection.shopifyCustomerId, ref.referrerCustomerId)).then(r => r[0]);
+    const tier = getTierFromTags(referrer?.tags ?? null);
+
+    // Tier-weighted rewards
+    const REWARDS: Record<string, { referrerAmount: number; referrerCurrency: 'credit' | 'points'; referredDiscount: number }> = {
+      default: { referrerAmount: 2500, referrerCurrency: 'points', referredDiscount: 25 },
+      essential: { referrerAmount: 30, referrerCurrency: 'credit', referredDiscount: 25 },
+      cult: { referrerAmount: 50, referrerCurrency: 'credit', referredDiscount: 25 },
+      vault: { referrerAmount: 75, referrerCurrency: 'credit', referredDiscount: 40 },
+    };
+    const reward = REWARDS[tier ?? 'default'] ?? REWARDS.default;
+
+    await db.update(referralsTable).set({
+      status: 'qualified', qualifiedAt: new Date(), qualifyingOrderId: orderId,
+      referrerTierAtQualification: tier ?? 'non-member',
+      referrerRewardAmount: String(reward.referrerAmount), referrerRewardCurrency: reward.referrerCurrency,
+    }).where(eqOp(referralsTable.id, ref.id));
+
+    // Issue referrer reward
+    if (reward.referrerCurrency === 'points') {
+      await issuePoints({ customerId: ref.referrerCustomerId, amount: reward.referrerAmount, type: 'points_issued_referral_referrer', reason: `Referral qualified (${reward.referrerAmount} pts)`, relatedReferralId: ref.id });
+    } else {
+      const bal = await getCreditBalance(ref.referrerCustomerId);
+      await db.insert(ledger).values({
+        shopifyCustomerId: ref.referrerCustomerId, currency: 'credit',
+        transactionType: 'referral_qualified', amount: String(reward.referrerAmount),
+        runningBalance: String(bal + reward.referrerAmount), reason: `Referral qualified ($${reward.referrerAmount} credit)`,
+        relatedReferralId: ref.id,
+      });
+    }
+
+    // Issue referred bonus (always points)
+    await issuePoints({ customerId: referredCustomerId, amount: 500, type: 'points_issued_referral_referred', reason: 'Welcome referral bonus', relatedReferralId: ref.id });
+
+    // Check milestones
+    const { checkMilestones } = await import('@/lib/crm/milestones');
+    const newMilestones = await checkMilestones(ref.referrerCustomerId);
+
+    return { qualified: true, referralId: ref.id, tier, reward, milestones: newMilestones };
+  }
+);
+
+// ─── Square: Sync Order (READ-ONLY — no writes to Square) ───
+
+export const syncSquareOrder = inngest.createFunction(
+  { id: 'sync-square-order', retries: 3, triggers: [{ event: 'square/order.synced' }] },
+  async ({ event }) => {
+    const { ordersProjection, customersProjection, locations } = await import('@/lib/db/schema');
+    const { normalizeEmail, normalizePhone } = await import('@/lib/crm/normalize');
+    const { getOrder } = await import('@/lib/square/client');
+    const { issuePoints } = await import('@/lib/crm/points');
+
+    let order = event.data.order;
+    const orderId = event.data.orderId ?? order?.id;
+    // Always fetch the full order from Square (READ-ONLY)
+    if (orderId) {
+      const { getOrder } = await import('@/lib/square/client');
+      try { order = await getOrder(orderId); } catch (e) { console.error('[sync-square-order] Fetch failed:', e); return { skipped: true, reason: 'Fetch failed' }; }
+    }
+    if (!order?.id) return { skipped: true };
+    if (order.state !== 'COMPLETED') return { skipped: true, reason: 'Not completed' };
+
+    // Map Square location to our location
+    const loc = await db.select({ id: locations.id }).from(locations)
+      .where(sql`${locations.squareLocationId} = ${order.location_id}`).then(r => r[0]);
+
+    // Match customer by Square customer_id → email/phone lookup
+    let customerId: string | null = null;
+    if (order.customer_id) {
+      try {
+        const { getCustomer } = await import('@/lib/square/client');
+        const sqCust = await getCustomer(order.customer_id);
+        const email = normalizeEmail(sqCust.email_address);
+        const phone = normalizePhone(sqCust.phone_number);
+
+        // Find matching customer in our DB
+        const match = await db.select({ id: customersProjection.shopifyCustomerId })
+          .from(customersProjection)
+          .where(email ? sql`${customersProjection.email} = ${email}` : phone ? sql`${customersProjection.phone} = ${phone}` : sql`false`)
+          .then(r => r[0]);
+
+        customerId = match?.id ?? null;
+
+        // If no match, create a projection entry
+        if (!customerId && (email || phone)) {
+          customerId = `sq_${order.customer_id}`;
+          await db.insert(customersProjection).values({
+            shopifyCustomerId: customerId,
+            email, phone,
+            firstName: sqCust.given_name ?? null,
+            lastName: sqCust.family_name ?? null,
+            orderCount: 1,
+            totalSpent: order.total_money ? String(order.total_money.amount / 100) : '0',
+            syncedAt: new Date(),
+          }).onConflictDoNothing();
+        }
+      } catch (e) { console.warn('[sync-square-order] Customer lookup failed:', e); }
+    }
+
+    // Map line items
+    const lineItems = (order.line_items ?? []).map((li: any) => ({
+      name: li.name,
+      quantity: Number(li.quantity ?? 1),
+      price: li.total_money ? String(li.total_money.amount / 100) : '0',
+      sku: li.catalog_object_id ?? null,
+    }));
+
+    const totalPrice = order.total_money ? String(order.total_money.amount / 100) : '0';
+
+    // Upsert order
+    await db.insert(ordersProjection).values({
+      shopifyOrderId: `sq_${order.id}`,
+      shopifyCustomerId: customerId,
+      orderNumber: order.reference_id ?? order.id.slice(-8),
+      financialStatus: 'paid',
+      fulfillmentStatus: 'fulfilled',
+      totalPrice,
+      subtotalPrice: totalPrice,
+      currency: order.total_money?.currency ?? 'CAD',
+      lineItems,
+      createdAt: new Date(order.created_at),
+      shopifyUpdatedAt: new Date(order.updated_at),
+      syncedAt: new Date(),
+      source: 'square',
+    }).onConflictDoUpdate({
+      target: ordersProjection.shopifyOrderId,
+      set: { lineItems, totalPrice, syncedAt: new Date(), shopifyUpdatedAt: new Date(order.updated_at) },
+    });
+
+    // Issue loyalty points (1 pt per $1)
+    if (customerId) {
+      const net = Math.floor(Number(totalPrice));
+      if (net > 0) {
+        await issuePoints({ customerId, amount: net, type: 'points_issued_purchase', reason: `${net} pts on Square order`, relatedOrderId: `sq_${order.id}` });
+      }
+    }
+
+    return { synced: true, orderId: order.id, customerId };
+  }
+);
+
+// ─── Square: Sync Customer (READ-ONLY) ──────────────────
+
+export const syncSquareCustomer = inngest.createFunction(
+  { id: 'sync-square-customer', retries: 3, triggers: [{ event: 'square/customer.synced' }] },
+  async ({ event }) => {
+    const { customersProjection } = await import('@/lib/db/schema');
+    const { normalizeEmail, normalizePhone, normalizeName } = await import('@/lib/crm/normalize');
+
+    const c = event.data.customer;
+    if (!c?.id) return { skipped: true };
+
+    const email = normalizeEmail(c.email_address);
+    const phone = normalizePhone(c.phone_number);
+
+    // Build address if present
+    const address = c.address ? {
+      address1: c.address.address_line_1 ?? '',
+      address2: c.address.address_line_2 ?? '',
+      city: c.address.locality ?? '',
+      province: c.address.administrative_district_level_1 ?? '',
+      zip: c.address.postal_code ?? '',
+      country: c.address.country ?? '',
+    } : null;
+
+    // Build metafields from Square-specific data
+    const meta: Record<string, any> = {};
+    if (c.birthday) meta.birthday = c.birthday;
+    if (c.note) meta.square_note = c.note;
+    if (c.company_name) meta.company = c.company_name;
+
+    // Try to find existing customer by email or phone
+    const existing = await db.select({ id: customersProjection.shopifyCustomerId, metafields: customersProjection.metafields, defaultAddress: customersProjection.defaultAddress })
+      .from(customersProjection)
+      .where(email ? sql`${customersProjection.email} = ${email}` : phone ? sql`${customersProjection.phone} = ${phone}` : sql`false`)
+      .then(r => r[0]);
+
+    if (existing) {
+      // Update with Square data (don't overwrite Shopify data, just fill gaps)
+      const updates: Record<string, unknown> = { syncedAt: new Date() };
+      if (!existing.id.startsWith('sq_')) return { skipped: true, reason: 'Shopify customer, skip Square update' };
+      if (c.given_name) updates.firstName = normalizeName(c.given_name);
+      if (c.family_name) updates.lastName = normalizeName(c.family_name);
+      if (phone) updates.phone = phone;
+      if (address && !existing.defaultAddress) updates.defaultAddress = address;
+      if (c.preferences?.email_unsubscribed === false) updates.acceptsMarketing = true;
+      if (c.preferences?.email_unsubscribed === true) updates.acceptsMarketing = false;
+      // Merge metafields (fill gaps only)
+      if (Object.keys(meta).length) {
+        const prev = (existing.metafields as Record<string, any>) ?? {};
+        const custom = prev.custom ?? {};
+        const merged = { ...custom };
+        if (meta.birthday && !custom.birthday) merged.birthday = meta.birthday;
+        if (meta.square_note && !custom.square_note) merged.square_note = meta.square_note;
+        if (meta.company && !custom.company) merged.company = meta.company;
+        updates.metafields = { ...prev, custom: merged };
+      }
+      await db.update(customersProjection).set(updates).where(sql`${customersProjection.shopifyCustomerId} = ${existing.id}`);
+      return { updated: existing.id };
+    }
+
+    // Create new
+    const id = `sq_${c.id}`;
+    const metafields = Object.keys(meta).length ? { custom: meta } : null;
+    await db.insert(customersProjection).values({
+      shopifyCustomerId: id,
+      email, phone,
+      firstName: normalizeName(c.given_name) ?? c.given_name ?? null,
+      lastName: normalizeName(c.family_name) ?? c.family_name ?? null,
+      defaultAddress: address,
+      metafields,
+      acceptsMarketing: c.preferences?.email_unsubscribed === false ? true : false,
+      syncedAt: new Date(),
+    }).onConflictDoNothing();
+
+    return { created: id };
+  }
+);
+
+// ─── VAULT Annual Gift Dispatch ──────────────────────────
+
+export const vaultGiftDispatch = inngest.createFunction(
+  { id: 'vault-gift-dispatch', retries: 1, triggers: [{ cron: '0 9 * * *' }] },
+  async () => {
+    const { customersProjection, giftFulfilments } = await import('@/lib/db/schema');
+    const { and, sql: sqlFn } = await import('drizzle-orm');
+    const { notifyStaff } = await import('@/lib/crm/notify');
+
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const year = today.getFullYear();
+
+    // Find VAULT members whose member_since anniversary is today
+    const vaultMembers = await db.select({ id: customersProjection.shopifyCustomerId, meta: customersProjection.metafields, firstName: customersProjection.firstName, lastName: customersProjection.lastName })
+      .from(customersProjection)
+      .where(sqlFn`'member-vault' = ANY(tags)`);
+
+    let dispatched = 0;
+    for (const m of vaultMembers) {
+      const memberSince = ((m.meta as any)?.custom?.member_since ?? '') as string;
+      if (!memberSince || !memberSince.includes(`-${mm}-${dd}`)) continue;
+
+      // Check if already dispatched this year
+      const existing = await db.select().from(giftFulfilments)
+        .where(and(sqlFn`${giftFulfilments.shopifyCustomerId} = ${m.id}`, sqlFn`${giftFulfilments.year} = ${year}`))
+        .then(r => r[0]);
+      if (existing) continue;
+
+      await db.insert(giftFulfilments).values({ shopifyCustomerId: m.id, year });
+      await notifyStaff({ title: `VAULT gift due: ${m.firstName} ${m.lastName}`, body: `Anniversary gift for ${year}. Prepare and ship.`, type: 'info', entityType: 'gift_fulfilment', entityId: m.id });
+      dispatched++;
+    }
+    return { dispatched };
+  }
+);
+
+// ─── Rx Expiry Reminders ─────────────────────────────────
+
+export const rxExpiryReminder = inngest.createFunction(
+  { id: 'rx-expiry-reminder', retries: 1, triggers: [{ cron: '0 10 * * *' }] },
+  async () => {
+    const { customersProjection } = await import('@/lib/db/schema');
+    const { fireKlaviyoEvent } = await import('@/lib/klaviyo/events');
+
+    const clients = await db.select({
+      id: customersProjection.shopifyCustomerId,
+      email: customersProjection.email,
+      firstName: customersProjection.firstName,
+      meta: customersProjection.metafields,
+    }).from(customersProjection);
+
+    const now = Date.now();
+    const DAY = 86400000;
+    let sent = 0;
+
+    for (const c of clients) {
+      if (!c.email) continue;
+      const rxDate = ((c.meta as any)?.custom?.rx_last_updated ?? '') as string;
+      if (!rxDate) continue;
+
+      const expiryDate = new Date(rxDate);
+      expiryDate.setMonth(expiryDate.getMonth() + 24);
+      const daysUntil = Math.round((expiryDate.getTime() - now) / DAY);
+
+      if (daysUntil === 90 || daysUntil === 60 || daysUntil === 0) {
+        await fireKlaviyoEvent(c.email, 'Rx Expiry Reminder', {
+          first_name: c.firstName,
+          days_until_expiry: daysUntil,
+          rx_date: rxDate,
+          message: daysUntil === 0
+            ? 'Your prescription has expired. Time for an eye exam!'
+            : `Your prescription expires in ${daysUntil} days. Schedule an eye exam soon.`,
+        });
+        sent++;
+      }
+    }
+    return { sent };
+  }
+);
+
+export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership];
+
+// ─── Membership: Activate on purchase ────────────────────
+
+const MEMBERSHIP_SKUS: Record<string, { tier: string; period: 'monthly' | 'annual' }> = {
+  'MEMBERSHIP-ESSENTIAL-MONTHLY': { tier: 'essential', period: 'monthly' },
+  'MEMBERSHIP-ESSENTIAL-ANNUAL': { tier: 'essential', period: 'annual' },
+  'MEMBERSHIP-CULT-MONTHLY': { tier: 'cult', period: 'monthly' },
+  'MEMBERSHIP-CULT-ANNUAL': { tier: 'cult', period: 'annual' },
+  'MEMBERSHIP-VAULT-MONTHLY': { tier: 'vault', period: 'monthly' },
+  'MEMBERSHIP-VAULT-ANNUAL': { tier: 'vault', period: 'annual' },
+};
+
+export const activateMembership = inngest.createFunction(
+  { id: 'activate-membership', retries: 2, triggers: [{ event: 'shopify/order.created' }] },
+  async ({ event }) => {
+    const o = event.data;
+    const customerId = String(o.customer?.id ?? '');
+    if (!customerId) return { skipped: true, reason: 'no customer' };
+
+    // Check if any line item is a membership product
+    const lineItems = (o.line_items ?? []) as Array<{ sku?: string; title?: string; product_id?: number }>;
+    const membershipItem = lineItems.find(li => li.sku && MEMBERSHIP_SKUS[li.sku]);
+    if (!membershipItem) return { skipped: true, reason: 'no membership item' };
+
+    const { tier, period } = MEMBERSHIP_SKUS[membershipItem.sku!];
+    const { TIERS } = await import('@/lib/crm/loyalty-config');
+    const tierConfig = TIERS[tier as keyof typeof TIERS];
+    if (!tierConfig) return { skipped: true, reason: `unknown tier: ${tier}` };
+
+    // 1. Tag the customer on Shopify (idempotent)
+    const { addCustomerTag } = await import('@/lib/crm/shopify-admin');
+    await addCustomerTag(Number(customerId), tierConfig.tag);
+
+    // 2. Update local projection
+    const { customersProjection, creditsLedger, auditLog } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const client = await db.select({ tags: customersProjection.tags }).from(customersProjection)
+      .where(eq(customersProjection.shopifyCustomerId, customerId)).then(r => r[0]);
+
+    // Ensure tier tag is set (handles both first purchase and renewals)
+    const existingTags = (client?.tags ?? []).filter(t => !t.startsWith('member-'));
+    const newTags = [...existingTags, tierConfig.tag];
+    await db.update(customersProjection).set({ tags: newTags, syncedAt: new Date() })
+      .where(eq(customersProjection.shopifyCustomerId, customerId));
+
+    // 3. Issue credits — monthly amount for renewals, full amount for annual first purchase
+    const isRenewal = (client?.tags ?? []).includes(tierConfig.tag);
+    const creditAmount = period === 'annual' && !isRenewal ? tierConfig.monthlyCredit * 12 : tierConfig.monthlyCredit;
+
+    const lastCredit = await db.select({ balance: creditsLedger.runningBalance }).from(creditsLedger)
+      .where(eq(creditsLedger.shopifyCustomerId, customerId))
+      .orderBy(sql`created_at DESC`).limit(1).then(r => r[0]);
+    const currentBalance = Number(lastCredit?.balance ?? 0);
+
+    await db.insert(creditsLedger).values({
+      shopifyCustomerId: customerId,
+      currency: 'credit',
+      transactionType: 'issued_membership',
+      amount: String(creditAmount),
+      runningBalance: String(currentBalance + creditAmount),
+      reason: isRenewal ? `${tier.toUpperCase()} renewal — $${creditAmount} credit` : `${tier.toUpperCase()} membership activated (${period})`,
+      relatedOrderId: String(o.id),
+    });
+
+    // 4. Update membership status to active
+    const { updateCustomerMetafield } = await import('@/lib/crm/shopify-admin');
+    await updateCustomerMetafield(Number(customerId), 'custom', 'membership_status', 'active', 'single_line_text_field').catch(() => {});
+
+    // 5. Audit log
+    await db.insert(auditLog).values({
+      action: 'update', entityType: 'customer', entityId: customerId,
+      staffId: 'system', surface: 'system',
+      diff: { membership: { tier, period, orderId: String(o.id), isRenewal, creditAmount } },
+    });
+
+    return { activated: true, customerId, tier, period, creditAmount, isRenewal };
+  }
+);

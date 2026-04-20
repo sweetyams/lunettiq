@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { requirePermission } from '@/lib/crm/auth';
+import ResetTourButton from './ResetTourButton';
 
 const SETTINGS_SECTIONS = [
   { href: '/crm/settings/tags', label: 'Tags', description: 'Manage customer tag taxonomy' },
   { href: '/crm/settings/locations', label: 'Locations', description: 'Store locations and assignment' },
   { href: '/crm/settings/staff', label: 'Staff', description: 'Staff accounts and role assignment' },
+  { href: '/crm/settings/appointment-types', label: 'Appointment Types', description: 'Services offered for booking' },
+  { href: '/crm/settings/loyalty', label: 'Loyalty Tiers', description: 'Membership tiers, credits, and perks' },
   { href: '/crm/settings/audit', label: 'Audit Log', description: 'View all system activity' },
 ];
 
@@ -21,6 +24,11 @@ export default async function SettingsPage() {
             <p className="text-sm text-neutral-500 mt-1">{s.description}</p>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-neutral-200">
+        <h2 className="text-sm font-medium text-neutral-500 mb-3">Onboarding</h2>
+        <ResetTourButton />
       </div>
     </div>
   );

@@ -6,28 +6,32 @@ interface Slot { start: string; end: string }
 
 interface Props {
   date: string;
-  staffId: string;
+  staffId?: string | null;
+  locationId?: string | null;
   duration?: number;
   value: string | null;
   onSelect: (slot: Slot) => void;
 }
 
-export function TimeSlotPicker({ date, staffId, duration = 30, value, onSelect }: Props) {
+export function TimeSlotPicker({ date, staffId, locationId, duration = 30, value, onSelect }: Props) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!date || !staffId) { setSlots([]); return; }
+    if (!date || (!staffId && !locationId)) { setSlots([]); return; }
     setLoading(true);
-    const p = new URLSearchParams({ date, staffId, duration: String(duration) });
+    const p = new URLSearchParams({ date, duration: String(duration) });
+    if (staffId) p.set('staffId', staffId);
+    if (locationId) p.set('locationId', locationId);
     fetch(`/api/crm/appointments/slots?${p}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => setSlots(d.data ?? d ?? []))
       .catch(() => setSlots([]))
       .finally(() => setLoading(false));
-  }, [date, staffId, duration]);
+  }, [date, staffId, locationId, duration]);
 
-  if (!date || !staffId) return <Msg>Select a date and staff member first.</Msg>;
+  if (!date) return <Msg>Select a date first.</Msg>;
+  if (!staffId && !locationId) return <Msg>Select a staff member or location first.</Msg>;
   if (loading) return <Msg>Loading slots…</Msg>;
   if (!slots.length) return <Msg>No available slots.</Msg>;
 

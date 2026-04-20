@@ -11,8 +11,12 @@ export interface CalendarEvent {
   startsAt: string;
   endsAt: string;
   staffId: string | null;
+  staffName?: string | null;
   locationId?: string | null;
   notes?: string | null;
+  recurrenceRule?: string | null;
+  seriesId?: string | null;
+  seriesIndex?: number | null;
 }
 
 interface Props {
@@ -51,7 +55,7 @@ function fmtWeek(start: Date) {
 }
 
 function fmtHour(h: number) { return h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h - 12} PM`; }
-function fmtTime(d: Date) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+function fmtTime(d: Date) { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); }
 
 function snapMinutes(totalMin: number) { return Math.round(totalMin / SNAP_MIN) * SNAP_MIN; }
 
@@ -71,14 +75,13 @@ type DragState =
   | { type: 'resize'; eventId: string; currentY: number; origEnd: Date };
 
 export function WeekCalendar({ weekStart, events, onEventClick, onSlotClick, onWeekChange, onEventMove, onEventResize, onQuickCreate }: Props) {
-  const today = new Date();
   const hours = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
   const gridRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState>(null);
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
-  // Update current time every minute
-  useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
+  // Initialize on client only to avoid hydration mismatch
+  useEffect(() => { setNow(new Date()); const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart); d.setDate(d.getDate() + i); return d;
@@ -193,10 +196,10 @@ export function WeekCalendar({ weekStart, events, onEventClick, onSlotClick, onW
   }, [drag, handlePointerMove, handlePointerUp]);
 
   // Current time indicator position
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = now ? now.getHours() * 60 + now.getMinutes() : 0;
   const nowY = ((nowMin - HOUR_START * 60) / 60) * HOUR_PX;
-  const showNowLine = nowMin >= HOUR_START * 60 && nowMin < HOUR_END * 60;
-  const todayIdx = days.findIndex(d => sameDay(d, today));
+  const showNowLine = now && nowMin >= HOUR_START * 60 && nowMin < HOUR_END * 60;
+  const todayIdx = now ? days.findIndex(d => sameDay(d, now)) : -1;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -217,7 +220,7 @@ export function WeekCalendar({ weekStart, events, onEventClick, onSlotClick, onW
         <div style={{ display: 'grid', gridTemplateColumns: '52px repeat(7, 1fr)', borderBottom: '1px solid var(--crm-border)' }}>
           <div />
           {days.map((d, i) => {
-            const isToday = sameDay(d, today);
+            const isToday = now ? sameDay(d, now) : false;
             return (
               <div key={i} style={{ padding: '8px 0', textAlign: 'center', borderLeft: '1px solid var(--crm-border-light)' }}>
                 <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{DAYS[i]}</div>
@@ -300,6 +303,7 @@ export function WeekCalendar({ weekStart, events, onEventClick, onSlotClick, onW
                       <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.title}</div>
                       {height > 28 && <div style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{fmtTime(s)} – {fmtTime(e)}</div>}
                       {height > 44 && ev.customerName && <div style={{ color: 'var(--crm-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.customerName}</div>}
+                      {height > 56 && ev.staffName && <div style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>↳ {ev.staffName}</div>}
                       {/* Resize handle */}
                       {onEventResize && !cancelled && (
                         <div onPointerDown={e2 => handleResizePointerDown(e2, ev)}

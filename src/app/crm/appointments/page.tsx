@@ -51,6 +51,8 @@ export default async function AppointmentsPage() {
     db.select({ id: locations.id, name: locations.name }).from(locations).where(eq(locations.active, true)),
   ]);
 
+  const staffMap = new Map(staff.map((s: any) => [s.id, `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()]));
+
   const events = rows.map(r => ({
     id: r.appointment.id,
     title: r.appointment.title,
@@ -60,8 +62,12 @@ export default async function AppointmentsPage() {
     startsAt: r.appointment.startsAt.toISOString(),
     endsAt: r.appointment.endsAt.toISOString(),
     staffId: r.appointment.staffId,
+    staffName: staffMap.get(r.appointment.staffId ?? '') || null,
     locationId: r.appointment.locationId,
     notes: r.appointment.notes,
+    recurrenceRule: r.appointment.recurrenceRule,
+    seriesId: r.appointment.seriesId,
+    seriesIndex: r.appointment.seriesIndex,
   }));
 
   return (

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
+import { track } from '@/lib/tracking';
 import type { LensConfiguration } from '@/types/configurator';
 import type { LensOption } from '@/types/metaobjects';
 import { serializeConfig } from '@/lib/configurator/serialize';
@@ -45,6 +46,7 @@ export default function AddToCartButton({
     try {
       const attributes = serializeConfig(lensConfiguration, lensOptions, frameBasePrice);
       await addToCart(variantId, 1, attributes);
+      track({ event: 'add_to_cart', data: { id: variantId, name: 'Frame', price: frameBasePrice, quantity: 1, currency: 'CAD' } });
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);

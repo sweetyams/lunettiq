@@ -3,16 +3,19 @@
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useCartDrawer } from '@/context/CartDrawerContext';
+import { useSearch } from '@/context/SearchContext';
 
 export default function SecondaryNav() {
   const { cart } = useCart();
   const { openCart } = useCartDrawer();
+  const { openSearch } = useSearch();
   const cartCount = cart?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
   return (
     <nav className="flex items-center gap-4" aria-label="Secondary navigation">
       {/* Search */}
       <button
         type="button"
+        onClick={openSearch}
         aria-label="Search"
         className="text-gray-700 transition-colors hover:text-black"
       >

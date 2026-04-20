@@ -9,13 +9,35 @@ export default async function StoresPage() {
   try {
     const all = await getStoreLocations();
     stores = all.filter((s) => s.active);
-  } catch {
-    // handled in UI
+  } catch {}
+
+  // Fallback: load from CRM database if Shopify metaobjects are empty
+  if (stores.length === 0) {
+    try {
+      const { db } = await import('@/lib/db');
+      const { locations } = await import('@/lib/db/schema');
+      const { eq } = await import('drizzle-orm');
+      const rows = await db.select().from(locations).where(eq(locations.active, true));
+      stores = rows.map(r => {
+        const addr = (r.address ?? {}) as Record<string, string>;
+        return {
+          name: r.name,
+          streetAddress: addr.address1 ?? '',
+          city: addr.city ?? 'Montreal',
+          province: addr.province ?? 'QC',
+          postalCode: addr.zip ?? '',
+          phone: addr.phone ?? '',
+          mapUrl: addr.address1 ? `https://maps.google.com/?q=${encodeURIComponent(`${addr.address1}, ${addr.city ?? 'Montreal'}`)}` : '',
+          hours: {} as Record<string, string>,
+          active: true,
+        };
+      });
+    } catch {}
   }
 
   if (stores.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-12">
+      <div className="site-container py-12">
         <h1 className="text-2xl font-medium mb-8">Our Stores</h1>
         <p className="text-gray-500">No store locations available at this time.</p>
       </div>
@@ -23,7 +45,7 @@ export default async function StoresPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="site-container py-12">
       <h1 className="text-2xl font-medium mb-8">Our Stores</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {stores.map((store) => (

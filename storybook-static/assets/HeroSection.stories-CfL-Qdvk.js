@@ -1,0 +1,12 @@
+import{n as e,s as t}from"./chunk-CzyJ72yW.js";import{t as n}from"./react-CUIZZadK.js";import{_ as r}from"./iframe-BOb_YaGJ.js";import{t as i}from"./link-CFnhLlkG.js";import{n as a,t as o}from"./image-QU13H8ke.js";import{a as s,t as c}from"./storyData-JooGbszH.js";function l({heroes:e}){let t=e.find(e=>e.active),[n,r]=(0,d.useState)(!1),[i,o]=(0,d.useState)(!1);return t?(0,u.jsxs)(`section`,{className:`relative w-full`,children:[(0,u.jsxs)(`div`,{className:`flex flex-col md:flex-row w-full`,children:[(0,u.jsx)(`div`,{className:`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${n?``:`skeleton-shimmer`}`,children:t.imageLeft&&(0,u.jsx)(a,{src:t.imageLeft,alt:t.headline||`Hero image left`,fill:!0,className:`object-cover`,priority:!0,sizes:`(max-width: 768px) 100vw, 50vw`,onLoad:()=>r(!0)})}),(0,u.jsx)(`div`,{className:`relative w-full md:w-1/2 aspect-[4/5] bg-[#F5F5F9] ${i?``:`skeleton-shimmer`}`,children:t.imageRight&&(0,u.jsx)(a,{src:t.imageRight,alt:t.headline||`Hero image right`,fill:!0,className:`object-cover`,priority:!0,sizes:`(max-width: 768px) 100vw, 50vw`,onLoad:()=>o(!0)})})]}),(t.headline||t.ctaText)&&(0,u.jsxs)(`div`,{className:`absolute inset-0 flex flex-col items-center justify-end pb-12 md:pb-16 bg-gradient-to-t from-black/40 to-transparent`,children:[t.headline&&(0,u.jsx)(`h1`,{className:`text-white text-3xl md:text-5xl font-light tracking-wide text-center mb-6 px-4`,children:t.headline}),t.ctaText&&t.ctaLink&&(0,u.jsx)(f.default,{href:t.ctaLink,className:`inline-block border border-white text-white text-sm tracking-widest uppercase px-8 py-3 hover:bg-white hover:text-black transition-colors`,children:t.ctaText})]})]}):null}var u,d,f,p=e((()=>{u=r(),d=t(n()),o(),f=t(i()),l.__docgenInfo={description:``,methods:[],displayName:`HeroSection`,props:{heroes:{required:!0,tsType:{name:`Array`,elements:[{name:`HomepageHero`}],raw:`HomepageHero[]`},description:``}}}})),m,h,g,_;e((()=>{p(),c(),m={component:l},h={args:{heroes:[s]}},g={args:{heroes:[{...s,active:!1}]}},h.parameters={...h.parameters,docs:{...h.parameters?.docs,source:{originalSource:`{
+  args: {
+    heroes: [mockHero]
+  }
+}`,...h.parameters?.docs?.source}}},g.parameters={...g.parameters,docs:{...g.parameters?.docs,source:{originalSource:`{
+  args: {
+    heroes: [{
+      ...mockHero,
+      active: false
+    }]
+  }
+}`,...g.parameters?.docs?.source}}},_=[`Default`,`NoActive`]}))();export{h as Default,g as NoActive,_ as __namedExportsOrder,m as default};

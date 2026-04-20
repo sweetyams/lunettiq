@@ -4,6 +4,7 @@ import { useState, useEffect, createContext, useContext, useCallback } from 'rea
 import { CrmSidebar } from './CrmSidebar';
 import { GlobalSearch } from './GlobalSearch';
 import { CommandPalette } from './CommandPalette';
+import CrmTour from './CrmTour';
 import Link from 'next/link';
 
 interface Toast { id: number; message: string; type: 'success' | 'error' }
@@ -53,6 +54,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           >
             <button
               onClick={() => setSearchOpen(true)}
+              data-tour="topbar-search"
               className="crm-btn-ghost flex items-center gap-2 text-xs"
               style={{ color: 'var(--crm-text-tertiary)', padding: '4px 10px', borderRadius: 'var(--crm-radius-md)', border: '1px solid var(--crm-border)' }}
             >
@@ -62,7 +64,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
             </button>
             <div style={{ flex: 1 }} />
             {/* Notification bell */}
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative' }} data-tour="topbar-notifications">
               <button onClick={() => { setNotifOpen(!notifOpen); if (!notifOpen) fetchNotifs(); }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, position: 'relative', color: 'var(--crm-text-tertiary)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -71,7 +73,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
               {notifOpen && (
                 <>
                   <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-                  <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 8, width: 360, maxHeight: 420, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-lg)', boxShadow: 'var(--crm-shadow-lg)', zIndex: 50, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <div style={{ position: 'fixed', right: 16, top: 44, width: 360, maxHeight: 420, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-lg)', boxShadow: 'var(--crm-shadow-lg)', zIndex: 50, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--crm-border-light)' }}>
                       <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>Notifications</span>
                       {unreadCount > 0 && <button onClick={markAllRead} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Mark all read</button>}
@@ -106,6 +108,9 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
 
         {/* Command palette (Cmd+K) */}
         <CommandPalette />
+
+        {/* Onboarding tour */}
+        <CrmTour />
 
         {/* Toasts */}
         <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">

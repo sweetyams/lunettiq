@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { headers } from 'next/headers';
 import { hasPermission, isValidRole, type CrmRole } from './permissions';
 
@@ -35,22 +35,14 @@ const CLERK_SECRET = () => process.env.CLERK_SECRET_KEY!;
 
 async function resolveBearer(token: string): Promise<CrmSession | null> {
   try {
-    const res = await fetch('https://api.clerk.com/v1/sessions/verify', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${CLERK_SECRET()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-    });
-    if (!res.ok) return null;
-    const session = await res.json();
-    const userId = session.user_id as string;
+    const { verifyToken } = await import('@clerk/nextjs/server');
+    const payload = await verifyToken(token, { secretKey: CLERK_SECRET() });
+    const userId = payload.sub;
     if (!userId) return null;
 
-    const userRes = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-      headers: { Authorization: `Bearer ${CLERK_SECRET()}` },
-    });
-    if (!userRes.ok) return null;
-    const user = await userRes.json();
-    return extractSession(userId, user.public_metadata ?? {});
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    return extractSession(userId, (user.publicMetadata ?? {}) as Record<string, unknown>);
   } catch {
     return null;
   }

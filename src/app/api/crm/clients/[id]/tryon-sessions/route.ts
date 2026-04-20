@@ -17,3 +17,20 @@ export const GET = handler(async (_request, ctx) => {
 
   return jsonOk(rows);
 });
+
+export const POST = handler(async (request, ctx) => {
+  const session = await requireCrmAuth('org:clients:update');
+  const body = await request.json();
+
+  const [row] = await db.insert(tryOnSessions).values({
+    shopifyCustomerId: ctx.params.id,
+    staffId: session.userId,
+    locationId: body.locationId ?? session.locationIds[0],
+    framesTried: body.framesTried ?? 0,
+    outcomeTag: body.outcomeTag ?? null,
+    notes: body.notes ?? null,
+    endedAt: body.endedAt ? new Date(body.endedAt) : null,
+  }).returning();
+
+  return jsonOk(row, 201);
+});

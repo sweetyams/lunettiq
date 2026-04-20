@@ -15,29 +15,61 @@ export const GET = handler(async (request) => {
   const url = request.nextUrl;
   const search = url.searchParams.get('q') ?? '';
   const tag = url.searchParams.get('tag');
+  const sort = url.searchParams.get('sort') ?? 'name';
+  const dir = url.searchParams.get('dir') === 'asc' ? 'asc' : 'desc';
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 50), 100);
   const offset = Number(url.searchParams.get('offset') ?? 0);
 
   const conditions = [];
+  // Hide merged customers
+  conditions.push(sql`NOT EXISTS (SELECT 1 FROM unnest(COALESCE(${customersProjection.tags}, '{}')) AS t(v) WHERE v LIKE 'merged%')`);
+
   if (search) {
-    const pattern = `%${search}%`;
-    conditions.push(
-      or(
-        ilike(customersProjection.firstName, pattern),
-        ilike(customersProjection.lastName, pattern),
-        ilike(customersProjection.email, pattern),
-        ilike(customersProjection.phone, pattern)
-      )
-    );
+    const q = search.trim();
+    const pattern = '%' + q + '%';
+    conditions.push(sql`(
+      ${customersProjection.firstName} ILIKE ${pattern}
+      OR ${customersProjection.lastName} ILIKE ${pattern}
+      OR ${customersProjection.email} ILIKE ${pattern}
+      OR ${customersProjection.phone} ILIKE ${pattern}
+      OR (${customersProjection.firstName} || ' ' || ${customersProjection.lastName}) ILIKE ${pattern}
+    )`);
   }
   if (tag) {
     conditions.push(sql`${tag} = ANY(${customersProjection.tags})`);
   }
 
+  const source = url.searchParams.get('source');
+  if (source === 'square') {
+    conditions.push(sql`${customersProjection.shopifyCustomerId} LIKE 'sq_%'`);
+  } else if (source === 'shopify') {
+    conditions.push(sql`${customersProjection.shopifyCustomerId} NOT LIKE 'sq_%'`);
+  }
+
   const where = conditions.length ? sql`${sql.join(conditions, sql` AND `)}` : undefined;
 
+  // Sort: by similarity when searching, otherwise by chosen column
+  const SORT_COLS: Record<string, any> = {
+    name: customersProjection.lastName,
+    email: customersProjection.email,
+    orders: customersProjection.orderCount,
+    ltv: customersProjection.totalSpent,
+  };
+
+  let orderBy;
+  if (search) {
+    const q = search.trim();
+    // Rank exact prefix matches first, then by last name
+    orderBy = sql`(
+      CASE WHEN ${customersProjection.firstName} ILIKE ${q + '%'} OR ${customersProjection.lastName} ILIKE ${q + '%'} THEN 0 ELSE 1 END
+    ) ASC, ${customersProjection.lastName} ASC NULLS LAST`;
+  } else {
+    const col = SORT_COLS[sort] ?? customersProjection.lastName;
+    orderBy = dir === 'asc' ? sql`${col} ASC NULLS LAST` : sql`${col} DESC NULLS LAST`;
+  }
+
   const [clients, countResult] = await Promise.all([
-    db.select().from(customersProjection).where(where).orderBy(desc(customersProjection.syncedAt)).limit(limit).offset(offset),
+    db.select().from(customersProjection).where(where).orderBy(orderBy).limit(limit).offset(offset),
     db.select({ count: sql<number>`count(*)` }).from(customersProjection).where(where),
   ]);
 

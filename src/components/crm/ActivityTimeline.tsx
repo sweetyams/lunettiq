@@ -8,12 +8,13 @@ interface Entry {
   type: string;
   summary: string;
   date: string;
+  details?: { productImageUrl?: string; metadata?: { productId?: string } };
 }
 
 const FILTERS = ['All', 'Orders', 'Notes', 'Calls', 'Credits', 'Appointments'] as const;
 const FILTER_MAP: Record<string, string> = { Orders: 'order', Notes: 'note', Calls: 'call', Credits: 'credit', Appointments: 'appointment' };
 const ICONS: Record<string, string> = {
-  order: '🛍️', note: '📝', call: '📞', visit: '🏪', credit: '💰', appointment: '📅',
+  order: '🛍️', note: '📝', call: '📞', visit: '🏪', credit: '💰', appointment: '📅', product_recommendation: '👓',
 };
 
 export function ActivityTimeline({ customerId }: { customerId: string }) {
@@ -73,6 +74,9 @@ export function ActivityTimeline({ customerId }: { customerId: string }) {
           return (
             <div key={e.id} className="crm-card" style={{ padding: 'var(--crm-space-3)', display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', position: 'relative' }}>
               <span style={{ fontSize: 18 }}>{ICONS[e.type] ?? '📌'}</span>
+              {e.details?.productImageUrl && (
+                <img src={e.details.productImageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 'var(--crm-radius-sm)', objectFit: 'cover', flexShrink: 0 }} />
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 {editingId === e.id ? (
                   <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>

@@ -49,7 +49,7 @@ export default async function JournalArticlePage({
   }
 
   return (
-    <article className="max-w-3xl mx-auto px-6 py-12">
+    <article className="site-container py-12">
       {article.image && (
         <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden mb-8">
           <Image

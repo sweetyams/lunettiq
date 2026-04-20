@@ -1,0 +1,5 @@
+import{n as e}from"./chunk-CzyJ72yW.js";import{_ as t}from"./iframe-BOb_YaGJ.js";import{n,r,t as i}from"./Stagger-DRspkr3V.js";var a,o,s,c;e((()=>{a=t(),r(),o={component:i,title:`Shared/Stagger`},s={render:()=>(0,a.jsx)(i,{className:`space-y-4`,children:[`Plateau Round`,`Dix30 Aviator`,`Signature Cat-Eye`].map(e=>(0,a.jsx)(n,{children:(0,a.jsx)(`div`,{className:`p-4 border rounded`,children:e})},e))})},s.parameters={...s.parameters,docs:{...s.parameters?.docs,source:{originalSource:`{
+  render: () => <StaggerContainer className="space-y-4">
+      {['Plateau Round', 'Dix30 Aviator', 'Signature Cat-Eye'].map(t => <StaggerItem key={t}><div className="p-4 border rounded">{t}</div></StaggerItem>)}
+    </StaggerContainer>
+}`,...s.parameters?.docs?.source}}},c=[`Default`]}))();export{s as Default,c as __namedExportsOrder,o as default};

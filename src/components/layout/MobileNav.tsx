@@ -71,7 +71,7 @@ export default function MobileNav() {
   return (
     <div className="lg:hidden">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
+      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
         <Link href="/" className="text-lg font-semibold tracking-wide text-black">
           Lunettiq
         </Link>

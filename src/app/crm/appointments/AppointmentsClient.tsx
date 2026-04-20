@@ -6,6 +6,7 @@ import { StaffPicker, StaffMember } from '@/components/crm/StaffPicker';
 import { TimeSlotPicker } from '@/components/crm/TimeSlotPicker';
 import { ClientPicker } from '@/components/crm/ClientPicker';
 import { useToast } from '@/components/crm/CrmShell';
+import { buildRRule, describeRule } from '@/lib/crm/recurrence';
 import Link from 'next/link';
 
 type Panel =
@@ -43,7 +44,11 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
     if (sid) p.set('staffId', sid);
     if (lid) p.set('locationId', lid);
     const res = await fetch(`/api/crm/appointments?${p}`, { credentials: 'include' });
-    if (res.ok) { const d = await res.json(); setEvents(d.data ?? []); }
+    if (res.ok) {
+      const d = await res.json();
+      const staffMap = new Map(staff.map(s => [s.id, `${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()]));
+      setEvents((d.data ?? []).map((e: any) => ({ ...e, staffName: staffMap.get(e.staffId) || null })));
+    }
   }, []);
 
   const [mounted, setMounted] = useState(false);
@@ -65,6 +70,14 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
       body: JSON.stringify({ status }),
     });
     if (res.ok) { toast(`Marked as ${status}`); setPanel(null); fetchEvents(weekStart, staffFilter, locationFilter); }
+    else { const e = await res.json().catch(() => ({})); toast(e.error || 'Failed', 'error'); }
+  }
+
+  async function handleDelete(id: string, mode: 'this' | 'all') {
+    const res = await fetch(`/api/crm/appointments/${id}?mode=${mode}`, {
+      method: 'DELETE', credentials: 'include',
+    });
+    if (res.ok) { toast(mode === 'all' ? 'Series cancelled' : 'Appointment cancelled'); setPanel(null); fetchEvents(weekStart, staffFilter, locationFilter); }
     else { const e = await res.json().catch(() => ({})); toast(e.error || 'Failed', 'error'); }
   }
 
@@ -118,7 +131,7 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
           </div>
 
           {panel.mode === 'view' && (
-            <ViewPanel event={panel.event} locations={locations} onStatusChange={handleStatusChange} />
+            <ViewPanel event={panel.event} locations={locations} onStatusChange={handleStatusChange} onDelete={handleDelete} />
           )}
           {panel.mode === 'create' && (
             <CreatePanel
@@ -138,17 +151,23 @@ export function AppointmentsClient({ initialEvents, initialWeekStart, staff, loc
 
 /* ── View Panel ─────────────────────────────────────── */
 
-function ViewPanel({ event, locations, onStatusChange }: { event: CalendarEvent; locations: Location[]; onStatusChange: (id: string, status: string) => void }) {
+function ViewPanel({ event, locations, onStatusChange, onDelete }: {
+  event: CalendarEvent; locations: Location[];
+  onStatusChange: (id: string, status: string) => void;
+  onDelete: (id: string, mode: 'this' | 'all') => void;
+}) {
+  const [deleteConfirm, setDeleteConfirm] = useState<null | 'this' | 'all'>(null);
   const s = new Date(event.startsAt), e = new Date(event.endsAt);
   const dateFmt = s.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const timeFmt = `${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   const locName = locations.find(l => l.id === (event as any).locationId)?.name;
+  const isSeries = !!event.seriesId;
 
   const actions: { label: string; status: string; accent?: boolean }[] = [];
   if (event.status === 'scheduled') {
-    actions.push({ label: 'Confirm', status: 'confirmed', accent: true }, { label: 'Cancel', status: 'cancelled' });
+    actions.push({ label: 'Confirm', status: 'confirmed', accent: true });
   } else if (event.status === 'confirmed') {
-    actions.push({ label: 'Complete', status: 'completed', accent: true }, { label: 'No Show', status: 'no_show' }, { label: 'Cancel', status: 'cancelled' });
+    actions.push({ label: 'Complete', status: 'completed', accent: true }, { label: 'No Show', status: 'no_show' });
   }
 
   return (
@@ -163,6 +182,9 @@ function ViewPanel({ event, locations, onStatusChange }: { event: CalendarEvent;
         <span className="crm-badge" style={{ background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)' }}>{event.status}</span>
       </Field>
       {locName && <Field label="Location">{locName}</Field>}
+      {event.staffName && <Field label="Staff">{event.staffName}</Field>}
+      {event.recurrenceRule && <Field label="Recurrence">{describeRule(event.recurrenceRule)}</Field>}
+      {isSeries && !event.recurrenceRule && <Field label="Series">Instance #{(event.seriesIndex ?? 0) + 1}</Field>}
       {(event as any).notes && <Field label="Notes">{(event as any).notes}</Field>}
       {actions.length > 0 && (
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)', flexWrap: 'wrap', marginTop: 'var(--crm-space-2)' }}>
@@ -172,6 +194,30 @@ function ViewPanel({ event, locations, onStatusChange }: { event: CalendarEvent;
               {a.label}
             </button>
           ))}
+        </div>
+      )}
+      {(event.status === 'scheduled' || event.status === 'confirmed') && (
+        <div style={{ marginTop: 'var(--crm-space-2)' }}>
+          {deleteConfirm === null ? (
+            <button onClick={() => setDeleteConfirm('this')} className="crm-btn crm-btn-secondary" style={{ color: 'var(--crm-danger, #dc2626)' }}>
+              Cancel{isSeries ? '…' : ''}
+            </button>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--crm-space-2)', padding: 'var(--crm-space-3)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)' }}>
+              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>Cancel appointment?</div>
+              <button onClick={() => { onDelete(event.id, 'this'); setDeleteConfirm(null); }} className="crm-btn crm-btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
+                This appointment only
+              </button>
+              {isSeries && (
+                <button onClick={() => { onDelete(event.id, 'all'); setDeleteConfirm(null); }} className="crm-btn crm-btn-secondary" style={{ width: '100%', justifyContent: 'center', color: 'var(--crm-danger, #dc2626)' }}>
+                  Entire series
+                </button>
+              )}
+              <button onClick={() => setDeleteConfirm(null)} className="crm-btn crm-btn-ghost" style={{ width: '100%', justifyContent: 'center', fontSize: 'var(--crm-text-xs)' }}>
+                Never mind
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -193,6 +239,17 @@ function CreatePanel({ date, hour, staff, locations, onCreated, toast }: {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [recFreq, setRecFreq] = useState('');
+  const [recCount, setRecCount] = useState(4);
+  const [apptTypes, setApptTypes] = useState<{ id: string; name: string; durationMinutes: number; bufferMinutes: number }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/crm/appointment-types', { credentials: 'include' })
+      .then(r => r.json()).then(d => setApptTypes(d.data ?? [])).catch(() => {});
+  }, []);
+
+  const selectedType = apptTypes.find(t => t.name === title);
+  const recurrenceRule = recFreq ? buildRRule({ freq: recFreq, count: recCount }) : undefined;
 
   async function handleSubmit() {
     if (!title || !slot) return;
@@ -204,6 +261,8 @@ function CreatePanel({ date, hour, staff, locations, onCreated, toast }: {
         title, customerId: client?.id || null, staffId: staffId || undefined,
         startsAt: slot.start, endsAt: slot.end, notes: notes || undefined,
         locationId: locationId || undefined,
+        buffer: selectedType?.bufferMinutes ?? 0,
+        recurrenceRule,
       }),
     });
     if (res.ok) { toast('Appointment created'); onCreated(); }
@@ -214,8 +273,11 @@ function CreatePanel({ date, hour, staff, locations, onCreated, toast }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--crm-space-4)' }}>
       <div>
-        <Label>Title</Label>
-        <input value={title} onChange={e => setTitle(e.target.value)} className="crm-input" style={{ width: '100%' }} placeholder="Fitting, Consultation…" />
+        <Label>Reason</Label>
+        <select value={title} onChange={e => setTitle(e.target.value)} className="crm-input" style={{ width: '100%' }}>
+          <option value="">Select type…</option>
+          {apptTypes.map(t => <option key={t.id} value={t.name}>{t.name} ({t.durationMinutes}min)</option>)}
+        </select>
       </div>
       <div>
         <Label>Client</Label>
@@ -242,18 +304,47 @@ function CreatePanel({ date, hour, staff, locations, onCreated, toast }: {
         <Label>Date</Label>
         <input type="date" value={selectedDate} onChange={e => { setSelectedDate(e.target.value); setSlot(null); }} className="crm-input" style={{ width: '100%' }} />
       </div>
-      {staffId && selectedDate && (
+      {selectedDate && (staffId || locationId) && (
         <div>
           <Label>Time</Label>
-          <TimeSlotPicker date={selectedDate} staffId={staffId} value={slot?.start ?? null} onSelect={setSlot} />
+          <TimeSlotPicker date={selectedDate} staffId={staffId} locationId={locationId} value={slot?.start ?? null} onSelect={setSlot} />
+          {slot && (
+            <div suppressHydrationWarning style={{ marginTop: 6, fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-primary)', background: 'var(--crm-surface-hover)', padding: '8px 12px', borderRadius: 'var(--crm-radius-sm)' }}>
+              {new Date(slot.start).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {' · '}
+              {new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {' – '}
+              {new Date(slot.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          )}
         </div>
       )}
       <div>
         <Label>Notes</Label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)} className="crm-input" style={{ width: '100%', minHeight: 60, resize: 'vertical' }} />
       </div>
+      <div>
+        <Label>Repeat</Label>
+        <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
+          <select value={recFreq} onChange={e => setRecFreq(e.target.value)} className="crm-input" style={{ flex: 1 }}>
+            <option value="">No repeat</option>
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+          </select>
+          {recFreq && (
+            <input type="number" min={2} max={52} value={recCount} onChange={e => setRecCount(Number(e.target.value))}
+              className="crm-input" style={{ width: 64, textAlign: 'center' }} />
+          )}
+        </div>
+        {recurrenceRule && (
+          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 4 }}>
+            {describeRule(recurrenceRule)}
+          </div>
+        )}
+      </div>
       <button onClick={handleSubmit} disabled={saving || !title || !slot} className="crm-btn crm-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-        {saving ? 'Creating…' : 'Create Appointment'}
+        {saving ? 'Creating…' : recurrenceRule ? 'Create Series' : 'Create Appointment'}
       </button>
       <ClientPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={c => { setClient(c); setPickerOpen(false); }} />
     </div>

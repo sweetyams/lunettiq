@@ -6,27 +6,45 @@ import Link from 'next/link';
 import type { Product } from '@/types/shopify';
 import FavouriteIcon from './FavouriteIcon';
 
-interface ProductCardProps {
-  product: Product;
-  className?: string;
-  prefetch?: boolean;
+export interface ProductCardLightProps {
+  id: string;
+  handle: string;
+  title: string;
+  imageUrl: string | null;
+  price: string | null;
+  vendor?: string | null;
 }
 
-function ProductCard({ product, className, prefetch }: ProductCardProps) {
+type ProductCardProps = {
+  className?: string;
+  prefetch?: boolean;
+  onClick?: () => void;
+} & (
+  | { product: Product; light?: never }
+  | { light: ProductCardLightProps; product?: never }
+);
+
+function ProductCard({ product, light, className, prefetch, onClick }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const primaryImage = product.images[0];
-  const secondaryImage = product.images[1];
-  const hasSecondImage = !!secondaryImage;
+  // Derive common fields from either source
+  const handle = product?.handle ?? light!.handle;
+  const title = product?.title ?? light!.title;
+  const id = product?.id ?? light!.id;
 
-  const price = product.priceRange.minVariantPrice;
-  const formattedPrice = new Intl.NumberFormat('en-CA', {
-    style: 'currency',
-    currency: price.currencyCode || 'CAD',
-  }).format(Number(price.amount));
+  const primaryImageUrl = product ? product.images[0]?.url : light!.imageUrl;
+  const primaryAlt = product ? (product.images[0]?.altText || title) : title;
+  const secondaryImageUrl = product?.images[1]?.url ?? null;
+  const hasSecondImage = !!secondaryImageUrl;
 
-  const colorOption = product.options.find(
+  const formattedPrice = product
+    ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: product.priceRange.minVariantPrice.currencyCode || 'CAD' }).format(Number(product.priceRange.minVariantPrice.amount))
+    : light!.price ? `$${Number(light!.price).toFixed(0)}` : null;
+
+  const vendor = product ? undefined : light?.vendor;
+
+  const colorOption = product?.options.find(
     (opt) => opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
   );
   const colorCount = colorOption?.values.length ?? 0;
@@ -34,36 +52,41 @@ function ProductCard({ product, className, prefetch }: ProductCardProps) {
 
   return (
     <Link
-      href={`/products/${product.handle}`}
+      href={`/products/${handle}`}
       prefetch={prefetch}
-      className={`group block flex-shrink-0 ${className ?? 'w-[calc(50%-12px)] md:w-[calc(25%-36px)]'}`}
+      onClick={onClick}
+      className={`group block flex-shrink-0 ${className ?? 'w-[calc(50%-12px)] md:w-[calc(33.333%-16px)]'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`relative bg-[#F5F5F9] overflow-hidden ${!loaded ? 'skeleton-shimmer' : ''}`}
+        className="relative bg-[#F5F5F9] overflow-hidden"
         style={{ aspectRatio: '463/579' }}
       >
-        <div className="absolute top-2 right-2 z-10">
-          <FavouriteIcon productId={product.id} />
-        </div>
-        {primaryImage && (
+        {product && (
+          <div className="absolute top-2 right-2 z-10">
+            <FavouriteIcon productId={id} />
+          </div>
+        )}
+        {primaryImageUrl ? (
           <Image
-            src={primaryImage.url}
-            alt={primaryImage.altText || product.title}
+            src={primaryImageUrl}
+            alt={primaryAlt}
             fill
-            className={`object-cover transition-opacity duration-300 ${
-              isHovered && hasSecondImage ? 'opacity-0' : 'opacity-100'
+            className={`object-cover transition-opacity duration-500 ${
+              loaded ? (isHovered && hasSecondImage ? 'opacity-0' : 'opacity-100') : 'opacity-0'
             }`}
             sizes="(max-width: 768px) 50vw, 25vw"
             onLoad={() => setLoaded(true)}
-            style={{ viewTransitionName: `product-image-${product.handle}` }}
+            style={{ viewTransitionName: `product-image-${handle}` }}
           />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-3xl">👓</div>
         )}
         {hasSecondImage && (
           <Image
-            src={secondaryImage.url}
-            alt={secondaryImage.altText || `${product.title} alternate`}
+            src={secondaryImageUrl!}
+            alt={`${title} alternate`}
             fill
             className={`object-cover transition-opacity duration-300 ${
               isHovered ? 'opacity-100' : 'opacity-0'
@@ -74,8 +97,12 @@ function ProductCard({ product, className, prefetch }: ProductCardProps) {
       </div>
 
       <div className="mt-3 space-y-1">
-        <p className="text-sm leading-tight">{product.title}</p>
-        <p className="text-sm text-gray-600">from {formattedPrice}</p>
+        <p className="text-sm leading-tight">{title}</p>
+        {formattedPrice && (
+          <p className="text-sm text-gray-600">
+            {vendor ? `${vendor} · ` : product ? 'from ' : ''}{formattedPrice}
+          </p>
+        )}
         {colorCount > 0 && (
           <p className="text-xs text-gray-500">
             {colorCount} colour{colorCount !== 1 ? 's' : ''}{firstColor ? ` – ${firstColor}` : ''}
@@ -87,5 +114,5 @@ function ProductCard({ product, className, prefetch }: ProductCardProps) {
 }
 
 export default memo(ProductCard, (prev, next) =>
-  prev.product.id === next.product.id
+  (prev.product?.id ?? prev.light?.id) === (next.product?.id ?? next.light?.id)
 );

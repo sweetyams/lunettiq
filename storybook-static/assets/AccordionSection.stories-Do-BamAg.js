@@ -1,0 +1,14 @@
+import{n as e,s as t}from"./chunk-CzyJ72yW.js";import{t as n}from"./react-CUIZZadK.js";import{_ as r}from"./iframe-BOb_YaGJ.js";import{t as i,u as a}from"./storyData-JooGbszH.js";function o({id:e,title:t,isOpen:n,onToggle:r,children:i}){let a=(0,c.useRef)(null),[o,l]=(0,c.useState)(0);return(0,c.useEffect)(()=>{a.current&&l(a.current.scrollHeight)},[n,i]),(0,s.jsxs)(`div`,{className:`border-b border-gray-200`,children:[(0,s.jsxs)(`button`,{onClick:()=>r(e),className:`w-full flex items-center justify-between py-4 text-left text-sm font-medium hover:text-gray-600 transition-colors`,"aria-expanded":n,"aria-controls":`accordion-content-${e}`,children:[(0,s.jsx)(`span`,{children:t}),(0,s.jsx)(`svg`,{width:`16`,height:`16`,viewBox:`0 0 16 16`,fill:`none`,className:`transition-transform duration-200 ${n?`rotate-180`:``}`,"aria-hidden":`true`,children:(0,s.jsx)(`path`,{d:`M4 6L8 10L12 6`,stroke:`currentColor`,strokeWidth:`1.5`,strokeLinecap:`round`,strokeLinejoin:`round`})})]}),(0,s.jsx)(`div`,{id:`accordion-content-${e}`,role:`region`,"aria-labelledby":`accordion-header-${e}`,className:`overflow-hidden transition-[max-height] duration-200 ease-in-out`,style:{maxHeight:n?o:0},children:(0,s.jsx)(`div`,{ref:a,className:`pb-4`,children:i})})]})}var s,c,l=e((()=>{s=r(),c=t(n()),o.__docgenInfo={description:``,methods:[],displayName:`AccordionSection`,props:{id:{required:!0,tsType:{name:`string`},description:``},title:{required:!0,tsType:{name:`string`},description:``},isOpen:{required:!0,tsType:{name:`boolean`},description:``},onToggle:{required:!0,tsType:{name:`signature`,type:`function`,raw:`(id: string) => void`,signature:{arguments:[{type:{name:`string`},name:`id`}],return:{name:`void`}}},description:``},children:{required:!0,tsType:{name:`ReactReactNode`,raw:`React.ReactNode`},description:``}}}})),u,d,f,p,m;e((()=>{u=r(),l(),i(),d={component:o},f={args:{id:`details`,title:`Frame Details`,isOpen:!0,onToggle:a,children:(0,u.jsx)(`p`,{className:`text-sm text-gray-600`,children:`Italian acetate, spring hinges, UV400 lenses.`})}},p={args:{...f.args,isOpen:!1}},f.parameters={...f.parameters,docs:{...f.parameters?.docs,source:{originalSource:`{
+  args: {
+    id: 'details',
+    title: 'Frame Details',
+    isOpen: true,
+    onToggle: noop,
+    children: <p className="text-sm text-gray-600">Italian acetate, spring hinges, UV400 lenses.</p>
+  }
+}`,...f.parameters?.docs?.source}}},p.parameters={...p.parameters,docs:{...p.parameters?.docs,source:{originalSource:`{
+  args: {
+    ...Open.args,
+    isOpen: false
+  }
+}`,...p.parameters?.docs?.source}}},m=[`Open`,`Closed`]}))();export{p as Closed,f as Open,m as __namedExportsOrder,d as default};

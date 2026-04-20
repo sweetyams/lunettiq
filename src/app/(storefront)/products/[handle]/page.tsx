@@ -35,7 +35,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     return (
       <>
         <ProductClient product={product} lensOptions={lensOptions} />
-        <Suspense fallback={<div className="px-4 md:px-8 py-12 space-y-8">
+        <Suspense fallback={<div className="site-container py-12 space-y-8">
           <div className="h-64 bg-[#F5F5F9] animate-pulse rounded" />
           <div className="h-48 bg-[#F5F5F9] animate-pulse rounded" />
         </div>}>
@@ -46,7 +46,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   } catch (error) {
     console.error('Product page error:', error);
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] px-6">
+      <div className="site-container flex flex-col items-center justify-center min-h-[50vh]">
         <p className="text-lg text-gray-600 mb-4">Unable to load product. Please try again.</p>
         <a
           href={`/products/${handle}`}

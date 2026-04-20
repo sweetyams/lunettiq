@@ -5,7 +5,11 @@ import Footer from '@/components/layout/Footer';
 import { CartProvider } from '@/context/CartContext';
 import { CartDrawerProvider } from '@/context/CartDrawerContext';
 import { WishlistProvider } from '@/context/WishlistContext';
+import { SearchProvider } from '@/context/SearchContext';
 import CartDrawer from '@/components/cart/CartDrawer';
+import TrackingPixels from '@/components/tracking/TrackingPixels';
+import ConsentBanner from '@/components/tracking/ConsentBanner';
+import PageViewTracker from '@/components/tracking/PageViewTracker';
 
 export default function StorefrontLayout({
   children,
@@ -16,12 +20,17 @@ export default function StorefrontLayout({
     <CartProvider>
       <CartDrawerProvider>
         <WishlistProvider>
-          <AnnouncementBar />
-          <Header />
-          <MobileNav />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-          <CartDrawer />
+          <SearchProvider>
+            <AnnouncementBar />
+            <Header />
+            <MobileNav />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+            <CartDrawer />
+            <TrackingPixels />
+            <PageViewTracker />
+            <ConsentBanner />
+          </SearchProvider>
         </WishlistProvider>
       </CartDrawerProvider>
     </CartProvider>

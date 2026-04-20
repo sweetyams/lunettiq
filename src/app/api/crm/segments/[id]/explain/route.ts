@@ -10,7 +10,8 @@ import { logAiRequest, checkDailyBudget } from '@/lib/crm/ai-usage';
 
 export const POST = handler(async (_request, ctx) => {
   const session = await requireCrmAuth('org:segments:read');
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const { getKey } = await import('@/lib/crm/integration-keys');
+    const apiKey = await getKey('ANTHROPIC_API_KEY');
   if (!apiKey) return jsonError('ANTHROPIC_API_KEY not configured', 500);
   if (!(await checkDailyBudget())) return jsonError('Daily AI budget reached', 429);
 

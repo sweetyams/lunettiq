@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
-import { interactions, ordersProjection, creditsLedger, appointments } from '@/lib/db/schema';
+import { interactions, ordersProjection, creditsLedger, appointments, productsProjection } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
@@ -35,7 +35,7 @@ export const GET = handler(async (request, ctx) => {
       entries.push({
         id: `int-${r.id}`, type: r.type ?? 'note', date: (r.occurredAt ?? new Date()).toISOString(),
         summary: r.subject || r.body?.slice(0, 100) || r.type || 'Interaction',
-        details: { body: r.body, staffId: r.staffId, direction: r.direction },
+        details: { body: r.body, staffId: r.staffId, direction: r.direction, metadata: r.metadata },
       });
     }
   }
@@ -85,6 +85,24 @@ export const GET = handler(async (request, ctx) => {
   // Sort all by date desc, take limit
   entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const page = entries.slice(0, limit);
+
+  // Enrich recommendation entries with product images
+  const recProductIds = page.filter(e => e.details?.metadata && (e.details.metadata as any).productId).map(e => (e.details!.metadata as any).productId);
+  if (recProductIds.length) {
+    const products = await db.select({ id: productsProjection.shopifyProductId, images: productsProjection.images })
+      .from(productsProjection)
+      .where(sql`${productsProjection.shopifyProductId} = ANY(ARRAY[${sql.join(recProductIds.map((id: string) => sql`${id}`), sql`, `)}])`);
+    const imgMap = new Map(products.map(p => {
+      const imgs = (p.images ?? []) as Array<string | { src?: string }>;
+      const img = typeof imgs[0] === 'string' ? imgs[0] : imgs[0]?.src ?? null;
+      return [p.id, img];
+    }));
+    for (const e of page) {
+      const pid = (e.details?.metadata as any)?.productId;
+      if (pid && imgMap.has(pid)) (e.details as any).productImageUrl = imgMap.get(pid);
+    }
+  }
+
   const nextCursor = page.length === limit ? page[page.length - 1].date : null;
 
   return jsonOk({ data: page, nextCursor });

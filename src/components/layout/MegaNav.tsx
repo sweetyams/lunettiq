@@ -48,7 +48,7 @@ export default function MegaNav({ isOpen, onClose }: MegaNavProps) {
       className="absolute left-0 top-full z-50 w-full border-b border-gray-200 bg-white shadow-md"
       role="menu"
     >
-      <div className="mx-auto grid max-w-5xl grid-cols-2 gap-6 px-8 py-8 sm:grid-cols-4">
+      <div className="site-container grid grid-cols-2 gap-6 py-8 sm:grid-cols-4">
         {subCollections.map((item) => (
           <Link
             key={item.href}

@@ -1,6 +1,6 @@
 // PLP filter and sort types
 
-export type SortOption = 'relevance' | 'price-asc' | 'price-desc' | 'newest';
+export type SortOption = 'relevance' | 'for-you' | 'price-asc' | 'price-desc' | 'newest';
 
 export interface PLPFilters {
   shape: string[];

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { track } from '@/lib/tracking';
 
 interface VirtualTryOnProps {
   /** Front-facing transparent frame image, or fallback product image */
@@ -46,6 +47,7 @@ export default function VirtualTryOn({ frameImageUrl, frameName }: VirtualTryOnP
   const start = useCallback(async () => {
     setStatus('loading');
     setErrorMsg('');
+    track({ event: 'virtual_tryon_start', data: { productId: frameName } });
 
     try {
       // Start camera and load model in parallel

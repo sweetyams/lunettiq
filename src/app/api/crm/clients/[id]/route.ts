@@ -12,6 +12,7 @@ import { normalizeEmail, normalizePhone, normalizeName } from '@/lib/crm/normali
 export const GET = handler(async (_request, ctx) => {
   await requireCrmAuth();
   const id = ctx.params.id;
+  console.log('[CLIENT GET] id:', id, typeof id);
 
   const [client, orders, timeline, intakes, appts, prefs] = await Promise.all([
     db.select().from(customersProjection).where(eq(customersProjection.shopifyCustomerId, id)).then(r => r[0]),

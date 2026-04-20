@@ -7,7 +7,7 @@ import { aggregateCustomerData } from '@/lib/crm/segment-aggregator';
 import { logAiRequest, checkDailyBudget } from '@/lib/crm/ai-usage';
 import { evaluateSegmentRules } from '@/lib/crm/segment-rules';
 
-const AVAILABLE_FIELDS = ['order_count', 'total_spent', 'average_order_value', 'tags', 'membership_tier', 'accepts_marketing', 'sms_consent', 'days_since_last_order', 'last_order_date', 'days_since_created', 'created_at', 'face_shape', 'rx_on_file', 'home_location', 'interaction_count', 'postal_prefix', 'first_name', 'last_name', 'email'];
+const AVAILABLE_FIELDS = ['order_count', 'total_spent', 'average_order_value', 'tags', 'membership_tier', 'membership_status', 'credit_balance', 'is_member', 'member_since', 'accepts_marketing', 'sms_consent', 'days_since_last_order', 'last_order_date', 'days_since_created', 'created_at', 'face_shape', 'rx_on_file', 'home_location', 'interaction_count', 'postal_prefix', 'first_name', 'last_name', 'email'];
 
 const SYSTEM_PROMPT = `You are a CRM analyst for Lunettiq, a luxury eyewear brand in Montreal. You analyze aggregated customer data (never individual PII) and suggest actionable customer segments.
 
@@ -15,12 +15,17 @@ Return JSON: { "segments": [ { "name": string, "description": string, "reasoning
 
 Available fields: ${AVAILABLE_FIELDS.join(', ')}
 Available operators: equals, not_equals, gt, lt, contains, in_last_n_days, tag_includes
-Membership tiers (use value without member- prefix): essential, cult, vault
+Membership tiers (for membership_tier field): essential, cult, vault
+Membership statuses (for membership_status field): active, paused, cancelled
+is_member: true/false (whether customer has any membership)
+credit_balance: numeric, the customer's current store credit balance
+member_since: date field for when they joined
 Return ONLY valid JSON, no markdown fences.`;
 
 export const POST = handler(async (request) => {
   const session = await requireCrmAuth('org:segments:create');
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const { getKey } = await import('@/lib/crm/integration-keys');
+    const apiKey = await getKey('ANTHROPIC_API_KEY');
   if (!apiKey) return jsonError('ANTHROPIC_API_KEY not configured', 500);
 
   if (!(await checkDailyBudget())) return jsonError('Daily AI budget reached', 429);

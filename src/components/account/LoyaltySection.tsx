@@ -1,4 +1,5 @@
 import type { LoyaltyData } from '@/types/customer';
+import Link from 'next/link';
 
 const TIER_CONFIG: Record<string, { label: string; color: string; benefits: string[] }> = {
   essential: {
@@ -41,19 +42,19 @@ export default function LoyaltySection({ loyalty }: LoyaltySectionProps) {
     return (
       <div>
         <h2 className="text-lg font-medium mb-4">Loyalty</h2>
-        <div className="border border-gray-200 rounded-lg p-6">
-          <p className="text-sm text-gray-500">Loyalty information unavailable.</p>
+        <div className="border border-gray-200 rounded-lg p-6 text-center">
+          <p className="text-lg mb-1">◆</p>
+          <p className="text-sm font-medium mb-1">Join Lunettiq Membership</p>
+          <p className="text-sm text-gray-500 mb-4">Monthly credits, exclusive access, and a named optician who knows your style.</p>
+          <Link href="/pages/membership" className="inline-block px-6 py-2.5 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-colors">
+            View Plans
+          </Link>
         </div>
       </div>
     );
   }
 
   const tierInfo = TIER_CONFIG[loyalty.tier] ?? TIER_CONFIG.essential;
-  const progress =
-    loyalty.nextTierThreshold > 0
-      ? Math.min((loyalty.points / loyalty.nextTierThreshold) * 100, 100)
-      : 100;
-  const isMaxTier = loyalty.tier === 'vault';
 
   return (
     <div>
@@ -68,31 +69,8 @@ export default function LoyaltySection({ loyalty }: LoyaltySectionProps) {
           >
             {tierInfo.label}
           </span>
-          <span className="text-sm text-gray-500">{loyalty.points} points</span>
+          {loyalty.points > 0 && <span className="text-sm text-gray-500">{loyalty.points} points</span>}
         </div>
-
-        {/* Progress bar */}
-        {!isMaxTier && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-              <span>{loyalty.points} pts</span>
-              <span>{loyalty.nextTierThreshold} pts</span>
-            </div>
-            <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-black rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {loyalty.nextTierThreshold - loyalty.points} points to next tier
-            </p>
-          </div>
-        )}
-
-        {isMaxTier && (
-          <p className="text-xs text-gray-500 mb-4">You&apos;ve reached the highest tier!</p>
-        )}
 
         {/* Benefits */}
         <div>
@@ -106,6 +84,15 @@ export default function LoyaltySection({ loyalty }: LoyaltySectionProps) {
             ))}
           </ul>
         </div>
+
+        {/* Upgrade CTA */}
+        {loyalty.tier !== 'vault' && (
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <Link href="/pages/membership" className="text-xs text-gray-500 hover:text-black underline">
+              Upgrade your plan →
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

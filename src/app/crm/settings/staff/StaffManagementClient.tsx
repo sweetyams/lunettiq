@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/crm/CrmShell';
+import { StaffScheduleEditor } from '@/components/crm/StaffScheduleEditor';
 import { useRouter } from 'next/navigation';
 
 interface StaffMember {
@@ -85,7 +86,7 @@ export function StaffManagementClient({ staff: initialStaff, invitations: initia
       )}
 
       {/* Staff table */}
-      <div className="crm-card" style={{ overflow: 'hidden' }}>
+      <div className="crm-card" style={{ overflow: 'visible' }}>
         <table className="crm-table">
           <thead>
             <tr>
@@ -175,6 +176,7 @@ function ActionsMenu({ staff: s, onEditRole, apiCall, toast, refresh }: {
   const [open, setOpen] = useState(false);
   const [confirmOffboard, setConfirmOffboard] = useState(false);
   const [editLocs, setEditLocs] = useState(false);
+  const [editSchedule, setEditSchedule] = useState(false);
 
   if (s.offboarded) return null;
 
@@ -187,6 +189,7 @@ function ActionsMenu({ staff: s, onEditRole, apiCall, toast, refresh }: {
           <div className="crm-card" style={{ position: 'absolute', right: 0, top: '100%', zIndex: 41, padding: 'var(--crm-space-1)', minWidth: 160, boxShadow: 'var(--crm-shadow-lg)' }}>
             <MenuBtn onClick={() => { setOpen(false); onEditRole(); }}>Edit role</MenuBtn>
             <MenuBtn onClick={() => { setOpen(false); setEditLocs(true); }}>Edit locations</MenuBtn>
+            <MenuBtn onClick={() => { setOpen(false); setEditSchedule(true); }}>Schedule</MenuBtn>
             {!s.banned && <MenuBtn onClick={async () => {
               await apiCall(`/api/crm/staff/${s.id}/suspend`, { method: 'POST', body: JSON.stringify({ action: 'suspend' }) });
               toast('Staff suspended'); setOpen(false); refresh();
@@ -204,6 +207,7 @@ function ActionsMenu({ staff: s, onEditRole, apiCall, toast, refresh }: {
         toast('Locations updated'); setEditLocs(false); refresh();
       }} onCancel={() => setEditLocs(false)} />}
       {confirmOffboard && <OffboardModal staffId={s.id} name={`${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()} apiCall={apiCall} toast={toast} refresh={refresh} onClose={() => setConfirmOffboard(false)} />}
+      {editSchedule && <StaffScheduleEditor staffId={s.id} staffName={`${s.firstName ?? ''} ${s.lastName ?? ''}`.trim()} onClose={() => setEditSchedule(false)} />}
     </div>
   );
 }

@@ -37,13 +37,23 @@ function ConfigSummaryLine({ item }: { item: CartLineItem }) {
     .map((a) => ({ label: CONFIG_LABELS[a.key] ?? a.key, value: formatAttrValue(a.key, a.value) }))
     .filter((d) => d.value !== null);
 
-  if (displayable.length === 0) return null;
+  // Also show non-underscore attributes (e.g. "Includes" for memberships)
+  const extraAttrs = item.attributes
+    .filter(a => !a.key.startsWith('_') && a.value)
+    .map(a => ({ label: a.key, value: a.value }));
+
+  if (displayable.length === 0 && extraAttrs.length === 0) return null;
 
   return (
     <div className="mt-1 space-y-0.5">
       {displayable.map((d) => (
         <p key={d.label} className="text-[11px] text-gray-500">
           {d.label}: {d.value}
+        </p>
+      ))}
+      {extraAttrs.map((a) => (
+        <p key={a.label} className="text-[11px] text-gray-400 italic">
+          {a.value}
         </p>
       ))}
     </div>
@@ -202,6 +212,42 @@ export default function CartDrawer() {
     }
   }, [cart]);
 
+  // Credit codes from account — refresh on cart open
+  const [activeGiftCards, setActiveGiftCards] = useState<Array<{ code: string; amount: string; fullCode?: string | null }>>([]);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [applyingCredit, setApplyingCredit] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetch('/api/account/credits/redeem', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.data) return;
+        setCreditBalance(d.data.balance ?? 0);
+        const gcs = (d.data.activeCodes ?? []).filter((c: any) => c.method === 'gift_card');
+        setActiveGiftCards(gcs);
+      })
+      .catch(() => {});
+  }, [isOpen]);
+
+  async function applyCredit() {
+    if (creditBalance <= 0) return;
+    setApplyingCredit(true);
+    const res = await fetch('/api/account/credits/redeem', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: creditBalance, method: 'gift_card' }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (d.data) {
+        setActiveGiftCards(prev => [...prev, { code: d.data.code, amount: String(d.data.amount), fullCode: d.data.fullCode }]);
+        setCreditBalance(d.data.newBalance);
+      }
+    }
+    setApplyingCredit(false);
+  }
+
   const lines = cart?.lines ?? [];
   const subtotal = cart ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const currency = cart?.cost.subtotalAmount.currencyCode ?? 'CAD';
@@ -304,6 +350,30 @@ export default function CartDrawer() {
           {/* Footer */}
           {!isEmpty && (
             <div className="border-t border-gray-200 px-4 py-4 space-y-3">
+              {activeGiftCards.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-green-800">◆ Credit ready to use</span>
+                    <span className="text-sm font-semibold text-green-700">-${activeGiftCards.reduce((s, gc) => s + Number(gc.amount), 0).toFixed(2)}</span>
+                  </div>
+                  {activeGiftCards.map((gc, i) => (
+                    <div key={i} className="bg-green-100 rounded px-2 py-1.5 mb-1">
+                      <p className="text-[10px] text-green-600 mb-0.5">Enter this at checkout → Gift card field:</p>
+                      <p className="text-sm font-mono font-bold text-green-900 select-all cursor-pointer" onClick={() => navigator.clipboard?.writeText(gc.fullCode ?? gc.code)}>
+                        {gc.fullCode ?? gc.code}
+                      </p>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-green-600 mt-1">Click code to copy</p>
+                </div>
+              )}
+              {activeGiftCards.length === 0 && creditBalance > 0 && (
+                <button onClick={applyCredit} disabled={applyingCredit}
+                  className="w-full flex items-center justify-between px-3 py-2.5 border border-dashed border-green-300 rounded-lg text-xs text-green-700 hover:bg-green-50 transition-colors disabled:opacity-50">
+                  <span>◆ Use ${creditBalance.toFixed(2)} credit</span>
+                  <span className="font-medium">{applyingCredit ? '...' : 'Convert to gift card'}</span>
+                </button>
+              )}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-semibold">

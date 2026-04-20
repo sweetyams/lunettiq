@@ -3,12 +3,28 @@ export async function fireKlaviyoEvent(
   eventName: string,
   properties: Record<string, unknown>
 ) {
-  if (!customerEmail || !process.env.KLAVIYO_PRIVATE_KEY) return;
+  const { getKey } = await import('@/lib/crm/integration-keys');
+  const apiKey = await getKey('KLAVIYO_PRIVATE_KEY');
+  if (!customerEmail || !apiKey) return;
+
+  // Safety: block all external emails/SMS in non-production environments
+  if (process.env.NODE_ENV !== 'production' || process.env.DISABLE_EXTERNAL_COMMS === 'true') {
+    console.log(`[klaviyo:blocked] ${eventName} → ${customerEmail}`, properties);
+    return;
+  }
+
+  // Safety: only send to explicitly allowed test emails in staging
+  const allowList = process.env.ALLOWED_TEST_EMAILS?.split(',').map(e => e.trim().toLowerCase()) ?? [];
+  if (allowList.length > 0 && !allowList.includes(customerEmail.toLowerCase())) {
+    console.log(`[klaviyo:blocked] ${customerEmail} not in ALLOWED_TEST_EMAILS`);
+    return;
+  }
+
   try {
     await fetch('https://a.klaviyo.com/api/events/', {
       method: 'POST',
       headers: {
-        'Authorization': `Klaviyo-API-Key ${process.env.KLAVIYO_PRIVATE_KEY}`,
+        'Authorization': `Klaviyo-API-Key ${apiKey}`,
         'revision': '2024-10-15',
         'content-type': 'application/json',
       },

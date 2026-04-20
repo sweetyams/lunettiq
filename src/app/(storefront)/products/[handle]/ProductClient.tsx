@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Product } from '@/types/shopify';
@@ -12,15 +12,20 @@ import ProductInfoPanel from '@/components/pdp/ProductInfoPanel';
 import ColourSelector from '@/components/pdp/ColourSelector';
 import AccordionSection from '@/components/pdp/AccordionSection';
 import AddToCartButton from '@/components/pdp/AddToCartButton';
+import StockNotification from '@/components/pdp/StockNotification';
+import SizeGuide from '@/components/pdp/SizeGuide';
 import LazyLoad from '@/components/shared/LazyLoad';
 
 const LensConfigurator = dynamic(() => import('@/components/pdp/LensConfigurator'), {
   loading: () => <div className="h-48 skeleton-shimmer rounded" />,
 });
 
+const PDPPersonalization = dynamic(() => import('@/components/pdp/PDPPersonalization'), { ssr: false });
+
 const Recommendations = dynamic(() => import('@/components/pdp/Recommendations'), { ssr: false });
 const OnFacesSection = dynamic(() => import('@/components/pdp/OnFacesSection'), { ssr: false });
 const EyeTestCTABlock = dynamic(() => import('@/components/pdp/EyeTestCTA'), { ssr: false });
+const RecentlyViewed = dynamic(() => import('@/components/pdp/RecentlyViewed'), { ssr: false });
 
 interface ProductClientProps {
   product: Product;
@@ -36,7 +41,7 @@ export function BelowFoldPDP({
 }) {
   const eyeTestCTA = eyeTestCTAs[0] ?? null;
   return (
-    <div className="px-4 md:px-8">
+    <div className="site-container">
       {recommendations.length > 0 && (
         <LazyLoad>
           <div className="py-12">
@@ -112,7 +117,10 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
   const handleConfigChange = useCallback((config: LensConfiguration, step: ConfiguratorStep) => {
     setLensConfig(config);
     setConfigStep(step);
-  }, []);
+    import('@/lib/tracking').then(({ track }) => {
+      track({ event: 'lens_config_step', data: { productId: product.id, step, selection: config.lensType ?? undefined } });
+    });
+  }, [product.id]);
 
   const isConfigComplete = useMemo(() => {
     if (configStep !== 'summary') return false;
@@ -125,10 +133,18 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
   const isOutOfStock = selectedVariant ? !selectedVariant.availableForSale : true;
   const collection = product.collections?.[0];
 
+  // Track recently viewed
+  useEffect(() => {
+    import('@/components/pdp/RecentlyViewed').then(m => m.trackProductView(product));
+    import('@/lib/tracking').then(({ track }) => {
+      track({ event: 'view_item', data: { id: product.id, name: product.title, price: parseFloat(product.variants[0]?.price ?? '0'), currency: 'CAD' } });
+    });
+  }, [product]);
+
   return (
-    <div className="max-w-[1440px] mx-auto">
+    <div className="site-container">
       <div className="flex flex-col md:flex-row">
-        <div className="w-full md:w-1/2 px-4 md:px-8 py-4 md:py-8">
+        <div className="w-full md:w-1/2 py-4 md:py-8">
           <ImageGallery
             images={product.images}
             variants={product.variants}
@@ -139,7 +155,7 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
           />
         </div>
 
-        <div className="w-full md:w-1/2 px-4 md:px-8 py-4 md:py-8">
+        <div className="w-full md:w-1/2 py-4 md:py-8 md:pl-8">
           <div className="md:sticky md:top-8">
             {collection && (
               <nav aria-label="Breadcrumb" className="mb-4">
@@ -170,6 +186,13 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
               </div>
             )}
 
+            <div className="mt-4">
+              <PDPPersonalization
+                productId={product.id}
+                frameWidthMm={product.metafields.frameWidth ? Number(product.metafields.frameWidth) : null}
+              />
+            </div>
+
             <div className="mt-6">
               <LensConfigurator
                 lensOptions={lensOptions}
@@ -190,6 +213,9 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                 lensOptions={lensOptions}
                 frameBasePrice={parseFloat(selectedVariant?.price.amount ?? '0')}
               />
+              {isOutOfStock && (
+                <StockNotification productId={product.id} variantTitle={selectedVariant?.title ?? null} />
+              )}
             </div>
 
             <div className="mt-8 border-t border-gray-200">
@@ -206,15 +232,14 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                 </div>
               </AccordionSection>
 
-              <AccordionSection id="dimensions" title="Dimensions" isOpen={openAccordion === 'dimensions'} onToggle={toggleAccordion}>
-                <div className="space-y-2 text-sm text-gray-600">
-                  {product.metafields.frameWidth != null && <p><span className="text-black">Frame Width:</span> {product.metafields.frameWidth} mm</p>}
-                  {product.metafields.lensWidth != null && <p><span className="text-black">Lens Width:</span> {product.metafields.lensWidth} mm</p>}
-                  {product.metafields.lensHeight != null && <p><span className="text-black">Lens Height:</span> {product.metafields.lensHeight} mm</p>}
-                  {product.metafields.bridgeWidth != null && <p><span className="text-black">Bridge:</span> {product.metafields.bridgeWidth} mm</p>}
-                  {product.metafields.templeLength != null && <p><span className="text-black">Temple:</span> {product.metafields.templeLength} mm</p>}
-                  {product.metafields.frameWidth == null && product.metafields.bridgeWidth == null && product.metafields.lensWidth == null && product.metafields.templeLength == null && <p>No dimension data available.</p>}
-                </div>
+              <AccordionSection id="dimensions" title="Size Guide" isOpen={openAccordion === 'dimensions'} onToggle={toggleAccordion}>
+                <SizeGuide
+                  frameWidth={product.metafields.frameWidth}
+                  lensWidth={product.metafields.lensWidth}
+                  lensHeight={product.metafields.lensHeight}
+                  bridgeWidth={product.metafields.bridgeWidth}
+                  templeLength={product.metafields.templeLength}
+                />
               </AccordionSection>
 
               <AccordionSection id="care" title="Care" isOpen={openAccordion === 'care'} onToggle={toggleAccordion}>
@@ -222,6 +247,9 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                   <p>Clean lenses with the included microfibre cloth and lens spray.</p>
                   <p>Store in the provided hard case when not in use.</p>
                   <p>Avoid placing lenses face-down on hard surfaces.</p>
+                  <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100">
+                    ◆ Trade in old frames through <a href="/pages/stores" className="underline">Second Sight</a> — up to 35% credit for members.
+                  </p>
                 </div>
               </AccordionSection>
 
@@ -230,6 +258,9 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                   <p>Free standard shipping on all orders within Canada.</p>
                   <p>Express shipping available at checkout.</p>
                   <p>International shipping rates calculated at checkout.</p>
+                  <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100">
+                    ◆ Members get free priority or overnight shipping. <a href="/pages/loyalty" className="underline">Learn more</a>
+                  </p>
                 </div>
               </AccordionSection>
             </div>
@@ -238,12 +269,15 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
       </div>
 
       {/* OnFaces — still inline since it uses product metafields directly */}
-      <div className="px-4 md:px-8">
+      <div>
         <LazyLoad>
           <OnFacesSection
             onFaceImages={product.metafields.onFaceImages}
             faceNotes={product.metafields.faceNotes}
           />
+        </LazyLoad>
+        <LazyLoad>
+          <RecentlyViewed currentProductId={product.id} />
         </LazyLoad>
       </div>
     </div>

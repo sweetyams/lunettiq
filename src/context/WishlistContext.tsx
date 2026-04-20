@@ -75,6 +75,9 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
       const updated = [...items, productId];
       setItems(updated);
       await saveWishlist(updated);
+      import('@/lib/tracking').then(({ track }) => {
+        track({ event: 'add_to_wishlist', data: { id: productId, name: '', price: 0 } });
+      });
     },
     [items]
   );

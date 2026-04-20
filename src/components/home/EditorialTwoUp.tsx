@@ -12,7 +12,7 @@ export default function EditorialTwoUp({ panels }: EditorialTwoUpProps) {
   const [left, right] = panels;
 
   return (
-    <section className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-8 py-8">
+    <section className="site-container grid grid-cols-1 md:grid-cols-2 gap-4 py-8">
       {[left, right].map((panel) => {
         const inner = (
           <div className="relative aspect-[4/5] overflow-hidden">

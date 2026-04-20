@@ -16,34 +16,29 @@ export function TagManager({ customerId, tags: initial, onChanged }: Props) {
   async function addTag() {
     const tag = input.trim();
     if (!tag || tags.includes(tag)) return;
-    setBusy(true);
+    const prev = tags;
+    setTags([...tags, tag]);
+    setInput('');
+    onChanged?.([...tags, tag]);
     const res = await fetch(`/api/crm/clients/${customerId}/tags`, { credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'add', tag }),
     });
-    if (res.ok) {
-      const data = await res.json();
-      setTags(data.tags);
-      onChanged?.(data.tags);
-      setInput('');
-    }
-    setBusy(false);
+    if (!res.ok) { setTags(prev); onChanged?.(prev); }
   }
 
   async function removeTag(tag: string) {
-    setBusy(true);
+    const prev = tags;
+    const next = tags.filter(t => t !== tag);
+    setTags(next);
+    onChanged?.(next);
     const res = await fetch(`/api/crm/clients/${customerId}/tags`, { credentials: 'include',
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'remove', tag }),
     });
-    if (res.ok) {
-      const data = await res.json();
-      setTags(data.tags);
-      onChanged?.(data.tags);
-    }
-    setBusy(false);
+    if (!res.ok) { setTags(prev); onChanged?.(prev); }
   }
 
   return (

@@ -25,6 +25,7 @@ type FilterCategory = 'shape' | 'colour' | 'material' | 'size';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'relevance', label: 'Featured' },
+  { value: 'for-you', label: 'For You' },
   { value: 'price-asc', label: 'Price: Low to High' },
   { value: 'price-desc', label: 'Price: High to Low' },
   { value: 'newest', label: 'Newest' },
@@ -125,7 +126,7 @@ export default function FilterBar({
       {/* Filter bar row */}
       <div className="flex flex-wrap items-center gap-3 border-b border-gray-200 pb-4">
         {/* Item count */}
-        <span className="text-sm text-gray-500 mr-2">{itemCount} items</span>
+        <span className="text-sm text-gray-500 mr-2" suppressHydrationWarning>{itemCount} items</span>
 
         {/* Filter dropdowns */}
         {FILTER_CATEGORIES.map((cat) => {

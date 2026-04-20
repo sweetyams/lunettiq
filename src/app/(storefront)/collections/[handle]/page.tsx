@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getCollectionProducts } from '@/lib/shopify/queries/collection';
 import { getEditorialPanels } from '@/lib/shopify/queries/metaobjects';
+import { filterByAccess, getEarlyAccessLabel } from '@/lib/crm/early-access';
+import { getAccessToken } from '@/lib/shopify/auth';
 import CollectionClient from './CollectionClient';
 
 export const revalidate = 60;
@@ -16,6 +18,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   // Parse filter/sort from URL search params
   const sortParam = (typeof searchParams.sort === 'string' ? searchParams.sort : undefined) as
     | 'relevance'
+    | 'for-you'
     | 'price-asc'
     | 'price-desc'
     | 'newest'
@@ -54,7 +57,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     const [result, editorialPanels] = await Promise.all([
       getCollectionProducts({
         handle,
-        first: 24,
+        first: 100,
         sortKey: sortConfig.sortKey as 'COLLECTION_DEFAULT' | 'PRICE' | 'TITLE' | 'CREATED' | 'BEST_SELLING',
         reverse: sortConfig.reverse,
         filters: tagFilters.length > 0 ? tagFilters : undefined,
@@ -66,6 +69,35 @@ export default async function CollectionPage({ params, searchParams }: Collectio
       notFound();
     }
 
+    // Early access gating — filter products by customer tier
+    let customerTier: string | null = null;
+    try {
+      const token = getAccessToken();
+      if (token) {
+        const { getCustomerProfile } = await import('@/lib/shopify/customer');
+        const profile = await getCustomerProfile(token);
+        const customerId = profile.id.replace(/^gid:\/\/shopify\/Customer\//, '');
+        const { db } = await import('@/lib/db');
+        const { customersProjection } = await import('@/lib/db/schema');
+        const { eq } = await import('drizzle-orm');
+        const { getTierFromTags } = await import('@/lib/crm/loyalty-config');
+        const client = await db.select({ tags: customersProjection.tags }).from(customersProjection).where(eq(customersProjection.shopifyCustomerId, customerId)).then(r => r[0]);
+        customerTier = getTierFromTags(client?.tags ?? null);
+      }
+    } catch {}
+    if (process.env.DEV_CUSTOMER_ID && (process.env.NODE_ENV !== 'production' || process.env.DEMO_MODE === '1')) {
+      try {
+        const { db } = await import('@/lib/db');
+        const { customersProjection } = await import('@/lib/db/schema');
+        const { eq } = await import('drizzle-orm');
+        const { getTierFromTags } = await import('@/lib/crm/loyalty-config');
+        const client = await db.select({ tags: customersProjection.tags }).from(customersProjection).where(eq(customersProjection.shopifyCustomerId, process.env.DEV_CUSTOMER_ID)).then(r => r[0]);
+        customerTier = getTierFromTags(client?.tags ?? null);
+      } catch {}
+    }
+
+    const accessibleProducts = filterByAccess(result.products.map(p => ({ ...p, tags: (p as any).tags ?? [] })), customerTier);
+
     // Filter editorial panels for PLP placement
     const plpPanels = editorialPanels.filter(
       (p) => p.placement === 'plp' || p.placement === 'both'
@@ -74,7 +106,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     return (
       <CollectionClient
         collection={result.collection}
-        initialProducts={result.products}
+        initialProducts={accessibleProducts}
         initialPageInfo={result.pageInfo}
         editorialPanels={plpPanels}
         collectionHandle={handle}
@@ -89,7 +121,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     );
   } catch {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] px-6">
+      <div className="site-container flex flex-col items-center justify-center min-h-[50vh]">
         <p className="text-lg text-gray-600 mb-4">Unable to load products. Please try again.</p>
         <a
           href={`/collections/${handle}`}

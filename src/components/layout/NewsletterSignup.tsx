@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@/lib/tracking';
 
 /** Basic email regex for client-side validation */
 export function isValidEmail(email: string): boolean {
@@ -23,6 +24,7 @@ export default function NewsletterSignup() {
 
     // Placeholder — actual Shopify customer marketing endpoint integration later
     console.log('Newsletter signup:', email);
+    track({ event: 'newsletter_signup', data: { source: 'footer' } });
     setSubmitted(true);
   }
 

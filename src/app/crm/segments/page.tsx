@@ -20,6 +20,10 @@ const FIELDS = [
   { value: 'last_order_date', label: 'Last Order Date', group: 'Recency' },
   { value: 'tags', label: 'Has Tag', group: 'Classification' },
   { value: 'membership_tier', label: 'Membership Tier', group: 'Loyalty' },
+  { value: 'membership_status', label: 'Membership Status', group: 'Loyalty' },
+  { value: 'credit_balance', label: 'Credit Balance', group: 'Loyalty' },
+  { value: 'is_member', label: 'Is a Member', group: 'Loyalty' },
+  { value: 'member_since', label: 'Member Since', group: 'Loyalty' },
   { value: 'accepts_marketing', label: 'Email Consent', group: 'Consent' },
   { value: 'sms_consent', label: 'SMS Consent', group: 'Consent' },
   { value: 'face_shape', label: 'Face Shape', group: 'Fit' },
@@ -35,13 +39,26 @@ const OPERATORS: Record<string, { value: string; label: string }[]> = {
   date: [{ value: 'gt', label: 'after' }, { value: 'lt', label: 'before' }, { value: 'in_last_n_days', label: 'in last N days' }],
   tag: [{ value: 'tag_includes', label: 'includes' }],
   boolean: [{ value: 'equals', label: 'is' }],
+  tier: [{ value: 'equals', label: 'is' }, { value: 'not_equals', label: 'is not' }],
+  status: [{ value: 'equals', label: 'is' }, { value: 'not_equals', label: 'is not' }],
+};
+
+const VALUE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  membership_tier: [{ value: 'essential', label: 'Essential' }, { value: 'cult', label: 'CULT' }, { value: 'vault', label: 'VAULT' }],
+  membership_status: [{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'cancelled', label: 'Cancelled' }],
+  is_member: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
+  accepts_marketing: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
+  sms_consent: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
+  rx_on_file: [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }],
 };
 
 function getOperators(field: string) {
-  if (['order_count', 'total_spent', 'days_since_last_order', 'days_since_created', 'interaction_count', 'average_order_value'].includes(field)) return OPERATORS.number;
-  if (['created_at', 'last_order_date'].includes(field)) return OPERATORS.date;
+  if (['order_count', 'total_spent', 'days_since_last_order', 'days_since_created', 'interaction_count', 'average_order_value', 'credit_balance'].includes(field)) return OPERATORS.number;
+  if (['created_at', 'last_order_date', 'member_since'].includes(field)) return OPERATORS.date;
   if (field === 'tags') return OPERATORS.tag;
-  if (['accepts_marketing', 'sms_consent', 'rx_on_file'].includes(field)) return OPERATORS.boolean;
+  if (field === 'membership_tier') return OPERATORS.tier;
+  if (field === 'membership_status') return OPERATORS.status;
+  if (['accepts_marketing', 'sms_consent', 'rx_on_file', 'is_member'].includes(field)) return OPERATORS.boolean;
   return OPERATORS.default;
 }
 
@@ -271,7 +288,14 @@ export default function SegmentsPage() {
                 <select value={c.operator} onChange={e => updateCondition(i, 'operator', e.target.value)} className="crm-input" style={{ minWidth: 130 }}>
                   {getOperators(c.field).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
-                <input value={c.value} onChange={e => updateCondition(i, 'value', e.target.value)} placeholder="Value" className="crm-input" style={{ flex: 1 }} />
+                {VALUE_OPTIONS[c.field] ? (
+                  <select value={c.value} onChange={e => updateCondition(i, 'value', e.target.value)} className="crm-input" style={{ flex: 1 }}>
+                    <option value="">Select…</option>
+                    {VALUE_OPTIONS[c.field].map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : (
+                  <input value={c.value} onChange={e => updateCondition(i, 'value', e.target.value)} placeholder="Value" className="crm-input" style={{ flex: 1 }} />
+                )}
                 {conditions.length > 1 && (
                   <button onClick={() => setConditions(conditions.filter((_, idx) => idx !== i))} className="crm-btn crm-btn-ghost" style={{ padding: '4px 8px', color: 'var(--crm-text-tertiary)' }}>✕</button>
                 )}

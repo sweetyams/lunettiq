@@ -22,8 +22,9 @@ function getShop(): string {
   return process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!;
 }
 
-function getToken(): string {
-  return process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN!;
+async function getToken(): Promise<string> {
+  const { getKey } = await import('./integration-keys');
+  return (await getKey('SHOPIFY_ADMIN_API_ACCESS_TOKEN')) ?? process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN!;
 }
 
 function restUrl(path: string): string {
@@ -40,11 +41,12 @@ function graphqlUrl(): string {
 
 async function restFetch<T>(path: string, options: RequestInit = {}): Promise<AdminResult<T>> {
   try {
+    const token = await getToken();
     const res = await fetch(restUrl(path), {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': getToken(),
+        'X-Shopify-Access-Token': token,
         ...options.headers,
       },
     });
@@ -59,11 +61,12 @@ async function restFetch<T>(path: string, options: RequestInit = {}): Promise<Ad
 
 async function graphqlFetch<T>(query: string, variables?: Record<string, unknown>): Promise<AdminResult<T>> {
   try {
+    const token = await getToken();
     const res = await fetch(graphqlUrl(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': getToken(),
+        'X-Shopify-Access-Token': token,
       },
       body: JSON.stringify({ query, variables }),
     });

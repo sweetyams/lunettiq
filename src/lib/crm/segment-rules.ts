@@ -20,6 +20,11 @@ const FIELD_MAP: Record<string, SQL> = {
   postal_prefix: sql`LEFT(default_address->>'zip', 3)`,
   accepts_marketing: sql`"accepts_marketing"`,
   sms_consent: sql`"sms_consent"`,
+  // Loyalty
+  credit_balance: sql`(SELECT coalesce(sum(amount::numeric), 0) FROM credits_ledger WHERE shopify_customer_id = customers_projection.shopify_customer_id)`,
+  membership_status: sql`metafields->'custom'->>'membership_status'`,
+  member_since: sql`metafields->'custom'->>'member_since'`,
+  is_member: sql`(tags && ARRAY['member-essential','member-cult','member-vault'])`,
 };
 
 export async function evaluateSegmentRules(rules: { logic: string; conditions: Array<{ field: string; operator: string; value: string }> }): Promise<number | null> {
@@ -29,6 +34,15 @@ export async function evaluateSegmentRules(rules: { logic: string; conditions: A
   for (const c of rules.conditions) {
     if (c.field === 'tags') { clauses.push(sql`${c.value} = ANY(tags)`); continue; }
     if (c.field === 'membership_tier') { clauses.push(sql`${'member-' + c.value} = ANY(tags)`); continue; }
+    if (c.field === 'is_member') {
+      const isMember = c.value === 'true';
+      clauses.push(isMember ? sql`tags && ARRAY['member-essential','member-cult','member-vault']` : sql`NOT (tags && ARRAY['member-essential','member-cult','member-vault'])`);
+      continue;
+    }
+    if (c.field === 'membership_status') {
+      clauses.push(buildOp(sql`metafields->'custom'->>'membership_status'`, c.operator, c.value));
+      continue;
+    }
     if (c.field === 'created_at') { clauses.push(buildDateOp(sql`customers_projection.created_at`, c.operator, c.value)); continue; }
     if (c.field === 'last_order_date') { clauses.push(buildDateOp(FIELD_MAP.last_order_date, c.operator, c.value)); continue; }
 
@@ -49,6 +63,15 @@ export async function getSegmentMembers(rules: { logic: string; conditions: Arra
   for (const c of rules.conditions) {
     if (c.field === 'tags') { clauses.push(sql`${c.value} = ANY(tags)`); continue; }
     if (c.field === 'membership_tier') { clauses.push(sql`${'member-' + c.value} = ANY(tags)`); continue; }
+    if (c.field === 'is_member') {
+      const isMember = c.value === 'true';
+      clauses.push(isMember ? sql`tags && ARRAY['member-essential','member-cult','member-vault']` : sql`NOT (tags && ARRAY['member-essential','member-cult','member-vault'])`);
+      continue;
+    }
+    if (c.field === 'membership_status') {
+      clauses.push(buildOp(sql`metafields->'custom'->>'membership_status'`, c.operator, c.value));
+      continue;
+    }
     if (c.field === 'created_at') { clauses.push(buildDateOp(sql`customers_projection.created_at`, c.operator, c.value)); continue; }
     if (c.field === 'last_order_date') { clauses.push(buildDateOp(FIELD_MAP.last_order_date, c.operator, c.value)); continue; }
     const col = FIELD_MAP[c.field];

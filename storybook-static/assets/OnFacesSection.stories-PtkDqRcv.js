@@ -1,0 +1,8 @@
+import{n as e}from"./chunk-CzyJ72yW.js";import{_ as t}from"./iframe-BOb_YaGJ.js";import{n,t as r}from"./image-QU13H8ke.js";function i({onFaceImages:e,faceNotes:t}){return!e||e.length===0?null:(0,a.jsxs)(`section`,{className:`py-12 border-t border-gray-100`,"aria-label":`On faces`,children:[(0,a.jsx)(`h2`,{className:`text-xl font-light tracking-wide mb-6`,children:`On Faces`}),t&&(0,a.jsx)(`p`,{className:`text-sm text-gray-600 mb-6 max-w-2xl`,children:t}),(0,a.jsx)(`div`,{className:`grid grid-cols-2 md:grid-cols-4 gap-4`,children:e.map((e,t)=>(0,a.jsx)(`div`,{className:`relative bg-[#F5F5F9] overflow-hidden`,style:{aspectRatio:`1/1`},children:(0,a.jsx)(n,{src:e,alt:`On face view ${t+1}`,fill:!0,className:`object-cover`,sizes:`(max-width: 768px) 50vw, 25vw`})},t))})]})}var a,o=e((()=>{a=t(),r(),i.__docgenInfo={description:``,methods:[],displayName:`OnFacesSection`,props:{onFaceImages:{required:!1,tsType:{name:`Array`,elements:[{name:`string`}],raw:`string[]`},description:``},faceNotes:{required:!1,tsType:{name:`string`},description:``}}}})),s,c,l,u,d;e((()=>{o(),s=`https://placehold.co/400x400/F5F5F9/333?text=On+Face`,c={component:i},l={args:{onFaceImages:[s,s,s,s],faceNotes:`Suits oval and round face shapes.`}},u={args:{}},l.parameters={...l.parameters,docs:{...l.parameters?.docs,source:{originalSource:`{
+  args: {
+    onFaceImages: [IMG, IMG, IMG, IMG],
+    faceNotes: 'Suits oval and round face shapes.'
+  }
+}`,...l.parameters?.docs?.source}}},u.parameters={...u.parameters,docs:{...u.parameters?.docs,source:{originalSource:`{
+  args: {}
+}`,...u.parameters?.docs?.source}}},d=[`Default`,`Empty`]}))();export{l as Default,u as Empty,d as __namedExportsOrder,c as default};

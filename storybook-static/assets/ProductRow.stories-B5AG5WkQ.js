@@ -1,0 +1,6 @@
+import{n as e}from"./chunk-CzyJ72yW.js";import{_ as t}from"./iframe-BOb_YaGJ.js";import{c as n,t as r}from"./storyData-JooGbszH.js";import{i,r as a}from"./FavouriteIcon-CgXRupTB.js";import{n as o,t as s}from"./ProductCard-BvexJz-q.js";import{n as c,r as l,t as u}from"./Stagger-DRspkr3V.js";function d({products:e,title:t}){return e.length?(0,f.jsxs)(`section`,{className:`site-container py-12 md:py-16`,children:[t&&(0,f.jsx)(`h2`,{className:`text-xl md:text-2xl tracking-wide mb-8`,children:t}),(0,f.jsx)(u,{className:`grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6`,children:e.map(e=>(0,f.jsx)(c,{children:(0,f.jsx)(s,{product:e,className:`w-full`})},e.id))})]}):null}var f,p=e((()=>{f=t(),o(),l(),d.__docgenInfo={description:``,methods:[],displayName:`ProductRow`,props:{products:{required:!0,tsType:{name:`Array`,elements:[{name:`Product`}],raw:`Product[]`},description:``},title:{required:!1,tsType:{name:`string`},description:``}}}})),m,h,g,_;e((()=>{m=t(),p(),i(),r(),h={component:d,decorators:[e=>(0,m.jsx)(a,{children:(0,m.jsx)(e,{})})]},g={args:{products:n,title:`New Arrivals`}},g.parameters={...g.parameters,docs:{...g.parameters?.docs,source:{originalSource:`{
+  args: {
+    products: mockProducts,
+    title: 'New Arrivals'
+  }
+}`,...g.parameters?.docs?.source}}},_=[`Default`]}))();export{g as Default,_ as __namedExportsOrder,h as default};

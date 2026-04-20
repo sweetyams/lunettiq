@@ -15,14 +15,14 @@ function verifyHmac(body: string, hmacHeader: string): boolean {
 const TOPIC_EVENT_MAP: Record<string, string> = {
   'customers/create': 'shopify/customer.updated',
   'customers/update': 'shopify/customer.updated',
-  'customers/delete': 'shopify/customer.updated',
+  'customers/delete': 'shopify/customer.deleted',
   'orders/create': 'shopify/order.updated',
   'orders/updated': 'shopify/order.updated',
   'orders/cancelled': 'shopify/order.updated',
   'orders/fulfilled': 'shopify/order.updated',
   'products/create': 'shopify/product.updated',
   'products/update': 'shopify/product.updated',
-  'products/delete': 'shopify/product.updated',
+  'products/delete': 'shopify/product.deleted',
   'collections/create': 'shopify/collection.updated',
   'collections/update': 'shopify/collection.updated',
 };

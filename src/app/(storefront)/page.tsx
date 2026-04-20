@@ -12,6 +12,7 @@ import type { Product } from '@/types/shopify';
 const EditorialPanel = dynamic(() => import('@/components/home/EditorialPanel'), { ssr: false });
 const EditorialTwoUp = dynamic(() => import('@/components/home/EditorialTwoUp'), { ssr: false });
 const StoreTeaser = dynamic(() => import('@/components/home/StoreTeaser'), { ssr: false });
+const ContextualNudgeBand = dynamic(() => import('@/components/home/ContextualNudgeBand'), { ssr: false });
 
 export const revalidate = 60;
 
@@ -48,8 +49,8 @@ export default async function HomePage() {
     (p) => p.placement === 'homepage' || p.placement === 'both'
   );
 
-  const firstRowProducts = featuredProducts.slice(0, 4);
-  const secondRowProducts = featuredProducts.slice(4, 8);
+  const firstRowProducts = featuredProducts.slice(0, 3);
+  const secondRowProducts = featuredProducts.slice(3, 6);
   const primaryCategories = categoryPanels.slice(0, 2);
   const secondaryCategories = categoryPanels.slice(2, 5);
   const fullBleedPanel = homepagePanels[0];
@@ -96,6 +97,8 @@ export default async function HomePage() {
           />
         </Reveal>
       </LazyLoad>
+
+      <ContextualNudgeBand />
     </>
   );
 }

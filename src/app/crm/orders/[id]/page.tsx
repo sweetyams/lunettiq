@@ -14,14 +14,21 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     ? await db.select().from(customersProjection).where(eq(customersProjection.shopifyCustomerId, order.shopifyCustomerId)).then(r => r[0])
     : null;
 
-  const lineItems = (order.lineItems ?? []) as Array<{ name?: string; title?: string; quantity?: number; price?: string }>;
+  const lineItems = (order.lineItems ?? []) as Array<{ name?: string; title?: string; quantity?: number; price?: string; image?: { src: string } }>;
   const shipping = order.shippingAddress as { name?: string; address1?: string; city?: string; province?: string; zip?: string; country?: string } | null;
+  const source = (order.source ?? 'shopify') as 'shopify' | 'square';
+  const isSquare = source === 'square';
 
   const badgeStyle = (s: string | null) => {
     if (s === 'paid' || s === 'fulfilled') return { background: 'var(--crm-success-light)', color: 'var(--crm-success)' };
     if (s === 'refunded') return { background: 'var(--crm-error-light)', color: 'var(--crm-error)' };
     return { background: 'var(--crm-warning-light)', color: 'var(--crm-warning)' };
   };
+
+  // Square order IDs are stored as sq_<id> — strip prefix for admin URL
+  const adminLink = isSquare
+    ? `https://squareup.com/dashboard/sales/transactions/${order.shopifyOrderId.replace(/^sq_/, '')}`
+    : `https://${process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN}/admin/orders/${order.shopifyOrderId}`;
 
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 960 }}>
@@ -31,35 +38,42 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--crm-space-6)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Order #{order.orderNumber}</h1>
-        <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Order #{order.orderNumber}</h1>
+          <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--crm-radius-sm)', background: isSquare ? '#f3f0ff' : '#f0f7ff', color: isSquare ? '#6d28d9' : '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{source}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--crm-space-2)', alignItems: 'center' }}>
+          {order.createdAt && <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>}
           <span className="crm-badge" style={badgeStyle(order.financialStatus)}>{order.financialStatus}</span>
           <span className="crm-badge" style={badgeStyle(order.fulfillmentStatus)}>{order.fulfillmentStatus || 'unfulfilled'}</span>
+          <a href={adminLink}
+            target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginLeft: 'var(--crm-space-2)' }}>
+            View in {isSquare ? 'Square' : 'Shopify'} ↗
+          </a>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--crm-space-6)' }}>
         {/* LEFT: Line items + totals */}
         <div>
-          <div className="crm-card" style={{ overflow: 'hidden', marginBottom: 'var(--crm-space-4)' }}>
-            <table className="crm-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th style={{ textAlign: 'right' }}>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineItems.map((li, i) => (
-                  <tr key={i}>
-                    <td>{li.name || li.title}</td>
-                    <td style={{ textAlign: 'right' }}>{li.quantity ?? 1}</td>
-                    <td style={{ textAlign: 'right' }}>${li.price ?? '0'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--crm-space-3)' }}>
+              {lineItems.map((li, i) => (
+                <div key={i} style={{ display: 'flex', gap: 'var(--crm-space-3)', alignItems: 'center', padding: 'var(--crm-space-3)', background: 'var(--crm-bg)', borderRadius: 'var(--crm-radius-md)' }}>
+                  <div style={{ width: 72, height: 72, flexShrink: 0, borderRadius: 'var(--crm-radius-sm)', overflow: 'hidden', background: 'var(--crm-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {li.image?.src
+                      ? <img src={li.image.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      : <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No img</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{li.name || li.title}</div>
+                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>Qty {li.quantity ?? 1}</div>
+                  </div>
+                  <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, flexShrink: 0 }}>${li.price ?? '0'}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>

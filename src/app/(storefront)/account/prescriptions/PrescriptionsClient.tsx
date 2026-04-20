@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { PrescriptionRecord } from '@/types/customer';
 import {
   validateSphere,
@@ -17,6 +17,18 @@ interface PrescriptionsClientProps {
 export default function PrescriptionsClient({ initialRecords }: PrescriptionsClientProps) {
   const [records, setRecords] = useState<PrescriptionRecord[]>(initialRecords);
   const [showForm, setShowForm] = useState(false);
+
+  // Merge localStorage prescriptions
+  useEffect(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('lunettiq_prescriptions') ?? '[]');
+      if (local.length) {
+        const existingIds = new Set(initialRecords.map((r: any) => r.id));
+        const merged = [...initialRecords, ...local.filter((r: any) => !existingIds.has(r.id))];
+        setRecords(merged);
+      }
+    } catch {}
+  }, [initialRecords]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -113,7 +125,14 @@ export default function PrescriptionsClient({ initialRecords }: PrescriptionsCli
       setShowForm(false);
     } catch {
       // silent
-    } finally {
+    }
+    // Also save to localStorage as backup
+    try {
+      const local = JSON.parse(localStorage.getItem('lunettiq_prescriptions') ?? '[]');
+      local.unshift({ id: newRecord.id, label: newRecord.optometristName || 'Manual entry', date: newRecord.date, odSphere: newRecord.od.sphere, odCylinder: newRecord.od.cylinder, odAxis: newRecord.od.axis, osSphere: newRecord.os.sphere, osCylinder: newRecord.os.cylinder, osAxis: newRecord.os.axis, pd: newRecord.pd });
+      localStorage.setItem('lunettiq_prescriptions', JSON.stringify(local));
+    } catch {}
+    finally {
       setIsSubmitting(false);
     }
   }
@@ -157,18 +176,18 @@ export default function PrescriptionsClient({ initialRecords }: PrescriptionsCli
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="font-medium text-gray-500 mb-1">Right Eye (OD)</p>
-                  <p>SPH: {rec.od.sphere.toFixed(2)}</p>
-                  <p>CYL: {rec.od.cylinder.toFixed(2)}</p>
-                  <p>AXIS: {rec.od.axis}°</p>
+                  <p>SPH: {(rec.od?.sphere ?? (rec as any).odSphere ?? 0).toFixed?.(2) ?? rec.od?.sphere ?? (rec as any).odSphere ?? 0}</p>
+                  <p>CYL: {(rec.od?.cylinder ?? (rec as any).odCylinder ?? 0).toFixed?.(2) ?? 0}</p>
+                  <p>AXIS: {rec.od?.axis ?? (rec as any).odAxis ?? 0}°</p>
                 </div>
                 <div>
                   <p className="font-medium text-gray-500 mb-1">Left Eye (OS)</p>
-                  <p>SPH: {rec.os.sphere.toFixed(2)}</p>
-                  <p>CYL: {rec.os.cylinder.toFixed(2)}</p>
-                  <p>AXIS: {rec.os.axis}°</p>
+                  <p>SPH: {(rec.os?.sphere ?? (rec as any).osSphere ?? 0).toFixed?.(2) ?? rec.os?.sphere ?? (rec as any).osSphere ?? 0}</p>
+                  <p>CYL: {(rec.os?.cylinder ?? (rec as any).osCylinder ?? 0).toFixed?.(2) ?? 0}</p>
+                  <p>AXIS: {rec.os?.axis ?? (rec as any).osAxis ?? 0}°</p>
                 </div>
               </div>
-              <p className="text-xs mt-2">PD: {rec.pd} mm</p>
+              <p className="text-xs mt-2">PD: {rec.pd ?? (rec as any).pd ?? '—'} mm</p>
             </div>
           ))}
         </div>
@@ -178,12 +197,20 @@ export default function PrescriptionsClient({ initialRecords }: PrescriptionsCli
 
       {/* Add new */}
       {!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          className="px-6 py-2 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
-        >
-          Add Prescription
-        </button>
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-6 py-2 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition-colors"
+          >
+            Add Manually
+          </button>
+          <a href="/account/prescriptions/scan" className="px-6 py-2 border border-black text-sm rounded-full hover:bg-black hover:text-white transition-colors">
+            📷 Scan Prescription
+          </a>
+          <a href="/account/prescriptions/measure-pd" className="px-6 py-2 border border-gray-300 text-sm rounded-full hover:border-black transition-colors">
+            📏 Measure PD
+          </a>
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="border border-gray-200 rounded-lg p-6 space-y-4">
           <h3 className="text-sm font-medium mb-2">New Prescription</h3>

@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .site-container {
+    @apply max-w-[1440px] mx-auto px-6 md:px-12;
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -72,4 +78,13 @@ body {
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* PLP product grid waterfall animation */
+@keyframes plp-fade-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.plp-animate {
+  animation: plp-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

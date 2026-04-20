@@ -21,7 +21,7 @@ export default async function PrescriptionsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="site-container py-12">
       <h1 className="text-2xl font-medium mb-8">My Prescriptions</h1>
       <PrescriptionsClient initialRecords={records} />
     </div>

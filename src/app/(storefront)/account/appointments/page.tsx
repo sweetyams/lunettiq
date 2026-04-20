@@ -11,7 +11,7 @@ export default async function AppointmentsPage() {
     .from(locations).where(eq(locations.active, true));
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="site-container py-12">
       <Link href="/account" className="text-sm text-gray-400 hover:text-black mb-6 inline-block">← My Account</Link>
       <AppointmentsClient locations={JSON.parse(JSON.stringify(locs))} />
     </div>

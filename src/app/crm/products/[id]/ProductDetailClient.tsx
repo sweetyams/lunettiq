@@ -117,6 +117,9 @@ export function ProductDetailClient({ product, variants }: { product: Product; v
             <button onClick={() => { if (variants.length > 1) setVariantPickerOpen(true); else { setRecVariants(variants.slice(0, 1)); setPickerOpen(true); } }} className="crm-btn crm-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '8px 16px' }}>
               Recommend to Client
             </button>
+
+            {/* Quick client feedback */}
+            <ClientFeedback productId={product.shopifyProductId} onToast={setToast} />
           </div>
 
           {/* Variants table */}
@@ -489,6 +492,56 @@ function ProductCanvas({ productId }: { productId: string }) {
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClientFeedback({ productId, onToast }: { productId: string; onToast: (msg: string) => void }) {
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const [client, setClient] = useState<{ id: string; name: string } | null>(() => {
+    const id = searchParams.get('client');
+    const name = searchParams.get('clientName');
+    return id ? { id, name: name || id } : null;
+  });
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+
+  async function send(sentiment: 'like' | 'dislike') {
+    if (!client) return;
+    await fetch(`/api/crm/clients/${client.id}/suggestions/dismiss`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, sentiment }),
+    });
+    setSent(sentiment);
+    onToast(`${sentiment === 'like' ? 'Liked' : 'Passed'} for ${client.name}`);
+    setTimeout(() => setSent(null), 2000);
+  }
+
+  return (
+    <div style={{ marginTop: 'var(--crm-space-4)', paddingTop: 'var(--crm-space-4)', borderTop: '1px solid var(--crm-border-light)' }}>
+      <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 'var(--crm-space-2)' }}>Client feedback</div>
+      {client ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-2)', marginBottom: 'var(--crm-space-2)' }}>
+            <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{client.name}</span>
+            <button onClick={() => { setClient(null); setSent(null); }} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>Change</button>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
+            <button onClick={() => send('like')} disabled={sent !== null} className="crm-btn" style={{ flex: 1, justifyContent: 'center', padding: '6px 0', fontSize: 'var(--crm-text-sm)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', background: sent === 'like' ? 'var(--crm-text-primary)' : 'var(--crm-surface)', color: sent === 'like' ? 'var(--crm-surface)' : 'var(--crm-text-primary)', cursor: 'pointer' }}>
+              ♥ Like
+            </button>
+            <button onClick={() => send('dislike')} disabled={sent !== null} className="crm-btn" style={{ flex: 1, justifyContent: 'center', padding: '6px 0', fontSize: 'var(--crm-text-sm)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', background: sent === 'dislike' ? 'var(--crm-text-tertiary)' : 'var(--crm-surface)', color: sent === 'dislike' ? 'var(--crm-surface)' : 'var(--crm-text-tertiary)', cursor: 'pointer' }}>
+              ✕ Pass
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setPickerOpen(true)} className="crm-btn crm-btn-secondary" style={{ width: '100%', justifyContent: 'center', fontSize: 'var(--crm-text-xs)' }}>
+          Select client to record feedback
+        </button>
+      )}
+      <ClientPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={c => { setClient(c); setPickerOpen(false); }} />
     </div>
   );
 }

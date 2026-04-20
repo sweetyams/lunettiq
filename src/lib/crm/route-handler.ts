@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 type Handler = (req: NextRequest, ctx: { params: Record<string, string> }) => Promise<NextResponse>;
 
-export function handler(fn: Handler): Handler {
+export function handler(fn: Handler): (req: NextRequest, ctx: { params: Promise<Record<string, string>> | Record<string, string> }) => Promise<NextResponse> {
   return async (req, ctx) => {
     try {
-      return await fn(req, ctx);
+      const params = await Promise.resolve(ctx.params);
+      return await fn(req, { params });
     } catch (err: unknown) {
       if (err instanceof NextResponse) return err;
       if (err instanceof Error && 'status' in err) {

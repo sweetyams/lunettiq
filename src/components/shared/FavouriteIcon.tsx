@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useWishlist } from '@/context/WishlistContext';
 
 interface FavouriteIconProps {
@@ -10,13 +11,34 @@ interface FavouriteIconProps {
 export default function FavouriteIcon({ productId, className }: FavouriteIconProps) {
   const { isAuthenticated, isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
-  if (!isAuthenticated) return null;
+  const isFav = isAuthenticated ? isInWishlist(productId) : false;
+  const [localFav, setLocalFav] = useState(false);
 
-  const isFav = isInWishlist(productId);
+  // Check localStorage for non-authenticated users
+  useState(() => {
+    if (!isAuthenticated && typeof window !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('lunettiq_wishlist') ?? '[]');
+        setLocalFav(stored.includes(productId));
+      } catch {}
+    }
+  });
+
+  const isWished = isAuthenticated ? isFav : localFav;
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isAuthenticated) {
+      // Use localStorage for non-authenticated users
+      try {
+        const stored: string[] = JSON.parse(localStorage.getItem('lunettiq_wishlist') ?? '[]');
+        const next = localFav ? stored.filter(id => id !== productId) : [...stored, productId];
+        localStorage.setItem('lunettiq_wishlist', JSON.stringify(next));
+        setLocalFav(!localFav);
+      } catch {}
+      return;
+    }
     if (isFav) {
       await removeFromWishlist(productId);
     } else {
@@ -29,9 +51,9 @@ export default function FavouriteIcon({ productId, className }: FavouriteIconPro
       type="button"
       onClick={handleClick}
       className={`min-w-[44px] min-h-[44px] flex items-center justify-center ${className ?? ''}`}
-      aria-label={isFav ? 'Remove from wishlist' : 'Add to wishlist'}
+      aria-label={isWished ? 'Remove from wishlist' : 'Add to wishlist'}
     >
-      {isFav ? (
+      {isWished ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-red-500">
           <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
         </svg>

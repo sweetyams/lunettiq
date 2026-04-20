@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Collection, Product } from '@/types/shopify';
 import type { SortOption } from '@/types/filters';
 import type { EditorialPanel as EditorialPanelType } from '@/types/metaobjects';
+import type { MemberContext } from '@/app/api/account/personalization/route';
 import FilterBar from '@/components/plp/FilterBar';
 import ProductGrid from '@/components/plp/ProductGrid';
 
@@ -25,6 +26,31 @@ interface CollectionClientProps {
   initialFilters: ActiveFilters;
 }
 
+type ProductWithTags = Product & { tags?: string[] };
+
+function getProductTags(p: Product): string[] {
+  return (p as ProductWithTags).tags ?? [];
+}
+
+function scoreForYou(product: Product, ctx: MemberContext): number {
+  const tags = getProductTags(product).map(t => t.toLowerCase());
+  let score = 0;
+  for (const a of ctx.stated.avoid ?? []) {
+    if (tags.some(t => t.includes(a.toLowerCase()))) return -1000;
+  }
+  if (ctx.fit?.faceShape && tags.includes(`face-shape:${ctx.fit.faceShape.toLowerCase()}`)) score += 8;
+  for (const s of ctx.stated.shapes ?? []) { if (tags.includes(`shape:${s.toLowerCase()}`)) { score += 6; break; } }
+  for (const m of ctx.stated.materials ?? []) { if (tags.includes(`material:${m.toLowerCase()}`)) { score += 4; break; } }
+  for (const c of ctx.stated.colours ?? []) { if (tags.includes(`colour:${c.toLowerCase()}`)) { score += 3; break; } }
+  if (ctx.derived?.shapes) { for (const [s, w] of Object.entries(ctx.derived.shapes)) { if (tags.includes(`shape:${s.toLowerCase()}`)) { score += Math.min(w, 3); break; } } }
+  if (ctx.derived?.materials) { for (const [m, w] of Object.entries(ctx.derived.materials)) { if (tags.includes(`material:${m.toLowerCase()}`)) { score += Math.min(w, 3); break; } } }
+  const fw = ctx.fit?.frameWidthMm;
+  const pfw = product.metafields.frameWidth;
+  if (fw && pfw) { const diff = Math.abs(pfw - fw); if (diff <= 2) score += 5; else if (diff <= 4) score += 2; else if (diff > 8) score -= 4; }
+  if (ctx.recommendations.some(r => r.productId === product.id)) score += 10;
+  return score;
+}
+
 export default function CollectionClient({
   collection,
   initialProducts,
@@ -35,21 +61,66 @@ export default function CollectionClient({
   initialFilters,
 }: CollectionClientProps) {
   const router = useRouter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const searchParams = useSearchParams();
 
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [pageInfo, setPageInfo] = useState(initialPageInfo);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [filters, setFilters] = useState<ActiveFilters>(initialFilters);
+  const [memberCtx, setMemberCtx] = useState<MemberContext | null>(null);
+  const [fitFilterDismissed, setFitFilterDismissed] = useState(false);
 
-  // Build URL search params from current filter/sort state
+  useEffect(() => {
+    fetch('/api/account/personalization')
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) {
+          setMemberCtx(d.data);
+          if (d.data.orderCount >= 2 && !searchParams.get('sort')) setSort('for-you');
+        }
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fitSizeTag = useMemo(() => {
+    if (!memberCtx?.fit?.frameWidthMm || fitFilterDismissed) return null;
+    const fw = memberCtx.fit.frameWidthMm;
+    if (fw < 130) return 'small';
+    if (fw > 140) return 'large';
+    return 'medium';
+  }, [memberCtx, fitFilterDismissed]);
+
+  const displayProducts = useMemo(() => {
+    let list = [...initialProducts];
+
+    if (fitSizeTag && !filters.size.length) {
+      list = list.filter(p => {
+        const tags = getProductTags(p);
+        return tags.some(t => t === `size:${fitSizeTag}`) || !tags.some(t => t.startsWith('size:'));
+      });
+    }
+
+    if (sort === 'for-you' && memberCtx) {
+      const scored = list.map(p => ({ p, score: scoreForYou(p, memberCtx) }));
+      scored.sort((a, b) => b.score - a.score);
+      list = scored.map(s => s.p);
+    } else if (memberCtx?.stated.avoid?.length) {
+      const avoidSet = new Set((memberCtx.stated.avoid ?? []).map(a => a.toLowerCase()));
+      const normal: Product[] = [];
+      const demoted: Product[] = [];
+      for (const p of list) {
+        const tags = getProductTags(p).map(t => t.toLowerCase());
+        if (tags.some(t => Array.from(avoidSet).some(a => t.includes(a)))) demoted.push(p);
+        else normal.push(p);
+      }
+      list = [...normal, ...demoted];
+    }
+
+    return list;
+  }, [initialProducts, sort, memberCtx, fitSizeTag, filters.size]);
+
   const buildSearchParams = useCallback(
     (newFilters: ActiveFilters, newSort: SortOption) => {
       const params = new URLSearchParams();
-      if (newSort !== 'relevance') params.set('sort', newSort);
+      if (newSort !== 'relevance' && newSort !== 'for-you') params.set('sort', newSort);
       if (newFilters.shape.length > 0) params.set('shape', newFilters.shape.join(','));
       if (newFilters.colour.length > 0) params.set('colour', newFilters.colour.join(','));
       if (newFilters.material.length > 0) params.set('material', newFilters.material.join(','));
@@ -59,12 +130,10 @@ export default function CollectionClient({
     []
   );
 
-  // Navigate with updated search params (triggers server re-fetch via ISR)
   const updateUrl = useCallback(
     (newFilters: ActiveFilters, newSort: SortOption) => {
       const qs = buildSearchParams(newFilters, newSort);
-      const url = `/collections/${collectionHandle}${qs ? `?${qs}` : ''}`;
-      router.push(url, { scroll: false });
+      router.push(`/collections/${collectionHandle}${qs ? `?${qs}` : ''}`, { scroll: false });
     },
     [collectionHandle, router, buildSearchParams]
   );
@@ -72,7 +141,7 @@ export default function CollectionClient({
   const handleSortChange = useCallback(
     (newSort: SortOption) => {
       setSort(newSort);
-      updateUrl(filters, newSort);
+      if (newSort !== 'for-you') updateUrl(filters, newSort);
     },
     [filters, updateUrl]
   );
@@ -80,7 +149,7 @@ export default function CollectionClient({
   const handleFilterChange = useCallback(
     (newFilters: ActiveFilters) => {
       setFilters(newFilters);
-      updateUrl(newFilters, sort);
+      updateUrl(newFilters, sort === 'for-you' ? 'relevance' : sort);
     },
     [sort, updateUrl]
   );
@@ -88,52 +157,18 @@ export default function CollectionClient({
   const handleClearFilters = useCallback(() => {
     const cleared: ActiveFilters = { shape: [], colour: [], material: [], size: [] };
     setFilters(cleared);
-    updateUrl(cleared, sort);
+    setFitFilterDismissed(false);
+    updateUrl(cleared, sort === 'for-you' ? 'relevance' : sort);
   }, [sort, updateUrl]);
 
-  // Infinite scroll: load more products
-  const loadMore = useCallback(async () => {
-    if (!pageInfo.hasNextPage || !pageInfo.endCursor || isLoadingMore) return;
-
-    setIsLoadingMore(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('cursor', pageInfo.endCursor);
-      params.set('sort', sort);
-      if (filters.shape.length > 0) params.set('shape', filters.shape.join(','));
-      if (filters.colour.length > 0) params.set('colour', filters.colour.join(','));
-      if (filters.material.length > 0) params.set('material', filters.material.join(','));
-      if (filters.size.length > 0) params.set('size', filters.size.join(','));
-
-      const res = await fetch(`/api/collections/${collectionHandle}/products?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to load');
-
-      const result = await res.json();
-      setProducts((prev) => [...prev, ...result.products]);
-      setPageInfo(result.pageInfo);
-      setLoadError(null);
-    } catch {
-      setLoadError('Failed to load more products.');
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [pageInfo, isLoadingMore, sort, filters, collectionHandle]);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const hasActiveFilters =
-    filters.shape.length > 0 ||
-    filters.colour.length > 0 ||
-    filters.material.length > 0 ||
-    filters.size.length > 0;
-
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-8">
+    <div className="site-container py-8">
       <h1 className="text-2xl md:text-3xl font-light tracking-wide mb-6">
         {collection.title}
       </h1>
 
       <FilterBar
-        itemCount={products.length}
+        itemCount={displayProducts.length}
         sort={sort}
         filters={filters}
         onSortChange={handleSortChange}
@@ -142,73 +177,26 @@ export default function CollectionClient({
         products={initialProducts}
       />
 
+      <div className="h-8 mb-4 flex items-center">
+        {fitSizeTag && !filters.size.length && !fitFilterDismissed && (
+          <span className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-100 rounded-full">
+            Showing {fitSizeTag} frames based on your fit profile
+            <button
+              onClick={() => setFitFilterDismissed(true)}
+              className="ml-1 text-gray-400 hover:text-black"
+              aria-label="Show all sizes"
+            >
+              · Show all
+            </button>
+          </span>
+        )}
+      </div>
+
       <ProductGrid
-        products={products}
+        products={displayProducts}
         editorialPanels={editorialPanels}
         editorialInterval={9}
       />
-
-      {/* Infinite scroll trigger / Load more */}
-      {pageInfo.hasNextPage && (
-        <div className="mt-8 flex justify-center">
-          {isLoadingMore ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-black rounded-full animate-spin" />
-              Loading more...
-            </div>
-          ) : (
-            <InfiniteScrollTrigger onIntersect={loadMore} />
-          )}
-        </div>
-      )}
-
-      {loadError && (
-        <div className="mt-4 flex flex-col items-center gap-2">
-          <p className="text-sm text-red-600">{loadError}</p>
-          <button
-            onClick={loadMore}
-            className="px-6 py-2 border border-black text-sm hover:bg-black hover:text-white transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Fallback load more button */}
-      {pageInfo.hasNextPage && !isLoadingMore && !loadError && (
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={loadMore}
-            className="px-8 py-3 border border-black text-sm hover:bg-black hover:text-white transition-colors"
-          >
-            Load more
-          </button>
-        </div>
-      )}
     </div>
   );
-}
-
-// IntersectionObserver-based infinite scroll trigger
-function InfiniteScrollTrigger({ onIntersect }: { onIntersect: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const onIntersectRef = useRef(onIntersect);
-  onIntersectRef.current = onIntersect;
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          onIntersectRef.current();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return <div ref={ref} className="h-1" />;
 }

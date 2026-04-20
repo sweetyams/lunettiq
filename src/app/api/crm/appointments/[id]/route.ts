@@ -90,26 +90,56 @@ export const PATCH = handler(async (request, ctx) => {
     diff: body,
   });
 
+  // Series edit: apply to future instances
+  const mode: string | undefined = body.mode; // 'this' | 'future'
+  if (mode === 'future' && existing.seriesId && existing.seriesIndex != null) {
+    const seriesUpdates: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.title !== undefined) seriesUpdates.title = body.title;
+    if (body.notes !== undefined) seriesUpdates.notes = body.notes;
+    if (body.staffId !== undefined) seriesUpdates.staffId = body.staffId;
+    if (body.status !== undefined) seriesUpdates.status = body.status;
+
+    if (Object.keys(seriesUpdates).length > 1) {
+      await db.update(appointments).set(seriesUpdates).where(
+        and(
+          eq(appointments.seriesId, existing.seriesId),
+          gte(appointments.seriesIndex, existing.seriesIndex),
+          sql`${appointments.id} != ${id}`,
+        ),
+      );
+    }
+  }
+
   return jsonOk(updated);
 });
 
-export const DELETE = handler(async (_request, ctx) => {
+export const DELETE = handler(async (request, ctx) => {
   const session = await requireCrmAuth('org:appointments:delete');
   const id = ctx.params.id;
+  const mode = request.nextUrl.searchParams.get('mode') ?? 'this'; // 'this' | 'all'
 
   const existing = await db.select().from(appointments).where(eq(appointments.id, id)).then((r) => r[0]);
   if (!existing) return jsonError('Appointment not found', 404);
 
-  const [updated] = await db
-    .update(appointments)
-    .set({ status: 'cancelled', updatedAt: new Date() })
-    .where(eq(appointments.id, id))
-    .returning();
+  const cancelUpdate = { status: 'cancelled' as const, updatedAt: new Date() };
+
+  if (mode === 'all' && existing.seriesId) {
+    // Cancel all non-terminal instances in the series
+    await db.update(appointments).set(cancelUpdate).where(
+      and(
+        eq(appointments.seriesId, existing.seriesId),
+        sql`${appointments.status} IN ('scheduled', 'confirmed')`,
+      ),
+    );
+  } else {
+    await db.update(appointments).set(cancelUpdate).where(eq(appointments.id, id));
+  }
 
   await db.insert(auditLog).values({
     action: 'delete', entityType: 'appointment', entityId: id,
     staffId: session.userId, surface: 'web', locationId: session.locationIds[0],
+    diff: { mode, seriesId: existing.seriesId },
   });
 
-  return jsonOk(updated);
+  return jsonOk({ id, mode, seriesId: existing.seriesId });
 });

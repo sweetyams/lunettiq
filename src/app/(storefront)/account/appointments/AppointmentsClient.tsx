@@ -7,18 +7,16 @@ interface Location { id: string; name: string; address: { address1?: string; cit
 interface Slot { start: string; end: string }
 interface Appointment { id: string; title: string; status: string; startsAt: string; endsAt: string; locationName: string; notes: string | null }
 
-const SERVICES = [
-  { value: 'Eye Exam', label: 'Eye Exam', duration: 30 },
-  { value: 'Frame Fitting', label: 'Frame Fitting', duration: 30 },
-  { value: 'Lens Consultation', label: 'Lens Consultation', duration: 30 },
-  { value: 'Adjustment & Repair', label: 'Adjustment & Repair', duration: 15 },
-];
+interface AppointmentType { id: string; name: string; durationMinutes: number; bufferMinutes: number }
 
 export default function AppointmentsClient({ locations }: { locations: Location[] }) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>([]);
   const [booking, setBooking] = useState(false);
   const [step, setStep] = useState(0); // 0=service, 1=location, 2=date, 3=time, 4=confirm
   const [service, setService] = useState('');
+  const [serviceDuration, setServiceDuration] = useState(30);
+  const [serviceBuffer, setServiceBuffer] = useState(0);
   const [locationId, setLocationId] = useState('');
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -31,13 +29,17 @@ export default function AppointmentsClient({ locations }: { locations: Location[
     fetch('/api/account/appointments', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setAppointments(d.data ?? []); });
+    fetch('/api/account/appointment-types')
+      .then(r => r.json())
+      .then(d => setAppointmentTypes(d.data ?? []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!date || !locationId) return;
     setLoadingSlots(true);
     setSelectedSlot(null);
-    fetch(`/api/account/appointments?slots=1&date=${date}&locationId=${locationId}`)
+    fetch(`/api/account/appointments?slots=1&date=${date}&locationId=${locationId}&duration=${serviceDuration}&buffer=${serviceBuffer}`)
       .then(r => r.json())
       .then(d => setSlots(d.data ?? []))
       .finally(() => setLoadingSlots(false));
@@ -49,7 +51,7 @@ export default function AppointmentsClient({ locations }: { locations: Location[
     const res = await fetch('/api/account/appointments', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locationId, startsAt: selectedSlot.start, title: service, notes: notes || undefined }),
+      body: JSON.stringify({ locationId, startsAt: selectedSlot.start, title: service, notes: notes || undefined, duration: serviceDuration }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -60,8 +62,19 @@ export default function AppointmentsClient({ locations }: { locations: Location[
     setSubmitting(false);
   }
 
+  async function handleCancel(id: string) {
+    if (!confirm('Are you sure you want to cancel this appointment?')) return;
+    const res = await fetch(`/api/account/appointments?id=${id}`, { method: 'DELETE', credentials: 'include' });
+    if (res.ok) {
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a));
+    } else {
+      const e = await res.json().catch(() => ({}));
+      alert(e.error || 'Could not cancel appointment');
+    }
+  }
+
   function reset() {
-    setBooking(false); setStep(0); setService(''); setLocationId(''); setDate(''); setSelectedSlot(null); setNotes('');
+    setBooking(false); setStep(0); setService(''); setServiceDuration(30); setServiceBuffer(0); setLocationId(''); setDate(''); setSelectedSlot(null); setNotes('');
   }
 
   const loc = locations.find(l => l.id === locationId);
@@ -97,11 +110,11 @@ export default function AppointmentsClient({ locations }: { locations: Location[
             <div>
               <p className="text-sm font-medium mb-3">What do you need?</p>
               <div className="grid grid-cols-2 gap-3">
-                {SERVICES.map(s => (
-                  <button key={s.value} onClick={() => { setService(s.value); setStep(1); }}
+                {appointmentTypes.map(s => (
+                  <button key={s.id} onClick={() => { setService(s.name); setServiceDuration(s.durationMinutes); setServiceBuffer(s.bufferMinutes); setStep(1); }}
                     className="border border-gray-200 rounded-lg p-4 text-left hover:border-black transition-colors">
-                    <div className="text-sm font-medium">{s.label}</div>
-                    <div className="text-xs text-gray-500 mt-1">{s.duration} min</div>
+                    <div className="text-sm font-medium">{s.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">{s.durationMinutes} min</div>
                   </button>
                 ))}
               </div>
@@ -206,7 +219,12 @@ export default function AppointmentsClient({ locations }: { locations: Location[
                     <div className="text-sm text-gray-500 mt-1">{fmtDate(a.startsAt)} · {fmtTime(a.startsAt)}</div>
                     <div className="text-xs text-gray-400 mt-1">{a.locationName}</div>
                   </div>
-                  <span className="text-xs border border-gray-200 px-2 py-0.5 uppercase">{a.status}</span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs border border-gray-200 px-2 py-0.5 uppercase">{a.status}</span>
+                    {(a.status === 'scheduled' || a.status === 'confirmed') && (new Date(a.startsAt).getTime() - Date.now()) > 24 * 3600000 && (
+                      <button onClick={() => handleCancel(a.id)} className="text-xs text-gray-400 hover:text-red-600 transition-colors">Cancel</button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

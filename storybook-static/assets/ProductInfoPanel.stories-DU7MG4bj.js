@@ -1,0 +1,11 @@
+import{n as e}from"./chunk-CzyJ72yW.js";import{_ as t}from"./iframe-BOb_YaGJ.js";import{l as n,s as r,t as i}from"./storyData-JooGbszH.js";import{i as a,n as o,r as s,t as c}from"./FavouriteIcon-CgXRupTB.js";import{n as l,t as u}from"./DualPriceDisplay-B_SEWPFL.js";function d({product:e,selectedVariant:t}){let n=t?.price??e.priceRange.minVariantPrice;return new Intl.NumberFormat(`en-CA`,{style:`currency`,currency:n.currencyCode||`CAD`}).format(Number(n.amount)),(0,f.jsxs)(`div`,{children:[(0,f.jsxs)(`div`,{className:`flex items-start justify-between gap-2`,children:[(0,f.jsx)(`h1`,{className:`text-2xl md:text-3xl font-light tracking-wide`,children:e.title}),(0,f.jsx)(c,{productId:e.id})]}),(0,f.jsx)(u,{price:Number(n.amount),currencyCode:n.currencyCode||`CAD`}),e.tags?.some(e=>e.startsWith(`early-access-`))&&(0,f.jsxs)(`div`,{className:`mt-2 inline-block px-2 py-0.5 bg-black text-white text-xs font-medium uppercase tracking-wider rounded`,children:[e.tags.find(e=>e.startsWith(`early-access-`))?.replace(`early-access-`,``).toUpperCase(),` Early Access`]}),e.description&&(0,f.jsx)(`div`,{className:`mt-4 text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none`,dangerouslySetInnerHTML:{__html:e.descriptionHtml||e.description}})]})}var f,p=e((()=>{f=t(),l(),o(),d.__docgenInfo={description:``,methods:[],displayName:`ProductInfoPanel`,props:{product:{required:!0,tsType:{name:`Product`},description:``},selectedVariant:{required:!0,tsType:{name:`union`,raw:`ProductVariant | null`,elements:[{name:`ProductVariant`},{name:`null`}]},description:``}}}})),m,h,g,_,v;e((()=>{m=t(),p(),a(),i(),h={component:d,decorators:[e=>(0,m.jsx)(s,{children:(0,m.jsx)(e,{})})]},g={args:{product:r,selectedVariant:n}},_={args:{product:r,selectedVariant:null}},g.parameters={...g.parameters,docs:{...g.parameters?.docs,source:{originalSource:`{
+  args: {
+    product: mockProduct,
+    selectedVariant: mockVariant
+  }
+}`,...g.parameters?.docs?.source}}},_.parameters={..._.parameters,docs:{..._.parameters?.docs,source:{originalSource:`{
+  args: {
+    product: mockProduct,
+    selectedVariant: null
+  }
+}`,..._.parameters?.docs?.source}}},v=[`Default`,`NoVariant`]}))();export{g as Default,_ as NoVariant,v as __namedExportsOrder,h as default};

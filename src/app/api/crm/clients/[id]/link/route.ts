@@ -56,3 +56,35 @@ export const POST = handler(async (request, ctx) => {
 
   return jsonOk(row, 201);
 });
+
+export const PATCH = handler(async (request, ctx) => {
+  const session = await requireCrmAuth('org:clients:update');
+  const { linkId, relationship } = await request.json();
+  if (!linkId || !relationship) return jsonError('linkId and relationship required', 400);
+
+  const [updated] = await db.update(clientLinks).set({ relationship }).where(eq(clientLinks.id, linkId)).returning();
+  if (!updated) return jsonError('Link not found', 404);
+
+  await db.insert(auditLog).values({
+    action: 'update', entityType: 'client_link', entityId: linkId,
+    staffId: session.userId, surface: 'web', locationId: session.locationIds[0],
+    diff: { relationship },
+  });
+
+  return jsonOk(updated);
+});
+
+export const DELETE = handler(async (request, ctx) => {
+  const session = await requireCrmAuth('org:clients:update');
+  const { linkId } = await request.json();
+  if (!linkId) return jsonError('linkId required', 400);
+
+  await db.delete(clientLinks).where(eq(clientLinks.id, linkId));
+
+  await db.insert(auditLog).values({
+    action: 'delete', entityType: 'client_link', entityId: linkId,
+    staffId: session.userId, surface: 'web', locationId: session.locationIds[0],
+  });
+
+  return jsonOk({ deleted: true });
+});

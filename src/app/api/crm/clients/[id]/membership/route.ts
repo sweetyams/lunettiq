@@ -25,7 +25,7 @@ export const GET = handler(async (_request, ctx) => {
 
   return jsonOk({
     tier,
-    tierLabel: tier ? TIERS[tier].label : null,
+    tierLabel: tier ? TIERS[tier as keyof typeof TIERS]?.label ?? null : null,
     status: meta.membership_status || (tier ? 'active' : null),
     creditBalance: Number(balanceResult[0]?.total ?? 0),
     memberSince: meta.member_since || null,
@@ -51,7 +51,7 @@ export const PATCH = handler(async (request, ctx) => {
     await requireCrmAuth('org:membership:update_tier');
     const newTier = body.tier as TierKey | null;
     let tags = (client.tags ?? []).filter(t => !Object.values(TIERS).some(tc => tc.tag === t));
-    if (newTier && TIERS[newTier]) tags = [...tags, TIERS[newTier].tag];
+    if (newTier && TIERS[newTier as keyof typeof TIERS]) tags = [...tags, TIERS[newTier as keyof typeof TIERS].tag];
 
     await db.update(customersProjection).set({ tags, syncedAt: new Date() }).where(eq(customersProjection.shopifyCustomerId, id));
 

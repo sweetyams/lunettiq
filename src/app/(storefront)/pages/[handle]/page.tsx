@@ -47,7 +47,7 @@ export default async function StaticPage({
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="site-container py-12">
       <h1 className="text-2xl font-medium mb-6">{page.title}</h1>
       <div
         className="prose prose-sm max-w-none"

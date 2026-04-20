@@ -75,6 +75,24 @@ export const creditTransactionTypeEnum = pgEnum('credit_transaction_type', [
   'redeemed_order',
   'expired',
   'adjustment',
+  // V2 points
+  'points_issued_signup',
+  'points_issued_purchase',
+  'points_issued_birthday',
+  'points_issued_review',
+  'points_issued_referral_referrer',
+  'points_issued_referral_referred',
+  'points_issued_milestone',
+  'points_redeemed_order',
+  'points_redeemed_membership_conversion',
+  'points_expired',
+  // V2 trials
+  'membership_trial_started',
+  'membership_trial_converted',
+  'membership_trial_cancelled',
+  'membership_trial_clawback',
+  // V2 referral
+  'referral_qualified',
 ]);
 
 export const auditActionEnum = pgEnum('audit_action', [
@@ -95,6 +113,12 @@ export const surfaceEnum = pgEnum('surface', [
   'storefront',
   'system',
 ]);
+
+export const ledgerCurrencyEnum = pgEnum('ledger_currency', ['credit', 'points']);
+
+export const referralStatusEnum = pgEnum('referral_status', ['pending', 'qualified', 'fraudulent', 'expired']);
+
+export const trialOutcomeEnum = pgEnum('trial_outcome', ['pending', 'converted', 'cancelled', 'clawback_applied']);
 
 // ─── Shopify Projection Tables ───────────────────────────
 
@@ -143,6 +167,7 @@ export const ordersProjection = pgTable(
     createdAt: timestamp('created_at'),
     shopifyUpdatedAt: timestamp('shopify_updated_at'),
     syncedAt: timestamp('synced_at').defaultNow(),
+    source: text('source').default('shopify'), // 'shopify' | 'square'
   },
   (t) => [
     index('idx_orders_customer').on(t.shopifyCustomerId),
@@ -156,6 +181,7 @@ export const productsProjection = pgTable('products_projection', {
   description: text('description'),
   productType: text('product_type'),
   vendor: text('vendor'),
+  status: text('status').default('active'), // 'active' | 'draft' | 'archived'
   tags: text('tags').array(),
   collections: text('collections').array(),
   images: jsonb('images'),
@@ -250,21 +276,136 @@ export const appointments = pgTable(
     shopifyCustomerId: text('shopify_customer_id'),
     title: text('title').notNull(),
     status: appointmentStatusEnum('status').default('scheduled'),
-    startsAt: timestamp('starts_at').notNull(),
-    endsAt: timestamp('ends_at').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     notes: text('notes'),
     staffId: text('staff_id'),
     locationId: text('location_id'),
     externalId: text('external_id'),
-    createdAt: timestamp('created_at').defaultNow(),
-    updatedAt: timestamp('updated_at').defaultNow(),
+    // Recurrence
+    recurrenceRule: text('recurrence_rule'),       // iCal RRULE string e.g. "FREQ=WEEKLY;BYDAY=MO;COUNT=10"
+    seriesId: uuid('series_id'),                   // shared UUID across all instances in a series
+    seriesIndex: integer('series_index'),           // 0-based position in the series
+    seriesExceptions: jsonb('series_exceptions'),   // only on index=0: array of ISO dates to skip
+    reminderSentAt: timestamp('reminder_sent_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   },
   (t) => [
     index('idx_appointments_customer').on(t.shopifyCustomerId),
     index('idx_appointments_date').on(t.startsAt),
     index('idx_appointments_location').on(t.locationId),
+    index('idx_appointments_series').on(t.seriesId),
   ]
 );
+
+export const staffSchedules = pgTable(
+  'staff_schedules',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    staffId: text('staff_id').notNull(),
+    dayOfWeek: integer('day_of_week').notNull(), // 0=Sun, 1=Mon … 6=Sat
+    startTime: text('start_time').notNull(),     // "09:00"
+    endTime: text('end_time').notNull(),         // "18:00"
+    locationId: text('location_id'),
+  },
+  (t) => [
+    index('idx_staff_schedules_staff').on(t.staffId, t.dayOfWeek),
+  ]
+);
+
+export const loyaltyTiers = pgTable('loyalty_tiers', {
+  id: text('id').primaryKey(),                    // e.g. "essential", "cult", "vault"
+  label: text('label').notNull(),                 // Display name
+  tag: text('tag').notNull(),                     // Shopify tag e.g. "member-essential"
+  monthlyCredit: decimal('monthly_credit', { precision: 8, scale: 2 }).notNull(),
+  birthdayCredit: decimal('birthday_credit', { precision: 8, scale: 2 }).default('20'),
+  tradeInRate: decimal('trade_in_rate', { precision: 4, scale: 3 }).notNull(), // e.g. 0.200
+  lensRefresh: boolean('lens_refresh').default(false),
+  frameRotation: text('frame_rotation'),          // null, "25% off", "Free swap"
+  sortOrder: integer('sort_order').default(0),
+  active: boolean('active').default(true),
+  // V2 fields
+  monthlyFee: decimal('monthly_fee', { precision: 8, scale: 2 }),
+  annualFee: decimal('annual_fee', { precision: 8, scale: 2 }),
+  secondSightRate: decimal('second_sight_rate', { precision: 4, scale: 3 }),
+  earlyAccessHours: integer('early_access_hours').default(0),
+  namedOptician: boolean('named_optician').default(false),
+  freeRepairs: text('free_repairs'),
+  styleConsultation: text('style_consultation'),
+  eventsPerYear: integer('events_per_year').default(0),
+  annualGift: boolean('annual_gift').default(false),
+  archiveVote: boolean('archive_vote').default(false),
+  privateWhatsapp: boolean('private_whatsapp').default(false),
+  // V2 shipping & referral
+  shippingTier: text('shipping_tier'),            // null, "standard", "priority", "overnight"
+  referralRewardCredit: decimal('referral_reward_credit', { precision: 8, scale: 2 }),
+  referralExtensionMonths: integer('referral_extension_months').default(0),
+  referredDiscount: decimal('referred_discount', { precision: 8, scale: 2 }),
+  referredTrialTier: text('referred_trial_tier'), // e.g. "cult", "essential"
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// ─── Referrals ───────────────────────────────────────────
+
+export const referrals = pgTable(
+  'referrals',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    referrerCustomerId: text('referrer_customer_id').notNull(),
+    referrerCode: text('referrer_code').notNull(),
+    referredCustomerId: text('referred_customer_id'),
+    referredEmail: text('referred_email'),
+    status: referralStatusEnum('status').default('pending'),
+    clickedAt: timestamp('clicked_at', { withTimezone: true }).defaultNow(),
+    signedUpAt: timestamp('signed_up_at', { withTimezone: true }),
+    qualifiedAt: timestamp('qualified_at', { withTimezone: true }),
+    qualifyingOrderId: text('qualifying_order_id'),
+    referrerTierAtQualification: text('referrer_tier_at_qualification'),
+    referrerRewardAmount: decimal('referrer_reward_amount', { precision: 12, scale: 2 }),
+    referrerRewardCurrency: ledgerCurrencyEnum('referrer_reward_currency'),
+    fraudSignals: jsonb('fraud_signals'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index('idx_referrals_referrer').on(t.referrerCustomerId),
+    uniqueIndex('idx_referrals_code').on(t.referrerCode),
+    index('idx_referrals_status').on(t.status),
+  ]
+);
+
+// ─── Membership Trials ──────────────────────────────────
+
+export const membershipTrials = pgTable(
+  'membership_trials',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    shopifyCustomerId: text('shopify_customer_id').notNull(),
+    tier: text('tier').notNull().default('cult'),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
+    creditsIssuedAtStart: decimal('credits_issued_at_start', { precision: 12, scale: 2 }),
+    creditsUsedDuringTrial: decimal('credits_used_during_trial', { precision: 12, scale: 2 }).default('0'),
+    outcome: trialOutcomeEnum('outcome').default('pending'),
+    convertsAt: timestamp('converts_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    clawbackAmount: decimal('clawback_amount', { precision: 12, scale: 2 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index('idx_trials_customer').on(t.shopifyCustomerId),
+  ]
+);
+
+export const appointmentTypes = pgTable('appointment_types', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  durationMinutes: integer('duration_minutes').notNull().default(30),
+  bufferMinutes: integer('buffer_minutes').notNull().default(0),
+  locationId: text('location_id'),
+  active: boolean('active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at').defaultNow(),
+});
 
 export const customDesigns = pgTable(
   'custom_designs',
@@ -291,19 +432,24 @@ export const creditsLedger = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     shopifyCustomerId: text('shopify_customer_id').notNull(),
+    currency: ledgerCurrencyEnum('currency').default('credit').notNull(),
     transactionType: creditTransactionTypeEnum('transaction_type').notNull(),
     amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
     runningBalance: decimal('running_balance', { precision: 12, scale: 2 }).notNull(),
     reason: text('reason'),
     relatedOrderId: text('related_order_id'),
     relatedIntakeId: uuid('related_intake_id'),
+    relatedReferralId: uuid('related_referral_id'),
     staffId: text('staff_id'),
     locationId: text('location_id'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
     occurredAt: timestamp('occurred_at').defaultNow(),
     createdAt: timestamp('created_at').defaultNow(),
   },
   (t) => [
     index('idx_credits_customer').on(t.shopifyCustomerId),
+    index('idx_credits_currency').on(t.shopifyCustomerId, t.currency),
+    index('idx_credits_expiry').on(t.expiresAt),
   ]
 );
 
@@ -392,8 +538,11 @@ export const clientLinks = pgTable(
 export const locations = pgTable('locations', {
   id: text('id').primaryKey(),
   shopifyLocationId: text('shopify_location_id'),
+  squareLocationId: text('square_location_id'),
   name: text('name').notNull(),
   address: jsonb('address'),
+  timezone: text('timezone').default('America/Montreal'),
+  maxConcurrent: integer('max_concurrent').default(1),
   active: boolean('active').default(true),
   syncedAt: timestamp('synced_at').defaultNow(),
 });
@@ -458,6 +607,91 @@ export const tryOnSessions = pgTable('try_on_sessions', {
   index('idx_tryon_customer').on(t.shopifyCustomerId, t.startedAt),
 ]);
 
+// ─── Gift Memberships ────────────────────────────────────
+
+export const giftMembershipStatusEnum = pgEnum('gift_membership_status', ['purchased', 'redeemed', 'expired']);
+
+export const giftMemberships = pgTable('gift_memberships', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull(),
+  purchaserCustomerId: text('purchaser_customer_id').notNull(),
+  recipientCustomerId: text('recipient_customer_id'),
+  recipientEmail: text('recipient_email'),
+  tier: text('tier').notNull(),
+  durationMonths: integer('duration_months').notNull().default(12),
+  status: giftMembershipStatusEnum('status').default('purchased'),
+  purchasedAt: timestamp('purchased_at', { withTimezone: true }).defaultNow(),
+  redeemedAt: timestamp('redeemed_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  message: text('message'),
+}, (t) => [
+  uniqueIndex('idx_gift_code').on(t.code),
+  index('idx_gift_purchaser').on(t.purchaserCustomerId),
+]);
+
+// ─── VAULT Events ────────────────────────────────────────
+
+export const brandEventStatusEnum = pgEnum('brand_event_status', ['draft', 'published', 'cancelled', 'completed']);
+export const eventInviteStatusEnum = pgEnum('event_invite_status', ['invited', 'accepted', 'declined', 'attended', 'no_show']);
+
+export const brandEvents = pgTable('brand_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  location: text('location'),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  capacity: integer('capacity'),
+  tierMinimum: text('tier_minimum').default('vault'), // vault, cult, essential
+  status: brandEventStatusEnum('status').default('draft'),
+  imageUrl: text('image_url'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [index('idx_events_date').on(t.startsAt)]);
+
+export const eventInvites = pgTable('event_invites', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventId: uuid('event_id').notNull(),
+  shopifyCustomerId: text('shopify_customer_id').notNull(),
+  status: eventInviteStatusEnum('status').default('invited'),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_invites_event').on(t.eventId),
+  index('idx_invites_customer').on(t.shopifyCustomerId),
+]);
+
+// ─── Archive Votes ───────────────────────────────────────
+
+export const archiveVotes = pgTable('archive_votes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  year: integer('year').notNull(),
+  shopifyCustomerId: text('shopify_customer_id').notNull(),
+  productHandle: text('product_handle').notNull(), // which archive frame they voted for
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  uniqueIndex('idx_votes_unique').on(t.year, t.shopifyCustomerId),
+  index('idx_votes_year').on(t.year),
+]);
+
+// ─── Gift Fulfilments ────────────────────────────────────
+
+export const giftFulfilmentStatusEnum = pgEnum('gift_fulfilment_status', ['pending', 'sourcing', 'shipped', 'delivered']);
+
+export const giftFulfilments = pgTable('gift_fulfilments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shopifyCustomerId: text('shopify_customer_id').notNull(),
+  year: integer('year').notNull(),
+  status: giftFulfilmentStatusEnum('status').default('pending'),
+  giftDescription: text('gift_description'),
+  trackingNumber: text('tracking_number'),
+  shippedAt: timestamp('shipped_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_gifts_customer').on(t.shopifyCustomerId),
+  index('idx_gifts_status').on(t.status),
+]);
+
 // ─── Notifications ───────────────────────────────────────
 
 export const notifications = pgTable('notifications', {
@@ -486,3 +720,104 @@ export const aiRequests = pgTable('ai_requests', {
   costEstimateCents: integer('cost_estimate_cents'),
   requestedAt: timestamp('requested_at').defaultNow(),
 });
+
+// ─── Returns ─────────────────────────────────────────────
+
+export const returnReasonEnum = pgEnum('return_reason', [
+  'doesnt_fit', 'doesnt_suit', 'colour_different', 'changed_mind',
+  'received_damaged', 'received_wrong', 'rx_issue', 'other',
+]);
+
+export const returnResolutionEnum = pgEnum('return_resolution', ['refund', 'credit', 'exchange']);
+
+export const returnStatusEnum = pgEnum('return_status', [
+  'requested', 'label_sent', 'in_transit', 'received', 'resolved', 'rejected',
+]);
+
+export const returns = pgTable('returns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  orderId: text('order_id').notNull(),
+  shopifyCustomerId: text('shopify_customer_id').notNull(),
+  lineItems: jsonb('line_items').notNull(), // [{variantId, title, quantity, reason, reasonDetail}]
+  resolutionType: returnResolutionEnum('resolution_type').notNull(),
+  resolutionAmount: decimal('resolution_amount', { precision: 12, scale: 2 }),
+  status: returnStatusEnum('status').default('requested'),
+  returnReasonPrimary: returnReasonEnum('return_reason_primary').notNull(),
+  returnReasonDetail: text('return_reason_detail'),
+  exchangeOrderId: text('exchange_order_id'),
+  shippingLabelUrl: text('shipping_label_url'),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).defaultNow(),
+  receivedAt: timestamp('received_at', { withTimezone: true }),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  rejectedReason: text('rejected_reason'),
+  staffId: text('staff_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_returns_customer').on(t.shopifyCustomerId),
+  index('idx_returns_order').on(t.orderId),
+  index('idx_returns_status').on(t.status),
+]);
+
+// ─── Search ──────────────────────────────────────────────
+
+export const searchQueries = pgTable('search_queries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  queryRaw: text('query_raw').notNull(),
+  queryNormalized: text('query_normalized').notNull(),
+  resultCount: integer('result_count').default(0),
+  personalized: boolean('personalized').default(false),
+  synonymFired: text('synonym_fired'),
+  zeroResults: boolean('zero_results').default(false),
+  clickedProducts: jsonb('clicked_products'), // [{productId, position}]
+  timeToClickMs: integer('time_to_click_ms'),
+  filtersApplied: jsonb('filters_applied'),
+  customerId: text('customer_id'),
+  sessionId: text('session_id'),
+  deviceType: text('device_type'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_search_queries_normalized').on(t.queryNormalized),
+  index('idx_search_queries_created').on(t.createdAt),
+  index('idx_search_queries_customer').on(t.customerId),
+]);
+
+export const searchSynonyms = pgTable('search_synonyms', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  terms: text('terms').array().notNull(), // array of equivalent terms
+  active: boolean('active').default(true),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── Integration Config ──────────────────────────────────
+
+export const integrationsConfig = pgTable('integrations_config', {
+  id: text('id').primaryKey(), // matches integration registry id
+  enabled: boolean('enabled').default(false),
+  keys: jsonb('keys'), // encrypted key-value pairs { KEY_NAME: "encrypted_value" }
+  configuredAt: timestamp('configured_at', { withTimezone: true }),
+  configuredBy: text('configured_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── Credit Codes (gift cards + in-store codes) ──────────
+
+export const creditCodeStatusEnum = pgEnum('credit_code_status', ['active', 'used', 'revoked', 'expired']);
+
+export const creditCodes = pgTable('credit_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shopifyCustomerId: text('shopify_customer_id').notNull(),
+  method: text('method').notNull(), // 'gift_card' | 'square_discount'
+  code: text('code').notNull(),
+  fullCode: text('full_code'), // full gift card code (only available at creation)
+  amount: decimal('amount', { precision: 12, scale: 2 }).notNull(),
+  status: creditCodeStatusEnum('status').default('active'),
+  shopifyGiftCardId: text('shopify_gift_card_id'), // if gift card
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revokedBy: text('revoked_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_credit_codes_customer').on(t.shopifyCustomerId),
+  index('idx_credit_codes_status').on(t.status),
+]);

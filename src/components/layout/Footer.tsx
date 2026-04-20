@@ -104,7 +104,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-white">
       {/* Main footer content */}
-      <div className="mx-auto max-w-7xl px-6 pb-8 pt-12">
+      <div className="site-container pb-8 pt-12">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Column 1: Newsletter + Social */}
           <div>
@@ -144,7 +144,7 @@ export default function Footer() {
 
       {/* Footer bar */}
       <div className="border-t border-gray-100">
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-6 py-5 text-xs text-gray-400 sm:flex-row sm:justify-between">
+        <div className="site-container flex flex-col items-center gap-4 py-5 text-xs text-gray-400 sm:flex-row sm:justify-between">
           {/* Left: Copyright + Payment */}
           <div className="flex items-center gap-4">
             <span>© {new Date().getFullYear()} Lunettiq</span>

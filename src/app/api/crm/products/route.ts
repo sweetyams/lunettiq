@@ -13,20 +13,38 @@ export const GET = handler(async (request) => {
   const vendor = request.nextUrl.searchParams.get('vendor');
   const material = request.nextUrl.searchParams.get('material');
   const rx = request.nextUrl.searchParams.get('rx');
-  const limit = Math.min(Number(request.nextUrl.searchParams.get('limit') ?? 100), 200);
+  const tag = request.nextUrl.searchParams.get('tag');
+  const limit = Math.min(Number(request.nextUrl.searchParams.get('limit') ?? 250), 300);
 
   const conditions = [];
-  if (q) conditions.push(ilike(productsProjection.title, `%${q}%`));
+
+  // Fuzzy search across title, vendor, and tags
+  if (q) {
+    const pattern = '%' + q.trim() + '%';
+    conditions.push(sql`(
+      ${productsProjection.title} ILIKE ${pattern}
+      OR ${productsProjection.vendor} ILIKE ${pattern}
+      OR EXISTS (SELECT 1 FROM unnest(${productsProjection.tags}) t WHERE t ILIKE ${pattern})
+    )`);
+  }
+
   if (type) conditions.push(ilike(productsProjection.productType, type));
   if (vendor) conditions.push(ilike(productsProjection.vendor, vendor));
   if (material) conditions.push(sql`${productsProjection.metafields}->'custom'->>'material' ILIKE ${material} OR ${productsProjection.metafields}->'custom'->>'acetate_source' ILIKE ${'%' + material + '%'}`);
   if (rx === 'true') conditions.push(sql`${productsProjection.metafields}->'custom'->>'rx_compatible' = 'true'`);
   if (rx === 'false') conditions.push(sql`(${productsProjection.metafields}->'custom'->>'rx_compatible' IS NULL OR ${productsProjection.metafields}->'custom'->>'rx_compatible' != 'true')`);
+  if (tag) conditions.push(sql`${tag} = ANY(${productsProjection.tags})`);
+
   const where = conditions.length ? sql`${sql.join(conditions, sql` AND `)}` : undefined;
 
-  const rows = await db.select().from(productsProjection).where(where).limit(limit);
+  // Order by similarity when searching, otherwise by title
+  const orderBy = q
+    ? sql`(CASE WHEN ${productsProjection.title} ILIKE ${q.trim() + '%'} THEN 0 ELSE 1 END) ASC, ${productsProjection.title} ASC`
+    : sql`${productsProjection.title} ASC`;
 
-  // Load variants for inventory + variant info
+  const rows = await db.select().from(productsProjection).where(where).orderBy(orderBy).limit(limit);
+
+  // Load variants
   const productIds = rows.map(r => r.shopifyProductId);
   const variants = productIds.length
     ? await db.select().from(productVariantsProjection).where(inArray(productVariantsProjection.shopifyProductId, productIds))
