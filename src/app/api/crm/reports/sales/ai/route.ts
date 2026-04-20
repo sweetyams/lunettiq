@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
@@ -14,7 +14,8 @@ export const POST = handler(async (request) => {
 
   const { salesData } = await request.json();
 
-  const claude = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const claude = new Anthropic({ apiKey });
   const message = await claude.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 1000,

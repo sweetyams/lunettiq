@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 import { db } from '@/lib/db';
 import { segments } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
@@ -24,7 +24,8 @@ export const POST = handler(async (request, ctx) => {
   const { instruction } = await request.json();
   if (!instruction) return jsonError('instruction required', 400);
 
-  const client = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey });
   let message;
   try {
     message = await client.messages.create({

@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 
 const SYSTEM_PROMPT = `You are an optical prescription reader. Extract prescription values from the image of a prescription paper or label.
 
@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
   const base64 = Buffer.from(bytes).toString('base64');
   const mediaType = file.type as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
 
-  const client = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey });
 
   try {
     const message = await client.messages.create({

@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 import { db } from '@/lib/db';
 import { productsProjection, productVariantsProjection, ordersProjection, customersProjection, preferencesDerived, productFeedback } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
@@ -126,7 +126,8 @@ export const POST = handler(async (request) => {
 
   // ─── Claude analysis ──────────────────────────────────
 
-  const claude = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const claude = new Anthropic({ apiKey });
   const focusPrompt = focus ? `Focus your analysis on: ${focus}.` : '';
 
   const message = await claude.messages.create({

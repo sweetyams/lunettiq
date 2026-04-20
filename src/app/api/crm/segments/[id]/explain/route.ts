@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 import { db } from '@/lib/db';
 import { segments } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
@@ -18,7 +18,8 @@ export const POST = handler(async (_request, ctx) => {
   const segment = await db.select().from(segments).where(eq(segments.id, ctx.params.id)).then(r => r[0]);
   if (!segment) return jsonError('Segment not found', 404);
 
-  const client = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const client = new Anthropic({ apiKey });
   let message;
   try {
     message = await client.messages.create({

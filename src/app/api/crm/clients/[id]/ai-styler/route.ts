@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import Anthropic from '@anthropic-ai/sdk';
+// Anthropic SDK loaded dynamically when key is available
 import { db } from '@/lib/db';
 import { customersProjection, ordersProjection, interactions, productFeedback } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
@@ -39,7 +39,8 @@ export const POST = handler(async (request, ctx) => {
     disliked: fb.filter(f => f.sentiment === 'dislike').length,
   };
 
-  const claude = new Anthropic({ apiKey });
+  const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const claude = new Anthropic({ apiKey });
   let message;
   try {
     message = await claude.messages.create({
