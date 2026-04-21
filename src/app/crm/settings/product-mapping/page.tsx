@@ -144,6 +144,7 @@ export default function ProductMappingPage() {
 
       {/* Table */}
       {loading ? <div style={{ color: 'var(--crm-text-tertiary)' }}>Loading…</div> : (
+        <>
         <div className="crm-card" style={{ overflow: 'hidden' }}>
           <table className="crm-table" style={{ width: '100%', fontSize: 'var(--crm-text-sm)' }}>
             <thead>
@@ -219,6 +220,7 @@ export default function ProductMappingPage() {
               style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: mappings.length < PAGE_SIZE ? 'default' : 'pointer', opacity: mappings.length < PAGE_SIZE ? 0.4 : 1 }}>Next →</button>
           </div>
         </div>
+        </>
       )}
 
       {/* Choose product modal */}
