@@ -76,7 +76,7 @@ export default function FamilySwitcher({ productId, productHandle, currentType }
         </p>
         <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Colour options">
           {data.siblings.map(s => {
-            const product = currentType === 'sun' ? (s.sun ?? s.optical) : (s.optical ?? s.sun);
+            const product = currentType === 'sun' ? s.sun : s.optical;
             if (!product) return null;
             const isActive = product.handle === productHandle;
 
