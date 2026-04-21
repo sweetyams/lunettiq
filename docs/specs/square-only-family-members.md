@@ -199,7 +199,8 @@ Runs as part of the existing "Auto-Match" button flow in Square Mapping (`/api/c
 1. Group all unmatched Square items by parsed_frame (already extracted by auto-match)
 2. For each group where count >= 4:
    a. Check: does product_families row exist for this frame name? → skip if yes
-   b. CREATE product_families (id=lowercase frame, name=UPPERCASE frame)
+   b. Check: does any active Shopify product exist with this frame name? (`title ILIKE '{FRAME} %' AND status='active'`) → skip if yes (product exists on Shopify, should be matched normally not placeholdered)
+   c. CREATE product_families (id=lowercase frame, name=UPPERCASE frame)
    c. For each item in group:
       - CREATE products_projection placeholder (sq__xxx, title=square_name, status='placeholder')
       - CREATE product_family_members (family_id, product_id=sq__xxx, type=parsed_type, colour=parsed_colour)
