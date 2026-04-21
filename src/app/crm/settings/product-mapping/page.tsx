@@ -25,6 +25,7 @@ export default function ProductMappingPage() {
   const [filter, setFilter] = useState('auto');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [choosing, setChoosing] = useState<string | null>(null);
 
   function load(status?: string, q?: string) {
     setLoading(true);
@@ -127,7 +128,7 @@ export default function ProductMappingPage() {
                 <th>Square Item</th>
                 <th>→ Shopify Product</th>
                 <th style={{ width: 60 }}>Score</th>
-                <th style={{ width: 140 }}>Actions</th>
+                <th style={{ width: 180 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +157,7 @@ export default function ProductMappingPage() {
                         </div>
                       </div>
                     ) : (
-                      <ProductSearch products={products} onSelect={(id) => linkProduct(m.square_catalog_id, id)} hint={m.parsed_frame ?? ''} />
+                      <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No match</span>
                     )}
                   </td>
                   <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>
@@ -164,12 +165,13 @@ export default function ProductMappingPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      {(m.status === 'auto' || (m.status === 'unmatched' && m.shopify_product_id)) && (
-                        <button onClick={() => confirm(m.square_catalog_id)} className="crm-btn crm-btn-secondary" style={{ fontSize: 10, padding: '2px 8px' }}>✓ Confirm</button>
+                      {m.shopify_product_id && m.status !== 'confirmed' && m.status !== 'ignored' && (
+                        <button onClick={() => confirm(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-success, #16a34a)', background: 'none', color: 'var(--crm-success, #16a34a)', cursor: 'pointer' }}>✓ Confirm</button>
                       )}
-                      {m.shopify_title && m.status !== 'ignored' && (
-                        <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '2px 8px', background: 'none', border: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
+                      {m.status !== 'ignored' && (
+                        <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
                       )}
+                      <button onClick={() => setChoosing(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-text-primary)', background: 'none', color: 'var(--crm-text-primary)', cursor: 'pointer' }}>Choose</button>
                     </div>
                   </td>
                 </tr>
@@ -177,6 +179,23 @@ export default function ProductMappingPage() {
             </tbody>
           </table>
           {mappings.length === 0 && <div style={{ padding: 'var(--crm-space-6)', textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>No items found</div>}
+        </div>
+      )}
+
+      {/* Choose product modal */}
+      {choosing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setChoosing(null); }}>
+          <div className="crm-card" style={{ width: 480, maxHeight: '70vh', overflow: 'auto', padding: 'var(--crm-space-5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-4)' }}>
+              <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Choose Shopify Product</h2>
+              <button onClick={() => setChoosing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
+            </div>
+            <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
+              Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
+            </div>
+            <ProductSearch products={products} onSelect={(id) => { linkProduct(choosing, id); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
+          </div>
         </div>
       )}
     </div>
