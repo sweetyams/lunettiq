@@ -15,7 +15,7 @@ export const GET = handler(async (request) => {
 
   let query = sql`
     SELECT m.*, p.title as shopify_title, p.handle as shopify_handle, p.product_type as shopify_type,
-      (p.images::jsonb->0)::text as shopify_image
+      p.images::jsonb->0->>'src' as shopify_image
     FROM product_mappings m
     LEFT JOIN products_projection p ON p.shopify_product_id = m.shopify_product_id
     WHERE 1=1

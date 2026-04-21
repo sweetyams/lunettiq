@@ -138,7 +138,7 @@ export default function ProductMappingPage() {
                     {m.shopify_title ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {m.shopify_image && (
-                          <img src={m.shopify_image.replace(/^"|"$/g, '')} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: 'var(--crm-surface-hover)' }} />
+                          <img src={m.shopify_image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: 'var(--crm-surface-hover)' }} />
                         )}
                         <div>
                           <span style={{ color: 'var(--crm-text-primary)' }}>{m.shopify_title}</span>
