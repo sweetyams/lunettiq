@@ -9,6 +9,7 @@ const SETTINGS_GROUPS = [
       { href: '/crm/settings/families', label: 'Families', description: 'Group products by model for colour/type switching' },
       { href: '/crm/settings/filters', label: 'Filters', description: 'Manage colour, shape, size filter assignments' },
       { href: '/crm/settings/product-mapping', label: 'Square Mapping', description: 'Link Square catalog items to Shopify products' },
+      { href: '/crm/settings/metafield-visibility', label: 'Metafields', description: 'Choose which fields show on product pages' },
     ],
   },
   {

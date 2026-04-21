@@ -588,14 +588,19 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
   );
 }
 
-// Hidden namespaces/keys that aren't useful to display
-const HIDDEN_KEYS = new Set(['link_to_products', 'q-backsplash', 'third-product-image', 'second-product-image', 'metadescription', 'description_tag', 'sibling_colours']);
+// Default visible fields
+const DEFAULT_VISIBLE = ['custom.short_name', 'custom.composition', 'custom.sizing_dimensions', 'custom.face_shapes', 'custom.season', 'custom.swatch', 'custom.short_description', 'custom.staff_pick', 'custom.featured', 'custom.latest', 'custom.alter_ego'];
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
-  const [hiddenNs, setHiddenNs] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set();
-    try { return new Set(JSON.parse(localStorage.getItem('crm:hidden-metafield-ns') ?? '[]')); } catch { return new Set(); }
-  });
+  const [visibleFields, setVisibleFields] = useState<string[] | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setVisibleFields(d.data?.visible ?? DEFAULT_VISIBLE))
+      .catch(() => setVisibleFields(DEFAULT_VISIBLE));
+  }, []);
 
   if (!metafields || !Object.keys(metafields).length) {
     return (
@@ -605,32 +610,15 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
     );
   }
 
-  function toggleNs(ns: string) {
-    setHiddenNs(prev => {
-      const next = new Set(prev);
-      if (next.has(ns)) next.delete(ns); else next.add(ns);
-      localStorage.setItem('crm:hidden-metafield-ns', JSON.stringify(Array.from(next)));
-      return next;
-    });
+  const allFields: Array<{ key: string; fullKey: string; value: string }> = [];
+  for (const [ns, fields] of Object.entries(metafields)) {
+    for (const [key, val] of Object.entries(fields)) {
+      allFields.push({ key, fullKey: `${ns}.${key}`, value: val });
+    }
   }
 
-  function formatValue(v: string): string {
-    if (!v) return '—';
-    // Try to parse JSON for display
-    try {
-      const parsed = JSON.parse(v);
-      if (Array.isArray(parsed)) return parsed.map((i: any) => i.handle ?? i.title ?? i).join(', ');
-      if (parsed.handle) return parsed.handle;
-      if (parsed.src) return '(image)';
-    } catch {}
-    return v.length > 200 ? v.slice(0, 200) + '…' : v;
-  }
-
-  function formatKey(key: string): string {
-    return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  }
-
-  const namespaces = Object.entries(metafields);
+  const visible = visibleFields ?? DEFAULT_VISIBLE;
+  const shownFields = showAll ? allFields : allFields.filter(f => visible.includes(f.fullKey));
 
   return (
     <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
@@ -638,27 +626,32 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
         <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>
           Metafields
         </div>
+        <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          {showAll ? 'Show configured' : `Show all (${allFields.length})`}
+        </button>
       </div>
-      {namespaces.map(([ns, fields]) => {
-        const isHidden = hiddenNs.has(ns);
-        const visibleFields = Object.entries(fields).filter(([k]) => !HIDDEN_KEYS.has(k));
-        if (!visibleFields.length) return null;
-        return (
-          <div key={ns} style={{ marginBottom: 'var(--crm-space-3)' }}>
-            <button onClick={() => toggleNs(ns)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{isHidden ? '▶' : '▼'}</span>
-              <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500, color: 'var(--crm-text-secondary)' }}>{ns}</span>
-              <span style={{ fontSize: 9, color: 'var(--crm-text-tertiary)' }}>({visibleFields.length})</span>
-            </button>
-            {!isHidden && visibleFields.map(([key, val]) => (
-              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0 4px 14px', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-                <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(key)}</span>
-                <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '60%' }}>{formatValue(val)}</span>
-              </div>
-            ))}
-          </div>
-        );
-      })}
+      {shownFields.length === 0 && <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No visible fields configured</div>}
+      {shownFields.map(f => (
+        <div key={f.fullKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+          <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+          <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+        </div>
+      ))}
     </div>
   );
+}
+
+function formatValue(v: string): string {
+  if (!v) return '—';
+  try {
+    const parsed = JSON.parse(v);
+    if (Array.isArray(parsed)) return parsed.map((i: any) => i.handle ?? i.title ?? i).join(', ');
+    if (parsed.handle) return parsed.handle;
+    if (parsed.src) return '(image)';
+  } catch {}
+  return v.length > 150 ? v.slice(0, 150) + '…' : v;
+}
+
+function formatKey(key: string): string {
+  return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
