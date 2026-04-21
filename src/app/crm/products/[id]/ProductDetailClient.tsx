@@ -35,7 +35,6 @@ export function ProductDetailClient({ product, variants, siblings }: { product: 
   const [variantFilter, setVariantFilter] = useState<string | null>(null);
   const [recVariants, setRecVariants] = useState<Variant[]>([]);
   const [variantPickerOpen, setVariantPickerOpen] = useState(false);
-  const meta = ((product.metafields as any)?.custom ?? {}) as Record<string, string>;
 
   const images = (product.images ?? []) as Array<{ src?: string } | string>;
   const imgSrcs = images.map(i => typeof i === 'string' ? i : i?.src).filter(Boolean) as string[];
@@ -188,35 +187,7 @@ export function ProductDetailClient({ product, variants, siblings }: { product: 
           </div>
 
           {/* Metafields */}
-          <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-3)' }}>
-              Specs
-            </div>
-            {[
-              { l: 'Acetate', v: meta.acetate_source },
-              { l: 'Material', v: !meta.acetate_source ? meta.material : undefined },
-              { l: 'Hinge', v: meta.hinge_type },
-              { l: 'Lens Coating', v: meta.lens_coating },
-              { l: 'UV Protection', v: meta.uv_protection },
-              { l: 'Included', v: meta.included_accessories },
-              { l: 'Warranty', v: meta.warranty },
-              { l: 'Frame width', v: meta.frame_width ? `${meta.frame_width} mm` : undefined },
-              { l: 'Lens width', v: meta.lens_width ? `${meta.lens_width} mm` : undefined },
-              { l: 'Lens height', v: meta.lens_height ? `${meta.lens_height} mm` : undefined },
-              { l: 'Bridge width', v: meta.bridge_width ? `${meta.bridge_width} mm` : undefined },
-              { l: 'Temple length', v: meta.temple_length ? `${meta.temple_length} mm` : undefined },
-              { l: 'Rx compatible', v: meta.rx_compatible === 'true' ? 'Yes' : meta.rx_compatible === 'false' ? 'No' : undefined },
-              { l: 'Origin', v: meta.origin },
-            ].filter(r => r.v).map(r => (
-              <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-                <span style={{ color: 'var(--crm-text-tertiary)' }}>{r.l}</span>
-                <span>{r.v}</span>
-              </div>
-            ))}
-            {!Object.values(meta).some(Boolean) && (
-              <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No specs — manage in Shopify</div>
-            )}
-          </div>
+          <MetafieldsCard metafields={product.metafields as Record<string, Record<string, string>> | null} />
 
           {/* Quick links */}
           <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
@@ -613,6 +584,81 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
         </button>
       )}
       <ClientPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={c => { setClient(c); setPickerOpen(false); }} />
+    </div>
+  );
+}
+
+// Hidden namespaces/keys that aren't useful to display
+const HIDDEN_KEYS = new Set(['link_to_products', 'q-backsplash', 'third-product-image', 'second-product-image', 'metadescription', 'description_tag']);
+
+function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
+  const [hiddenNs, setHiddenNs] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem('crm:hidden-metafield-ns') ?? '[]')); } catch { return new Set(); }
+  });
+
+  if (!metafields || !Object.keys(metafields).length) {
+    return (
+      <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
+        <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No metafields</div>
+      </div>
+    );
+  }
+
+  function toggleNs(ns: string) {
+    setHiddenNs(prev => {
+      const next = new Set(prev);
+      if (next.has(ns)) next.delete(ns); else next.add(ns);
+      localStorage.setItem('crm:hidden-metafield-ns', JSON.stringify(Array.from(next)));
+      return next;
+    });
+  }
+
+  function formatValue(v: string): string {
+    if (!v) return '—';
+    // Try to parse JSON for display
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return parsed.map((i: any) => i.handle ?? i.title ?? i).join(', ');
+      if (parsed.handle) return parsed.handle;
+      if (parsed.src) return '(image)';
+    } catch {}
+    return v.length > 200 ? v.slice(0, 200) + '…' : v;
+  }
+
+  function formatKey(key: string): string {
+    return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  const namespaces = Object.entries(metafields);
+
+  return (
+    <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+        <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>
+          Metafields
+        </div>
+      </div>
+      {namespaces.map(([ns, fields]) => {
+        const isHidden = hiddenNs.has(ns);
+        const visibleFields = Object.entries(fields).filter(([k]) => !HIDDEN_KEYS.has(k));
+        if (!visibleFields.length) return null;
+        return (
+          <div key={ns} style={{ marginBottom: 'var(--crm-space-3)' }}>
+            <button onClick={() => toggleNs(ns)} style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{isHidden ? '▶' : '▼'}</span>
+              <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500, color: 'var(--crm-text-secondary)' }}>{ns}</span>
+              <span style={{ fontSize: 9, color: 'var(--crm-text-tertiary)' }}>({visibleFields.length})</span>
+            </button>
+            {!isHidden && visibleFields.map(([key, val]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '4px 0 4px 14px', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+                <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(key)}</span>
+                <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '60%' }}>{formatValue(val)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
