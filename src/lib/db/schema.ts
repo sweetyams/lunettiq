@@ -792,6 +792,13 @@ export const searchSynonyms = pgTable('search_synonyms', {
 
 // ─── Integration Config ──────────────────────────────────
 
+export const colourGroups = pgTable('colour_groups', {
+  id: text('id').primaryKey(), // display name: 'brown', 'blue', 'orange'
+  label: text('label').notNull(), // 'Brown', 'Blue', 'Orange'
+  members: text('members').array().notNull(), // ['brown-2', 'bronze', 'tortoise']
+  sortOrder: integer('sort_order').default(0),
+});
+
 export const integrationsConfig = pgTable('integrations_config', {
   id: text('id').primaryKey(), // matches integration registry id
   enabled: boolean('enabled').default(false),

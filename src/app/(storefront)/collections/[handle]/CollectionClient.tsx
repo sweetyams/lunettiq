@@ -191,6 +191,7 @@ export default function CollectionClient({
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
         filterOptions={filterData?.options as any}
+        colourLabels={filterData?.colourLabels}
       />
 
       <div className="h-8 mb-4 flex items-center">

@@ -25,6 +25,7 @@ interface FilterBarProps {
   onFilterChange: (filters: ActiveFilters) => void;
   onClearFilters: () => void;
   filterOptions?: FilterOptions;
+  colourLabels?: Record<string, string>;
 }
 
 type FilterCategory = 'shape' | 'colour' | 'material' | 'size';
@@ -52,13 +53,13 @@ const COLOUR_LABELS: Record<string, string> = {
   red: 'Red', 'rose-gold': 'Rose Gold', silver: 'Silver', tortoise: 'Tortoise',
 };
 
-function displayLabel(category: FilterCategory, value: string): string {
-  if (category === 'colour') return COLOUR_LABELS[value] ?? value;
+function displayLabel(category: FilterCategory, value: string, colourLabels?: Record<string, string>): string {
+  if (category === 'colour') return colourLabels?.[value] ?? COLOUR_LABELS[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export default function FilterBar({
-  itemCount, sort, filters, onSortChange, onFilterChange, onClearFilters, filterOptions,
+  itemCount, sort, filters, onSortChange, onFilterChange, onClearFilters, filterOptions, colourLabels,
 }: FilterBarProps) {
   const [openDropdown, setOpenDropdown] = useState<FilterCategory | 'sort' | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -117,7 +118,7 @@ export default function FilterBar({
                         <span className={`w-4 h-4 border rounded flex items-center justify-center ${isActive ? 'bg-black border-black' : 'border-gray-300'}`}>
                           {isActive && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                         </span>
-                        <span>{displayLabel(cat.key, option)}</span>
+                        <span>{displayLabel(cat.key, option, colourLabels)}</span>
                       </button>
                     );
                   })}
@@ -155,7 +156,7 @@ export default function FilterBar({
           {FILTER_CATEGORIES.map(cat =>
             filters[cat.key].map(value => (
               <span key={`${cat.key}-${value}`} className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-gray-100 rounded-full">
-                <span>{cat.label}: {displayLabel(cat.key, value)}</span>
+                <span>{cat.label}: {displayLabel(cat.key, value, colourLabels)}</span>
                 <button onClick={() => removeFilter(cat.key, value)} className="ml-1 hover:text-black p-1" aria-label={`Remove ${cat.label}: ${value}`}>
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
