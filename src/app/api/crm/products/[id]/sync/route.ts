@@ -21,11 +21,17 @@ export const POST = handler(async (_request, ctx) => {
   const r = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
     method: 'POST',
     headers: { 'X-Shopify-Access-Token': token!, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: `{ productByHandle(handle: "${product.handle}") { metafields(first: 50) { nodes { namespace key value } } } }` }),
+    body: JSON.stringify({ query: `{ productByHandle(handle: "${product.handle}") {
+      title description status tags
+      images(first: 10) { nodes { url altText } }
+      metafields(first: 50) { nodes { namespace key value } }
+    } }` }),
   });
   const data = await r.json();
-  const mfs = data.data?.productByHandle?.metafields?.nodes;
-  if (!mfs) return jsonError('Could not fetch from Shopify', 502);
+  const raw = data.data?.productByHandle;
+  if (!raw) return jsonError('Could not fetch from Shopify', 502);
+
+  const mfs = raw.metafields?.nodes ?? [];
 
   // Group and remap
   const grouped: Record<string, Record<string, string>> = {};
@@ -43,7 +49,15 @@ export const POST = handler(async (_request, ctx) => {
     delete grouped.udesly;
   }
 
-  await db.update(productsProjection).set({ metafields: grouped }).where(eq(productsProjection.shopifyProductId, productId));
+  await db.update(productsProjection).set({
+    title: raw.title,
+    description: raw.description,
+    status: raw.status?.toLowerCase(),
+    tags: raw.tags ?? [],
+    images: raw.images?.nodes?.map((i: any) => ({ src: i.url, alt: i.altText })) ?? [],
+    metafields: grouped,
+    syncedAt: new Date(),
+  }).where(eq(productsProjection.shopifyProductId, productId));
 
-  return jsonOk({ synced: true, fields: Object.keys(grouped.custom ?? {}).length });
+  return jsonOk({ synced: true, title: raw.title, fields: Object.keys(grouped.custom ?? {}).length });
 });
