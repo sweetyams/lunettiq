@@ -140,45 +140,23 @@ export function ProductsClient() {
             <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--crm-border)', borderTopColor: 'var(--crm-text-primary)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
           )}
         </div>
-        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="crm-input">
-          <option value="">Optical & Sun</option>
-          <option value="optical">Optical</option>
-          <option value="sun">Sun</option>
-        </select>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="crm-input">
-          <option value="">All types</option>
-          {types.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select value={vendorFilter} onChange={e => setVendorFilter(e.target.value)} className="crm-input">
-          <option value="">All vendors</option>
-          {vendors.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select value={materialFilter} onChange={e => setMaterialFilter(e.target.value)} className="crm-input">
-          <option value="">All materials</option>
-          {materials.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select value={rxFilter} onChange={e => setRxFilter(e.target.value)} className="crm-input">
-          <option value="">Rx: Any</option>
-          <option value="true">Rx compatible</option>
-          <option value="false">Non-Rx</option>
-        </select>
-        {allTags.length > 0 && (
-          <select value={tagFilter} onChange={e => setTagFilter(e.target.value)} className="crm-input">
-            <option value="">All tags</option>
-            {allTags.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        )}
-        <div style={{ display: 'flex', gap: 2 }}>
-          {(['all', 'in', 'out'] as const).map(s => (
-            <button key={s} onClick={() => setStockFilter(s)} className="crm-btn" style={{
-              fontSize: 'var(--crm-text-xs)', padding: '4px 10px', border: 'none',
-              background: stockFilter === s ? 'var(--crm-text-primary)' : 'var(--crm-surface-hover)',
-              color: stockFilter === s ? 'var(--crm-text-inverse)' : 'var(--crm-text-secondary)',
-              borderRadius: 'var(--crm-radius-sm)', cursor: 'pointer',
-            }}>
-              {{ all: 'All', in: 'In Stock', out: 'Out' }[s]}
-            </button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {[
+            { value: 'optical', label: 'Optical', active: categoryFilter === 'optical', toggle: () => setCategoryFilter(categoryFilter === 'optical' ? '' : 'optical'), bg: '#dbeafe', color: '#1e40af' },
+            { value: 'sun', label: 'Sun', active: categoryFilter === 'sun', toggle: () => setCategoryFilter(categoryFilter === 'sun' ? '' : 'sun'), bg: '#fef3c7', color: '#92400e' },
+            { value: 'in', label: 'In Stock', active: stockFilter === 'in', toggle: () => setStockFilter(stockFilter === 'in' ? 'all' : 'in'), bg: '#dcfce7', color: '#16a34a' },
+            { value: 'out', label: 'Out of Stock', active: stockFilter === 'out', toggle: () => setStockFilter(stockFilter === 'out' ? 'all' : 'out'), bg: '#fef2f2', color: '#dc2626' },
+          ].map(f => (
+            <button key={f.value} onClick={f.toggle} style={{
+              padding: '5px 12px', fontSize: 'var(--crm-text-xs)', fontWeight: 500, borderRadius: 20, cursor: 'pointer',
+              border: f.active ? `1.5px solid ${f.color}` : '1px solid var(--crm-border)',
+              background: f.active ? f.bg : 'var(--crm-surface)',
+              color: f.active ? f.color : 'var(--crm-text-secondary)',
+              transition: 'all 150ms var(--ease-out)',
+            }}>{f.label}</button>
           ))}
+        </div>
+      </div>
         </div>
       </div>
 
