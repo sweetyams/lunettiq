@@ -10,6 +10,7 @@ import { requiresPrescription, isReaders } from '@/components/pdp/LensConfigurat
 import ImageGallery from '@/components/pdp/ImageGallery';
 import ProductInfoPanel from '@/components/pdp/ProductInfoPanel';
 import ColourSelector from '@/components/pdp/ColourSelector';
+import FamilySwitcher from '@/components/pdp/FamilySwitcher';
 import AccordionSection from '@/components/pdp/AccordionSection';
 import AddToCartButton from '@/components/pdp/AddToCartButton';
 import StockNotification from '@/components/pdp/StockNotification';
@@ -185,6 +186,10 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                 />
               </div>
             )}
+
+            <div className="mt-6">
+              <FamilySwitcher productId={product.id} currentType={isSunglasses ? 'sun' : 'optical'} />
+            </div>
 
             <div className="mt-4">
               <PDPPersonalization
