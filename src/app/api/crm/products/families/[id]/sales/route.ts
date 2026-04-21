@@ -12,6 +12,8 @@ import { sql } from 'drizzle-orm';
 export const GET = handler(async (_request, ctx) => {
   await requireCrmAuth('org:products:read');
   const familyId = ctx.params.id;
+  const days = Number(_request.nextUrl.searchParams.get('days') ?? 0);
+  const sinceClause = days > 0 ? sql`AND o.created_at >= ${new Date(Date.now() - days * 86400000).toISOString()}` : sql``;
 
   // Get all product IDs and Square names linked to this family
   const members = await db.execute(sql`
@@ -56,6 +58,7 @@ export const GET = handler(async (_request, ctx) => {
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
     WHERE ${matchCondition}
+    ${sinceClause}
     GROUP BY 1, 2
   `);
 
@@ -66,6 +69,7 @@ export const GET = handler(async (_request, ctx) => {
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
     WHERE ${matchCondition}
+    ${sinceClause}
     GROUP BY o.source
   `);
 
@@ -76,6 +80,7 @@ export const GET = handler(async (_request, ctx) => {
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
     WHERE ${matchCondition}
+    ${sinceClause}
     GROUP BY 1
   `);
 
@@ -86,6 +91,7 @@ export const GET = handler(async (_request, ctx) => {
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
     WHERE ${matchCondition}
+    ${sinceClause}
   `);
 
   // Map product sales back to family members
@@ -125,6 +131,7 @@ export const GET = handler(async (_request, ctx) => {
         coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
       FROM orders_projection o, jsonb_array_elements(o.line_items) as item
       WHERE lower(item->>'name') IN (${sql.join(familyOnlyNames.map(n => sql`${n}`), sql`, `)})
+      ${sinceClause}
       GROUP BY 1
     `);
     // Deduplicate by original square name

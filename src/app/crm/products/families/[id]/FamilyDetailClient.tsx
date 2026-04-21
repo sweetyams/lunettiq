@@ -16,6 +16,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [unmappedSquare, setUnmappedSquare] = useState<SquareMapping[]>([]);
   const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(0); // 0 = all time
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
   const [productSearch, setProductSearch] = useState('');
@@ -24,7 +25,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
   function load() {
     setLoading(true);
     Promise.all([
-      fetch(`/api/crm/products/families/${familyId}/sales`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/crm/products/families/${familyId}/sales${days ? `?days=${days}` : ''}`, { credentials: 'include' }).then(r => r.json()),
       fetch('/api/crm/settings/families', { credentials: 'include' }).then(r => r.json()),
       fetch('/api/crm/products?limit=500', { credentials: 'include' }).then(r => r.json()),
       fetch(`/api/crm/product-mappings?limit=200&status=unmatched`, { credentials: 'include' }).then(r => r.json()),
@@ -36,7 +37,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
     }).catch(() => {}).finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(); }, [familyId]);
+  useEffect(() => { load(); }, [familyId, days]);
 
   const fmt = (n: number | string) => `$${Math.round(Number(n)).toLocaleString()}`;
   const memberIds = new Set((sales?.members ?? []).map(m => m.product_id));
@@ -92,7 +93,16 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
       <Link href="/crm/products" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>← Catalogue</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--crm-space-2)', marginBottom: 'var(--crm-space-5)' }}>
         <h1 style={{ fontSize: 'var(--crm-text-2xl)', fontWeight: 600 }}>{family.name}</h1>
-        <Link href="/crm/settings/families" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>Edit in Settings ↗</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {[{ d: 30, l: '30d' }, { d: 90, l: '90d' }, { d: 365, l: '1yr' }, { d: 0, l: 'All' }].map(p => (
+            <button key={p.d} onClick={() => setDays(p.d)} style={{
+              padding: '4px 12px', fontSize: 'var(--crm-text-xs)', borderRadius: 20, border: 'none', cursor: 'pointer',
+              background: days === p.d ? 'var(--crm-text-primary)' : 'var(--crm-surface-hover)',
+              color: days === p.d ? 'var(--crm-text-inverse)' : 'var(--crm-text-secondary)',
+            }}>{p.l}</button>
+          ))}
+          <Link href="/crm/settings/families" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textDecoration: 'none', marginLeft: 8 }}>Edit in Settings ↗</Link>
+        </div>
       </div>
 
       {/* Stats */}
