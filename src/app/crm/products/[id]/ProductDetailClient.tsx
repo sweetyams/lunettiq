@@ -248,6 +248,12 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
               <Link href="/crm/settings/filters" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
                 Product Filters →
               </Link>
+              <button onClick={async () => {
+                const r = await fetch(`/api/crm/products/${product.shopifyProductId}/sync`, { method: 'POST', credentials: 'include' });
+                if (r.ok) window.location.reload();
+              }} style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+                Sync from Shopify ↻
+              </button>
             </div>
           </div>
         </div>
