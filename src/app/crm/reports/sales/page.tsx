@@ -226,7 +226,7 @@ export default function SalesDashboard() {
         <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>
           {days >= 365 ? 'Monthly' : days >= 90 ? 'Weekly' : 'Daily'} Revenue
         </h2>
-        <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+        <div>
           {(() => {
             if (days >= 365) {
               // Group by month
