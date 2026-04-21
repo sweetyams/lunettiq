@@ -17,13 +17,12 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   // Get family siblings
   const siblings = await db.execute(sql`
     SELECT m.product_id, m.type, m.colour, m.colour_hex,
-           p.shopify_product_id, p.handle, p.title, p.images->0->>'src' as image
+           p.shopify_product_id, p.handle, p.title, p.images->0->>'src' as image, p.status
     FROM product_family_members m
     JOIN products_projection p ON p.shopify_product_id = m.product_id
     WHERE m.family_id = (
       SELECT family_id FROM product_family_members WHERE product_id = ${params.id} LIMIT 1
     )
-    AND p.status = 'active'
     ORDER BY m.sort_order
   `).then(r => r.rows).catch(() => []);
 

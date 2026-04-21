@@ -168,6 +168,7 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
                             {s.image && <img src={s.image} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} />}
                             {!s.image && c.hex && <div style={{ width: 20, height: 20, borderRadius: '50%', background: c.hex, border: '1px solid var(--crm-border)' }} />}
                             <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: isActive ? 600 : 400 }}>{c.colour}</span>
+                            {s.status === 'archived' && <span style={{ fontSize: 8, color: 'var(--crm-text-tertiary)', opacity: 0.7 }}>archived</span>}
                           </Link>
                         );
                       })}
