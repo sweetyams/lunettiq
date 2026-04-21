@@ -102,6 +102,15 @@ async function autoAssignProduct(productId: string, handle: string) {
         .onConflictDoNothing();
     }
   }
+
+  // Set product_category metafield (optical/sun)
+  if (type) {
+    await db.execute(sql`
+      UPDATE products_projection
+      SET metafields = jsonb_set(COALESCE(metafields, '{}'::jsonb), '{custom,product_category}', ${JSON.stringify(type)}::jsonb)
+      WHERE shopify_product_id = ${productId}
+    `);
+  }
 }
 
 // ─── Customer sync ───────────────────────────────────────
