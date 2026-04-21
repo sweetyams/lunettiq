@@ -164,7 +164,7 @@ export default function ProductMappingPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      {m.status === 'auto' && (
+                      {(m.status === 'auto' || (m.status === 'unmatched' && m.shopify_product_id)) && (
                         <button onClick={() => confirm(m.square_catalog_id)} className="crm-btn crm-btn-secondary" style={{ fontSize: 10, padding: '2px 8px' }}>✓ Confirm</button>
                       )}
                       {m.shopify_title && m.status !== 'ignored' && (
