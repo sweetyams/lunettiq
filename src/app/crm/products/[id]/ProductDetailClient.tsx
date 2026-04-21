@@ -643,6 +643,14 @@ const UNIT_SUFFIX: Record<string, string> = { lens_width: ' mm', bridge_width: '
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
   const [showAll, setShowAll] = useState(false);
+  const [visibleSet, setVisibleSet] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setVisibleSet(new Set(d.data?.visible ?? [])))
+      .catch(() => {});
+  }, []);
 
   if (!metafields || !Object.keys(metafields).length) {
     return (
@@ -653,17 +661,19 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
   }
 
   const custom = (metafields as any).custom ?? {};
+  const isVisible = (key: string) => showAll || !visibleSet || visibleSet.has(`custom.${key}`);
 
-  // Grouped fields
+  // Grouped fields — only show visible ones
   const grouped = FIELD_GROUPS.map(g => ({
     label: g.label,
-    fields: g.keys.map(k => ({ key: k, value: custom[k] })).filter(f => f.value !== undefined && f.value !== null && f.value !== ''),
+    fields: g.keys.map(k => ({ key: k, value: custom[k] })).filter(f => f.value !== undefined && f.value !== null && f.value !== '' && isVisible(f.key)),
   })).filter(g => g.fields.length > 0);
 
-  // Ungrouped fields (everything else in custom not in any group)
+  // Ungrouped visible fields
   const groupedKeys = new Set(FIELD_GROUPS.flatMap(g => g.keys));
-  const hidden = new Set(['link_to_products', 'sibling_colours', 'sizing_dimensions', 'composition', 'short_description', 'staff_pick', 'featured', 'latest', 'alter_ego', 'face_shapes', 'season', 'uv_protection', 'warranty', 'included_accessories', 'material', 'acetate_source']);
-  const ungrouped = Object.entries(custom).filter(([k]) => !groupedKeys.has(k) && !hidden.has(k)).map(([k, v]) => ({ key: k, value: v as string }));
+  const ungrouped = Object.entries(custom)
+    .filter(([k]) => !groupedKeys.has(k) && isVisible(k))
+    .map(([k, v]) => ({ key: k, value: v as string }));
 
   return (
     <>
@@ -680,15 +690,15 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
           ))}
         </div>
       ))}
-      {(ungrouped.length > 0 || showAll) && (
+      {(ungrouped.length > 0 || !showAll) && (
         <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
-            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>Other</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ungrouped.length ? 'var(--crm-space-2)' : 0 }}>
+            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>{ungrouped.length > 0 ? 'Other' : ''}</div>
             <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              {showAll ? 'Hide' : 'Show all'}
+              {showAll ? 'Show configured only' : 'Show all fields'}
             </button>
           </div>
-          {(showAll ? [...ungrouped, ...Object.entries(custom).filter(([k]) => hidden.has(k)).map(([k, v]) => ({ key: k, value: v as string }))] : ungrouped).map(f => (
+          {ungrouped.map(f => (
             <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
               <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
               <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
