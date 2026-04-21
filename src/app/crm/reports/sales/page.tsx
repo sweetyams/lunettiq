@@ -40,8 +40,12 @@ function Bar({ label, value, max, display }: { label: string; value: number; max
   );
 }
 
-const CHANNEL_COLORS: Record<string, string> = { online: '#5E8E3E', shopify: '#5E8E3E', square: '#006AFF' };
-const LOCATION_COLORS = ['#5E8E3E', '#006AFF', '#E11D48', '#F59E0B', '#8B5CF6', '#06B6D4'];
+const CHANNEL_COLORS: Record<string, string> = { online: '#5E8E3E', shopify: '#5E8E3E', square: '#F59E0B' };
+const LOCATION_COLORS_MAP: Record<string, string> = {
+  'loc_lunettiq___2459_notre_dame_o_': '#006AFF',
+  'loc_lunettiq___225_st_viateur_o_': '#E11D48',
+};
+const LOCATION_COLORS = ['#006AFF', '#E11D48', '#8B5CF6', '#06B6D4', '#F59E0B', '#5E8E3E'];
 
 function CompareBar({ label, values, max }: { label: string; values: Array<{ source: string; value: number; display: string; color?: string }>; max: number }) {
   return (
@@ -51,7 +55,7 @@ function CompareBar({ label, values, max }: { label: string; values: Array<{ sou
         {values.map(v => (
           <div key={v.source} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ flex: 1, height: 14, background: 'var(--crm-surface-hover)', borderRadius: 3, overflow: 'hidden' }}>
-              <div style={{ width: `${max > 0 ? (v.value / max) * 100 : 0}%`, height: '100%', background: v.color ?? CHANNEL_COLORS[v.source] ?? 'var(--crm-text-primary)', borderRadius: 3 }} />
+              <div style={{ width: `${max > 0 ? (v.value / max) * 100 : 0}%`, height: '100%', background: v.color ?? LOCATION_COLORS_MAP[v.source] ?? CHANNEL_COLORS[v.source] ?? 'var(--crm-text-primary)', borderRadius: 3 }} />
             </div>
             <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 50, textAlign: 'right' }}>{v.display}</span>
           </div>
@@ -272,7 +276,7 @@ export default function SalesDashboard() {
             <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Peak Hours (In-Store)</h2>
             {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
               {Array.from(new Set(data.hourlyByChannel?.map(h => h.source) ?? [])).map((s, i) => (
-                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
+                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: LOCATION_COLORS_MAP[s] ?? CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
               ))}
             </div>}
           </div>
@@ -282,7 +286,7 @@ export default function SalesDashboard() {
             const maxH = Math.max(...data.hourlyByChannel.map(h => Number(h.orders)), 1);
             return hours.map(hour => (
               <CompareBar key={hour} label={`${String(hour).padStart(2, '0')}:00`}
-                values={sources.map((s, i) => ({ source: s, value: Number(data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? 0), display: data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? '0', color: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }))}
+                values={sources.map((s, i) => ({ source: s, value: Number(data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? 0), display: data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? '0', color: LOCATION_COLORS_MAP[s] ?? CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }))}
                 max={maxH} />
             ));
           })() : data.hourlyDistribution.map(h => (
@@ -294,7 +298,7 @@ export default function SalesDashboard() {
             <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Day of Week (In-Store)</h2>
             {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
               {Array.from(new Set(data.dowByChannel?.map(d => d.source) ?? [])).map((s, i) => (
-                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
+                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: LOCATION_COLORS_MAP[s] ?? CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
               ))}
             </div>}
           </div>
@@ -305,7 +309,7 @@ export default function SalesDashboard() {
             const maxD = Math.max(...data.dowByChannel.map(d => Number(d.revenue)), 1);
             return dows.map(dow => (
               <CompareBar key={dow} label={dayNames[Number(dow)] ?? dow}
-                values={sources.map((s, i) => ({ source: s, value: Number(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? 0), display: fmt(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? '0'), color: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }))}
+                values={sources.map((s, i) => ({ source: s, value: Number(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? 0), display: fmt(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? '0'), color: LOCATION_COLORS_MAP[s] ?? CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }))}
                 max={maxD} />
             ));
           })() : (() => {
