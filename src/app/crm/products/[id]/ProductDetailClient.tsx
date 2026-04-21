@@ -333,7 +333,7 @@ function ProductCanvas({ productId }: { productId: string }) {
   if (loading) return <div style={{ padding: 'var(--crm-space-6) 0', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-sm)' }}>Loading analytics…</div>;
   if (!data) return null;
 
-  const { velocity, sentiment, pairsWith, hotClients } = data;
+  const { velocity, sentiment, pairsWith, hotClients, salesByChannel, salesByLocation } = data;
   const maxUnits = Math.max(...velocity.weeks.map(w => w.units), 1);
 
   return (
@@ -458,104 +458,94 @@ function ProductCanvas({ productId }: { productId: string }) {
         </div>
       </div>
 
-      {/* AI Diagnosis */}
+      {/* Diagnosis */}
       <div className="crm-card" style={{ padding: 'var(--crm-space-4)', border: '1px solid var(--crm-text-primary)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)', paddingBottom: 'var(--crm-space-2)', borderBottom: '1px solid var(--crm-border-light)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--crm-text-xs)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <span style={{ width: 6, height: 6, background: 'var(--crm-text-primary)', display: 'inline-block' }} />Diagnosis
+            <span style={{ width: 6, height: 6, background: 'var(--crm-text-primary)', display: 'inline-block' }} />Summary
           </div>
-          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontFamily: 'monospace' }}>demo · {sentiment.tryOns} tries · {velocity.d90} sold</span>
+          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontFamily: 'monospace' }}>{sentiment.tryOns} tries · {velocity.d90} sold 90d</span>
         </div>
-        <div style={{ fontSize: 'var(--crm-text-sm)', lineHeight: 1.7, marginBottom: 'var(--crm-space-3)' }}>
-          This frame has <strong>strong try-on appeal</strong> — {sentiment.total > 0 ? Math.round(sentiment.love / sentiment.total * 100) : 0}% of people who try it love it. But there's a gap between loving and buying. {hotClients.length > 0 ? `${hotClients.length} clients are currently in that gap, including ${hotClients[0]?.name}.` : ''} The frame pairs well with {pairsWith[0]?.title ?? 'other styles'} as a second pair. Consider a follow-up campaign targeting the love-but-not-bought segment.
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {['Who to follow up', 'Why the gap?', 'Draft re-engagement'].map(c => (
-            <span key={c} style={{ fontSize: 'var(--crm-text-xs)', padding: '5px 10px', border: '1px solid var(--crm-border)', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--crm-text-primary)' }}>{c}</span>
-          ))}
+        <div style={{ fontSize: 'var(--crm-text-sm)', lineHeight: 1.7 }}>
+          {velocity.d90 > 0 ? (
+            <>
+              <strong>{velocity.d90} units sold</strong> in 90 days ({velocity.d30} in last 30d, {velocity.d7} in last 7d).
+              {velocity.d7 > velocity.d30 / 4 ? ' Trending up.' : velocity.d7 === 0 ? ' No recent sales — may need attention.' : ''}
+              {sentiment.total > 0 && <> Feedback: {sentiment.love} loved, {sentiment.neutral} neutral, {sentiment.dislike} disliked ({Math.round(sentiment.love / sentiment.total * 100)}% positive).</>}
+              {hotClients.length > 0 && <> {hotClients.length} client{hotClients.length > 1 ? 's' : ''} loved it but haven't purchased.</>}
+              {pairsWith.length > 0 && <> Frequently co-purchased with {pairsWith[0].title}.</>}
+            </>
+          ) : (
+            <>No sales in the last 90 days. {sentiment.total > 0 ? `${sentiment.total} feedback entries logged.` : 'No feedback data either — staff can log try-ons and sentiment via the product feedback tool.'}</>
+          )}
         </div>
       </div>
 
       {/* Performance Funnel */}
       <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
         <div style={SH}>Performance funnel · 90d</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, border: '1px solid var(--crm-border-light)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, border: '1px solid var(--crm-border-light)' }}>
           {[
-            { l: 'Viewed', v: '2,104', r: '6.2 avg/day', pct: 100 },
-            { l: 'Tried on', v: `${sentiment.tryOns || 387}`, r: `${sentiment.tryOns ? Math.round(sentiment.tryOns / 21 * 100) / 100 : 18}%`, pct: 18 },
-            { l: 'Loved', v: `${sentiment.love || 131}`, r: `${sentiment.total ? Math.round(sentiment.love / sentiment.total * 100) : 34}% of tries`, pct: 6 },
-            { l: 'Purchased', v: `${velocity.d90 || 42}`, r: `${sentiment.love ? Math.round(velocity.d90 / sentiment.love * 100) : 11}% of lovers`, pct: 2 },
+            { l: 'Tried on', v: sentiment.tryOns, r: sentiment.tryOns > 0 ? `${sentiment.total} feedback` : null, available: sentiment.tryOns > 0 },
+            { l: 'Loved', v: sentiment.love, r: sentiment.total > 0 ? `${Math.round(sentiment.love / sentiment.total * 100)}% of feedback` : null, available: sentiment.total > 0 },
+            { l: 'Purchased', v: velocity.d90, r: sentiment.love > 0 ? `${Math.round(velocity.d90 / Math.max(sentiment.love, 1) * 100)}% conversion` : `${velocity.d90} units`, available: true },
           ].map((s, i) => (
-            <div key={s.l} style={{ padding: 'var(--crm-space-3)', borderRight: i < 3 ? '1px solid var(--crm-border-light)' : 'none', position: 'relative' }}>
+            <div key={s.l} style={{ padding: 'var(--crm-space-3)', borderRight: i < 2 ? '1px solid var(--crm-border-light)' : 'none' }}>
               <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>{s.l}</div>
-              <div style={{ fontSize: 20, fontWeight: 500, marginTop: 4 }}>{s.v}</div>
-              <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontFamily: 'monospace', marginTop: 2 }}>{s.r}</div>
-              <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: 'var(--crm-text-primary)', width: `${s.pct}%` }} />
+              {s.available ? (
+                <>
+                  <div style={{ fontSize: 20, fontWeight: 500, marginTop: 4 }}>{s.v}</div>
+                  {s.r && <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontFamily: 'monospace', marginTop: 2 }}>{s.r}</div>}
+                </>
+              ) : (
+                <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)', marginTop: 6 }}>No feedback data — staff can log try-ons via product feedback</div>
+              )}
             </div>
           ))}
+        </div>
+        <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 6 }}>
+          Views data requires PostHog integration. Try-on and sentiment data comes from staff-logged product feedback.
         </div>
       </div>
 
-      {/* Buyer Archetype */}
+      {/* Buyer Profile */}
       <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-        <div style={SH}>Who buys it · archetype</div>
-        <div style={{ fontSize: 'var(--crm-text-sm)', lineHeight: 1.7, marginBottom: 'var(--crm-space-3)' }}>
-          Sells primarily to <strong>30–45</strong>, <strong>oval</strong>-faced clients at <strong>Plateau</strong>. Usually their <strong>second pair</strong>, bought with <strong>blue-light</strong> lenses. Tends to be chosen by clients who already own a round or oval frame and want something with more presence.
-        </div>
-        <div style={{ display: 'flex', gap: 'var(--crm-space-2)', flexWrap: 'wrap' }}>
-          {[
-            { l: 'Face shape', v: 'oval · 68%' }, { l: 'Age band', v: '30–45' },
-            { l: 'Location', v: 'Plateau 76%' }, { l: 'Pair number', v: '2nd pair · 58%' },
-            { l: 'Lens add', v: 'Blue-light 62%' },
-          ].map(t => (
-            <div key={t.l} style={{ padding: '8px 12px', border: '1px solid var(--crm-border-light)', minWidth: 90 }}>
-              <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', color: 'var(--crm-text-tertiary)' }}>{t.l}</div>
-              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, marginTop: 2 }}>{t.v}</div>
-            </div>
-          ))}
-        </div>
+        <div style={SH}>Who buys it</div>
+        {velocity.d90 > 0 ? (
+          <div style={{ display: 'flex', gap: 'var(--crm-space-2)', flexWrap: 'wrap' }}>
+            {Object.entries(salesByChannel).map(([ch, v]) => (
+              <div key={ch} style={{ padding: '8px 12px', border: '1px solid var(--crm-border-light)', minWidth: 90 }}>
+                <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', color: 'var(--crm-text-tertiary)' }}>Channel</div>
+                <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, marginTop: 2 }}>{ch === 'shopify' ? 'Online' : ch === 'square' ? 'In-store' : ch} · {v.units}</div>
+              </div>
+            ))}
+            {Object.entries(salesByLocation).map(([loc, v]) => (
+              <div key={loc} style={{ padding: '8px 12px', border: '1px solid var(--crm-border-light)', minWidth: 90 }}>
+                <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', color: 'var(--crm-text-tertiary)' }}>Location</div>
+                <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, marginTop: 2 }}>{loc} · {v.units}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No purchase data in the last 90 days. Buyer archetype requires order history with this product.</div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)' }}>
-        {/* Do something */}
+        {/* Actions */}
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <div style={SH}>Do something</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              { t: 'Recommend to a client', s: 'logs interaction + optional SMS' },
-              { t: 'Hold a unit · 48h', s: 'reserves 1 from inventory' },
-              { t: 'Add to fitting kit', s: 'for tablet queue' },
-              { t: 'Broadcast to segment', s: 'via Klaviyo · AI picks angle' },
-              { t: 'Reorder inventory', s: 'AI suggests quantity' },
-              { t: 'Flag for range review', s: 'owner-visible' },
-            ].map((a, i) => (
-              <button key={a.t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'none', border: '1px solid var(--crm-border)', borderTopWidth: i === 0 ? 1 : 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                <div>
-                  <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{a.t}</div>
-                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontFamily: 'monospace', marginTop: 1 }}>{a.s}</div>
-                </div>
-                <span style={{ fontSize: 14, opacity: 0.4 }}>→</span>
-              </button>
-            ))}
+          <div style={SH}>Actions</div>
+          <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
+            Use "Recommend to Client" above to log a recommendation. Additional actions (hold inventory, broadcast to segment) coming soon.
           </div>
         </div>
 
         {/* Inventory by location */}
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <div style={SH}>Inventory · by location</div>
-          {[
-            { loc: 'Plateau', qty: 5, state: 'in rack' },
-            { loc: 'Plateau', qty: 1, state: 'hold · MD', hold: true },
-            { loc: 'Plateau', qty: 1, state: 'hold · TL', hold: true },
-            { loc: 'DIX30', qty: 1, state: 'in rack' },
-            { loc: 'Warehouse', qty: 6, state: 'available' },
-          ].map((r, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'center', padding: '8px 0', borderTop: i > 0 ? '1px solid var(--crm-border-light)' : 'none', fontSize: 'var(--crm-text-sm)' }}>
-              <span>{r.loc}</span>
-              <span style={{ fontFamily: 'monospace', fontWeight: 500 }}>{r.qty}</span>
-              <span style={{ fontSize: 'var(--crm-text-xs)', color: r.hold ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)', textTransform: 'uppercase', ...(r.hold ? { border: '1px solid var(--crm-text-primary)', padding: '1px 5px' } : {}) }}>{r.state}</span>
-            </div>
-          ))}
+          <div style={SH}>Inventory</div>
+          <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
+            Per-location inventory requires Square integration to be active. Shopify inventory totals are shown in the variants table above.
+          </div>
         </div>
       </div>
 
