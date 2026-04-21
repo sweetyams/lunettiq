@@ -2,7 +2,6 @@ import { requirePermission } from '@/lib/crm/auth';
 import { db } from '@/lib/db';
 import { customersProjection, creditsLedger, referrals, membershipTrials, loyaltyTiers } from '@/lib/db/schema';
 import { sql, eq, asc } from 'drizzle-orm';
-import Link from 'next/link';
 
 export default async function LoyaltyDashboardPage() {
   await requirePermission('org:membership:read');
@@ -46,17 +45,7 @@ export default async function LoyaltyDashboardPage() {
   const refQualifyRate = totalRefs > 0 ? Math.round(((refByStatus.qualified ?? 0) / totalRefs) * 100) : 0;
 
   return (
-    <div style={{ padding: 'var(--crm-space-6)' }}>
-      <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-6)' }}>Loyalty Dashboard</h1>
-
-      <div style={{ display: 'flex', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-5)' }}>
-        <Link href="/crm/loyalty/referrals" className="crm-btn crm-btn-secondary">Referrals</Link>
-        <Link href="/crm/loyalty/trials" className="crm-btn crm-btn-secondary">Trials</Link>
-        <Link href="/crm/loyalty/events" className="crm-btn crm-btn-secondary">Events</Link>
-        <Link href="/crm/loyalty/gifts" className="crm-btn crm-btn-secondary">Gifts</Link>
-        <Link href="/crm/settings/loyalty" className="crm-btn crm-btn-secondary">Settings</Link>
-      </div>
-
+    <div>
       {/* Headline metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         {[
