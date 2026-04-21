@@ -158,7 +158,8 @@ async function main() {
       const spIsSun = sp.type?.toLowerCase().includes('sun') || spHandle.includes('-sun-');
       if (isOptical && spIsOptical) score += 0.3;
       else if (!isOptical && spIsSun) score += 0.3;
-      else if (parsed.type === 'other') score += 0.1; // unknown type, partial credit
+      else if (parsed.type === 'other') score += 0.15;
+      else score += 0.1; // type mismatch but still the right frame — partial credit
 
       // Colour match
       const spColour = normalizeColour(spTitle.replace(normFrame, '').trim());
@@ -171,7 +172,7 @@ async function main() {
       }
     }
 
-    const status = bestScore >= 0.8 ? 'auto' : bestScore >= 0.5 ? 'unmatched' : 'unmatched';
+    const status = bestScore >= 0.7 ? 'auto' : bestScore >= 0.4 ? 'unmatched' : 'unmatched';
     const values = {
       squareCatalogId: sq.id,
       squareName: sq.name,
