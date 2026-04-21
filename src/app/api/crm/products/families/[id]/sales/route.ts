@@ -38,9 +38,13 @@ export const GET = handler(async (_request, ctx) => {
     return jsonOk({ familyId, members: [], totals: { orders: 0, units: 0, revenue: 0 }, byChannel: [], byLocation: [], byProduct: [] });
   }
 
-  // Build SQL arrays
-  const pidArray = productIds.length ? productIds : ['__none__'];
-  const sqArray = squareNames.length ? squareNames : ['__none__'];
+  // Build match condition
+  const pidList = productIds.map((id: string) => sql`${id}`);
+  const sqList = squareNames.map((n: string) => sql`${n}`);
+  const matchCondition = sql`(
+    ${pidList.length ? sql`item->>'product_id' IN (${sql.join(pidList, sql`, `)})` : sql`false`}
+    OR ${sqList.length ? sql`lower(item->>'name') IN (${sql.join(sqList, sql`, `)})` : sql`false`}
+  )`;
 
   // Per-product sales
   const byProduct = await db.execute(sql`
@@ -51,8 +55,7 @@ export const GET = handler(async (_request, ctx) => {
       count(DISTINCT o.shopify_order_id) as orders,
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-    WHERE item->>'product_id' = ANY(${pidArray})
-       OR lower(item->>'name') = ANY(${sqArray})
+    WHERE ${matchCondition}
     GROUP BY 1, 2
   `);
 
@@ -62,8 +65,7 @@ export const GET = handler(async (_request, ctx) => {
       count(*) as units,
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-    WHERE item->>'product_id' = ANY(${pidArray})
-       OR lower(item->>'name') = ANY(${sqArray})
+    WHERE ${matchCondition}
     GROUP BY o.source
   `);
 
@@ -73,8 +75,7 @@ export const GET = handler(async (_request, ctx) => {
       count(*) as units,
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-    WHERE item->>'product_id' = ANY(${pidArray})
-       OR lower(item->>'name') = ANY(${sqArray})
+    WHERE ${matchCondition}
     GROUP BY 1
   `);
 
@@ -84,8 +85,7 @@ export const GET = handler(async (_request, ctx) => {
       count(*) as units,
       coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
     FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-    WHERE item->>'product_id' = ANY(${pidArray})
-       OR lower(item->>'name') = ANY(${sqArray})
+    WHERE ${matchCondition}
   `);
 
   // Map product sales back to family members
