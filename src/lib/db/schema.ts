@@ -799,6 +799,20 @@ export const colourGroups = pgTable('colour_groups', {
   sortOrder: integer('sort_order').default(0),
 });
 
+export const productMappings = pgTable('product_mappings', {
+  squareCatalogId: text('square_catalog_id').primaryKey(),
+  squareName: text('square_name'),
+  shopifyProductId: text('shopify_product_id'),
+  shopifyVariantId: text('shopify_variant_id'),
+  confidence: decimal('confidence', { precision: 3, scale: 2 }), // 0.00-1.00
+  status: text('status').default('unmatched'), // 'auto' | 'confirmed' | 'manual' | 'unmatched' | 'ignored'
+  parsedFrame: text('parsed_frame'),
+  parsedColour: text('parsed_colour'),
+  parsedType: text('parsed_type'), // 'optical' | 'sun' | 'service' | 'other'
+  matchedBy: text('matched_by'), // userId who confirmed/manual linked
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const integrationsConfig = pgTable('integrations_config', {
   id: text('id').primaryKey(), // matches integration registry id
   enabled: boolean('enabled').default(false),
