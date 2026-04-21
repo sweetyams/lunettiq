@@ -6,6 +6,7 @@ interface Mapping {
   square_catalog_id: string; square_name: string; shopify_product_id: string | null;
   shopify_title: string | null; shopify_handle: string | null; shopify_type: string | null;
   shopify_image: string | null; family_id: string | null;
+  product_category: string | null; family_type: string | null; family_colour: string | null; family_name: string | null;
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
