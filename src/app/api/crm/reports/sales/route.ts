@@ -23,6 +23,7 @@ export const GET = handler(async (request) => {
     orderStats,
     hourlyDist,
     repeatCustomers,
+    dayOfWeek,
   ] = await Promise.all([
     // Revenue by source
     db.execute(sql`
@@ -79,6 +80,13 @@ export const GET = handler(async (request) => {
         FROM orders_projection WHERE shopify_customer_id IS NOT NULL AND created_at >= ${since} AND created_at <= ${until}
         GROUP BY 1
       ) sub`),
+
+    // Day of week distribution
+    db.execute(sql`
+      SELECT extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as dow,
+        count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue
+      FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
+      GROUP BY 1 ORDER BY 1`),
   ]);
 
   return jsonOk({
@@ -90,5 +98,6 @@ export const GET = handler(async (request) => {
     topProducts: topProducts.rows,
     hourlyDistribution: hourlyDist.rows,
     repeatCustomers: repeatCustomers.rows[0],
+    dayOfWeek: dayOfWeek.rows,
   });
 });

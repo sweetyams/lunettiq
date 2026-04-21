@@ -11,6 +11,7 @@ interface SalesData {
   revByLocation: Array<{ location: string; orders: string; revenue: string; aov: string }>;
   topProducts: Array<{ name: string; product_id: string | null; sold: string; revenue: string }>;
   hourlyDistribution: Array<{ hour: string; orders: string }>;
+  dayOfWeek: Array<{ dow: string; orders: string; revenue: string }>;
   repeatCustomers: { one_time: string; two_orders: string; three_plus: string };
 }
 
@@ -173,8 +174,8 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Daily revenue + Hourly */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
+      {/* Daily revenue + Hourly + Day of Week */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Daily Revenue</h2>
           <div style={{ maxHeight: 200, overflowY: 'auto' }}>
@@ -188,6 +189,16 @@ export default function SalesDashboard() {
           {data.hourlyDistribution.map(h => (
             <Bar key={h.hour} label={`${String(h.hour).padStart(2, '0')}:00`} value={Number(h.orders)} max={maxHourly} display={`${h.orders}`} />
           ))}
+        </div>
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Day of Week</h2>
+          {(() => {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const maxDow = Math.max(...(data.dayOfWeek ?? []).map(d => Number(d.revenue)), 1);
+            return (data.dayOfWeek ?? []).map(d => (
+              <Bar key={d.dow} label={days[Number(d.dow)] ?? d.dow} value={Number(d.revenue)} max={maxDow} display={fmt(d.revenue)} />
+            ));
+          })()}
         </div>
       </div>
 
