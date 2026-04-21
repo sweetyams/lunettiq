@@ -116,10 +116,37 @@ export const GET = handler(async (_request, ctx) => {
 
   // Family-only square sales (linked to family but no specific product)
   const familyOnlySquare = squareMappings.rows.filter((s: any) => !s.shopify_product_id && s.family_id === familyId);
+  const familyOnlyNames = familyOnlySquare.map((s: any) => (s.square_name ?? '').toLowerCase()).filter(Boolean);
+  let familyOnlySales: Array<{ square_name: string; units: number; orders: number; revenue: number }> = [];
+  if (familyOnlyNames.length) {
+    const foSales = await db.execute(sql`
+      SELECT lower(item->>'name') as name, count(*) as units,
+        count(DISTINCT o.shopify_order_id) as orders,
+        coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
+      FROM orders_projection o, jsonb_array_elements(o.line_items) as item
+      WHERE lower(item->>'name') IN (${sql.join(familyOnlyNames.map(n => sql`${n}`), sql`, `)})
+      GROUP BY 1
+    `);
+    // Deduplicate by original square name
+    const seen = new Set<string>();
+    for (const sq of familyOnlySquare as any[]) {
+      const key = sq.square_name;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const match = foSales.rows.find((r: any) => r.name === (sq.square_name ?? '').toLowerCase());
+      familyOnlySales.push({
+        square_name: sq.square_name,
+        units: Number(match?.units ?? 0),
+        orders: Number(match?.orders ?? 0),
+        revenue: Number(match?.revenue ?? 0),
+      });
+    }
+  }
 
   return jsonOk({
     familyId,
     members: memberSales,
+    familyOnlySquare: familyOnlySales,
     totals: totals.rows[0],
     byChannel: byChannel.rows,
     byLocation: byLocation.rows,

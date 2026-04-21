@@ -179,6 +179,30 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView: string;
                           </tr>
                           );
                         })}
+                        {/* Family-only Square items (no Shopify product) */}
+                        {sales?.familyOnlySquare?.length > 0 && (
+                          <tr style={{ background: 'var(--crm-surface-hover)' }}>
+                            <td colSpan={6} style={{ paddingLeft: 32 }}>
+                              <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 4, marginTop: 4 }}>Square-only (no Shopify product)</div>
+                            </td>
+                          </tr>
+                        )}
+                        {(sales?.familyOnlySquare ?? []).map((sq: any, i: number) => (
+                          <tr key={`${f.id}-sq-${i}`} style={{ background: 'var(--crm-surface-hover)' }}>
+                            <td style={{ paddingLeft: 40 }}>
+                              <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)' }}>{sq.square_name}</div>
+                            </td>
+                            <td>
+                              {sq.units > 0 ? (
+                                <span style={{ fontSize: 'var(--crm-text-xs)', color: '#F59E0B' }}>{sq.units} sold · {fmt(sq.revenue)}</span>
+                              ) : (
+                                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>no sales</span>
+                              )}
+                            </td>
+                            <td><span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E' }}>SQUARE</span></td>
+                            <td colSpan={3}></td>
+                          </tr>
+                        ))}
                       </>
                     );
                   })()}
