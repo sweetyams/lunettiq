@@ -5,8 +5,7 @@ import { usePathname } from 'next/navigation';
 import { track } from '@/lib/tracking';
 
 /**
- * Tracks page views on route changes.
- * Identifies user with PostHog when logged in.
+ * Tracks page views + identifies user with PostHog (enriched profile).
  */
 export default function PageViewTracker() {
   const pathname = usePathname();
@@ -19,13 +18,12 @@ export default function PageViewTracker() {
 
     track({ event: 'page_view', data: { path: pathname, title: document.title } });
 
-    // Detect login: user arrived at /account (callback redirects here)
     if (pathname === '/account' && document.referrer.includes('/api/auth/callback')) {
       track({ event: 'account_login', data: {} });
     }
   }, [pathname]);
 
-  // Identify user once per session
+  // Identify + super properties once per session
   useEffect(() => {
     if (identified.current) return;
     identified.current = true;
@@ -35,13 +33,27 @@ export default function PageViewTracker() {
       .then(d => {
         if (!d.data) return;
         const w = window as any;
-        if (w.posthog) {
-          w.posthog.identify(d.data.id, {
-            email: d.data.email,
-            first_name: d.data.firstName,
-            last_name: d.data.lastName,
-          });
-        }
+        if (!w.posthog) return;
+
+        // Identify with full profile
+        w.posthog.identify(d.data.id, {
+          email: d.data.email,
+          first_name: d.data.firstName,
+          last_name: d.data.lastName,
+          tier: d.data.tier,
+          has_membership: d.data.hasMembership,
+          lifetime_value: d.data.lifetimeValue,
+          total_orders: d.data.totalOrders,
+          city: d.data.city,
+          joined_at: d.data.joinedAt,
+        });
+
+        // Super properties — attached to every future event
+        w.posthog.register({
+          tier: d.data.tier,
+          has_membership: d.data.hasMembership,
+          locale: navigator.language,
+        });
       })
       .catch(() => {});
   }, []);
