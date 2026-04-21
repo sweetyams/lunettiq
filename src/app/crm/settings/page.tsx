@@ -32,6 +32,7 @@ const SETTINGS_GROUPS = [
     items: [
       { href: '/crm/settings/integrations', label: 'Integrations', description: 'Third-party services and APIs' },
       { href: '/crm/settings/store', label: 'Store Config', description: 'Timezone, API versions, SKUs, thresholds' },
+      { href: '/crm/settings/design', label: 'Design', description: 'Skeleton colour, loading states, storefront appearance' },
       { href: '/crm/settings/audit', label: 'Audit Log', description: 'All system activity' },
       { href: '/crm/settings/system', label: 'System', description: 'Sync, reconciliation, data maintenance' },
     ],

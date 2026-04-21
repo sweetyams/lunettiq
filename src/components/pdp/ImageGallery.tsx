@@ -187,7 +187,7 @@ export default function ImageGallery({
 
   if (displayImages.length === 0) {
     return (
-      <div className="relative w-full bg-[#F5F5F9] flex items-center justify-center" style={{ aspectRatio: '696/870' }}>
+      <div className="relative w-full bg-[var(--product-card-bg,#F5F5F9)] flex items-center justify-center" style={{ aspectRatio: '696/870' }}>
         <span className="text-gray-400 text-sm">No image available</span>
       </div>
     );
@@ -197,7 +197,7 @@ export default function ImageGallery({
     <div className="relative w-full">
       {/* Main slide area */}
       <div
-        className="relative w-full overflow-hidden bg-[#F5F5F9]"
+        className="relative w-full overflow-hidden bg-[var(--product-card-bg,#F5F5F9)]"
         style={{ aspectRatio: '696/870' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

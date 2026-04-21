@@ -74,8 +74,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     <>
       <ProductClient product={product} slug={resolved?.canonicalSlug ?? slug} lensOptions={lensOptions} />
       <Suspense fallback={<div className="site-container py-12 space-y-8">
-        <div className="h-64 bg-[#F5F5F9] animate-pulse rounded" />
-        <div className="h-48 bg-[#F5F5F9] animate-pulse rounded" />
+        <div className="h-64 bg-[var(--product-card-bg,#F5F5F9)] animate-pulse rounded" />
+        <div className="h-48 bg-[var(--product-card-bg,#F5F5F9)] animate-pulse rounded" />
       </div>}>
         <BelowFoldData productId={product.id} />
       </Suspense>

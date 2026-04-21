@@ -127,7 +127,7 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
           <p className="text-sm text-gray-600 mb-3">
             Colour: <span className="text-black font-medium">{formatColour(currentSibling?.colour)}</span>
           </p>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Colour options">
+          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Colour options">
             {data.siblings.map(s => {
               const product = currentType === 'sun' ? s.sun : s.optical;
               if (!product) return null;
@@ -138,12 +138,12 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
                   key={s.colour}
                   onClick={() => handleNav(product.slug)}
                   disabled={isActive}
-                  className={`relative block overflow-hidden rounded-full transition-all ${
+                  className={`relative block overflow-hidden transition-all ${
                     isActive
                       ? 'ring-2 ring-black ring-offset-2'
                       : 'ring-1 ring-gray-200 hover:ring-gray-400'
                   } ${navigating === product.slug ? 'opacity-60' : ''}`}
-                  style={{ width: 32, height: 32 }}
+                  style={{ width: 64, height: 80 }}
                   role="radio"
                   aria-checked={isActive}
                   aria-label={formatColour(s.colour)}
@@ -154,10 +154,12 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
                       alt={formatColour(s.colour)}
                       fill
                       className="object-cover"
-                      sizes="32px"
+                      sizes="64px"
                     />
                   ) : (
-                    <div className="w-full h-full" style={{ background: s.hex || '#F5F5F9' }} />
+                    <div className="w-full h-full flex items-center justify-center" style={{ background: s.hex || 'var(--product-card-bg, #F5F5F9)' }}>
+                      <span className="text-[10px] text-gray-500 text-center px-1">{formatColour(s.colour)}</span>
+                    </div>
                   )}
                 </button>
               );

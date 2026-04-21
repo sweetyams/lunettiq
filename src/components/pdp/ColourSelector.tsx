@@ -65,7 +65,7 @@ export default function ColourSelector({
                   sizes="64px"
                 />
               ) : (
-                <div className="w-full h-full bg-[#F5F5F9] flex items-center justify-center">
+                <div className="w-full h-full bg-[var(--product-card-bg,#F5F5F9)] flex items-center justify-center">
                   <span className="text-[10px] text-gray-400 text-center px-1">{colour}</span>
                 </div>
               )}

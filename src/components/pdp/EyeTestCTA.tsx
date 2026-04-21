@@ -9,7 +9,7 @@ interface EyeTestCTABlockProps {
 export default function EyeTestCTABlock({ cta }: EyeTestCTABlockProps) {
   return (
     <section
-      className="relative overflow-hidden bg-[#F5F5F9]"
+      className="relative overflow-hidden bg-[var(--product-card-bg,#F5F5F9)]"
       aria-label="Eye test booking"
     >
       <div className="flex flex-col md:flex-row items-center">

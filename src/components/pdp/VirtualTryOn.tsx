@@ -192,7 +192,7 @@ export default function VirtualTryOn({ frameImageUrl, frameName }: VirtualTryOnP
 
       {/* Idle state */}
       {status === 'idle' && (
-        <div className="flex items-center justify-center aspect-[4/3] bg-[#F5F5F9]">
+        <div className="flex items-center justify-center aspect-[4/3] bg-[var(--product-card-bg,#F5F5F9)]">
           <div className="text-center px-4">
             <svg className="mx-auto mb-2 text-gray-400" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />

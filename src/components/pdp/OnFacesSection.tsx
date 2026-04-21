@@ -26,7 +26,7 @@ export default function OnFacesSection({
         {onFaceImages.map((url, index) => (
           <div
             key={index}
-            className="relative bg-[#F5F5F9] overflow-hidden"
+            className="relative bg-[var(--product-card-bg,#F5F5F9)] overflow-hidden"
             style={{ aspectRatio: '1/1' }}
           >
             <Image

@@ -62,7 +62,7 @@ function ProductCard({ product, light, className, prefetch, onClick }: ProductCa
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className="relative bg-[#F5F5F9] overflow-hidden"
+        className="relative bg-[var(--product-card-bg,#F5F5F9)] overflow-hidden"
         style={{ aspectRatio: '463/579' }}
       >
         {product && (
