@@ -64,10 +64,12 @@ export default function ProductMappingPage() {
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
+    // Auto-resolve family from the chosen product
+    const fm = familyMembers.find(m => m.product_id === shopifyProductId);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ squareCatalogId, shopifyProductId, shopifyVariantId: shopifyVariantId ?? null, status: 'manual' }),
+      body: JSON.stringify({ squareCatalogId, shopifyProductId, shopifyVariantId: shopifyVariantId ?? null, familyId: fm?.family_id ?? null, status: 'manual' }),
     });
     load(filter, search);
   }
@@ -121,7 +123,7 @@ export default function ProductMappingPage() {
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ squareCatalogId, familyId, status: 'related' }),
+      body: JSON.stringify({ squareCatalogId, familyId, shopifyProductId: null, shopifyVariantId: null, status: 'related' }),
     });
     setChoosingFamily(null);
     load(filter, search);
@@ -233,9 +235,6 @@ export default function ProductMappingPage() {
                       )}
                       {m.status !== 'ignored' && (
                         <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
-                      )}
-                      {m.shopify_product_id && (
-                        <button onClick={() => unlinkProduct(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-warning, #d97706)', background: 'none', color: 'var(--crm-warning, #d97706)', cursor: 'pointer' }}>Unlink</button>
                       )}
                       <button onClick={() => setChoosing(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-text-primary)', background: 'none', color: 'var(--crm-text-primary)', cursor: 'pointer' }}>Choose</button>
                       <button onClick={() => setChoosingFamily(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #8b5cf6', background: 'none', color: '#8b5cf6', cursor: 'pointer' }}>Family</button>
