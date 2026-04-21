@@ -268,7 +268,10 @@ export default function ProductMappingPage() {
       )}
 
       {/* Link to family modal */}
-      {choosingFamily && (
+      {choosingFamily && (() => {
+        const mapping = mappings.find(m => m.square_catalog_id === choosingFamily);
+        const hint = mapping?.parsed_frame ?? mapping?.square_name ?? '';
+        return (
         <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setChoosingFamily(null); }}>
           <div className="crm-card crm-modal" style={{ width: 360, padding: 'var(--crm-space-5)' }}>
@@ -277,20 +280,13 @@ export default function ProductMappingPage() {
               <button onClick={() => setChoosingFamily(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
             </div>
             <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
-              {mappings.find(m => m.square_catalog_id === choosingFamily)?.square_name}
+              {mapping?.square_name}
             </div>
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-              {families.map(f => (
-                <button key={f.id} onClick={() => linkFamily(choosingFamily, f.id)}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-sm)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4, fontWeight: 500 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                >{f.name}</button>
-              ))}
-            </div>
+            <FamilySearch families={families} hint={hint} onSelect={(familyId) => linkFamily(choosingFamily, familyId)} />
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -362,6 +358,29 @@ function ProductSearch({ products, familyMembers, families, onSelect, hint }: { 
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function FamilySearch({ families, hint, onSelect }: { families: Array<{ id: string; name: string }>; hint: string; onSelect: (familyId: string) => void }) {
+  const [query, setQuery] = useState(hint);
+  const filtered = query.length >= 1
+    ? families.filter(f => f.name.toLowerCase().includes(query.toLowerCase()))
+    : families;
+
+  return (
+    <div>
+      <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search families…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
+      <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+        {filtered.map(f => (
+          <button key={f.id} onClick={() => onSelect(f.id)}
+            style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-sm)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4, fontWeight: 500 }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >{f.name}</button>
+        ))}
+        {filtered.length === 0 && <div style={{ padding: 12, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>No families found</div>}
+      </div>
     </div>
   );
 }
