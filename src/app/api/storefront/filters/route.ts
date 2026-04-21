@@ -1,91 +1,66 @@
 export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { colourGroups } from '@/lib/db/schema';
-import { sql } from 'drizzle-orm';
-import { getSizeThresholds } from '@/lib/crm/store-settings';
+import { filterGroups, productFilters, productsProjection } from '@/lib/db/schema';
+import { sql, eq } from 'drizzle-orm';
 
 /**
  * GET /api/storefront/filters
- * Returns filter options + product→filter mappings from DB metafields.
- * Colour groups collapse raw colours into display groups.
+ * Returns filter options + product→filter mappings from the CRM-managed filter system.
  */
 export async function GET(request: NextRequest) {
-  const sizeThresholds = await getSizeThresholds();
-  const [rows, groups] = await Promise.all([
-    db.execute(sql`
-      SELECT
-        p.shopify_product_id as id,
-        p.handle,
-        p.metafields->'udesly'->>'available-in-these-colors' as colours_raw,
-        p.metafields->'udesly'->>'face-shape-recommendation' as shapes_raw,
-        p.metafields->'custom'->>'material' as material,
-        p.metafields->'custom'->>'sizing_dimensions' as sizing
-      FROM products_projection p
-      WHERE p.status = 'active'
-    `),
-    db.select().from(colourGroups).orderBy(colourGroups.sortOrder),
-  ]);
+  // Get all filter groups
+  const groups = await db.select().from(filterGroups).orderBy(filterGroups.type, filterGroups.sortOrder);
 
-  // Build reverse map: raw colour → group id
-  const colourToGroup = new Map<string, string>();
+  // Get all product assignments
+  const assignments = await db.execute(sql`
+    SELECT pf.product_id, pf.filter_group_id, p.handle
+    FROM product_filters pf
+    JOIN products_projection p ON p.shopify_product_id = pf.product_id
+    WHERE p.status = 'active'
+  `);
+
+  // Build options by type
+  const options: Record<string, string[]> = {};
+  const labels: Record<string, string> = {};
   for (const g of groups) {
-    for (const member of g.members) colourToGroup.set(member, g.id);
+    if (!options[g.type]) options[g.type] = [];
+    options[g.type].push(g.slug);
+    labels[g.slug] = g.label;
   }
 
-  const productFilters: Record<string, { colours: string[]; shapes: string[]; material: string | null; size: string | null }> = {};
-  const allColours = new Set<string>();
-  const allShapes = new Set<string>();
-  const allMaterials = new Set<string>();
+  // Build product→filters map (keyed by both ID and handle)
+  const productMap: Record<string, Record<string, string[]>> = {};
+  for (const row of assignments.rows as any[]) {
+    const [type, slug] = (row.filter_group_id as string).split(':');
+    if (!type || !slug) continue;
 
-  for (const row of rows.rows as any[]) {
-    const colours: string[] = [];
-    const shapes: string[] = [];
+    // Key by product ID
+    if (!productMap[row.product_id]) productMap[row.product_id] = {};
+    if (!productMap[row.product_id][type]) productMap[row.product_id][type] = [];
+    productMap[row.product_id][type].push(slug);
 
-    if (row.colours_raw) {
-      try {
-        for (const c of JSON.parse(row.colours_raw)) {
-          const grouped = colourToGroup.get(c.handle) ?? c.handle;
-          if (!colours.includes(grouped)) colours.push(grouped);
-          allColours.add(grouped);
-        }
-      } catch {}
+    // Also key by handle
+    if (row.handle) {
+      if (!productMap[row.handle]) productMap[row.handle] = {};
+      if (!productMap[row.handle][type]) productMap[row.handle][type] = [];
+      productMap[row.handle][type].push(slug);
     }
-    if (row.shapes_raw) {
-      try { for (const s of JSON.parse(row.shapes_raw)) { shapes.push(s.handle); allShapes.add(s.handle); } } catch {}
-    }
-
-    let material: string | null = null;
-    if (row.material) { material = row.material.toLowerCase(); allMaterials.add(material); }
-
-    let size: string | null = null;
-    if (row.sizing) {
-      const fwMatch = row.sizing.match(/Frame width:\s*(\d+)/i);
-      if (fwMatch) {
-        const fw = Number(fwMatch[1]);
-        size = fw <= sizeThresholds.smallMax ? 'small' : fw <= sizeThresholds.mediumMax ? 'medium' : 'large';
-      }
-    }
-
-    // Key by both ID and handle for maximum compatibility
-    productFilters[row.id] = { colours, shapes, material, size };
-    if (row.handle) productFilters[row.handle] = { colours, shapes, material, size };
   }
 
-  // Use group labels for display
-  const groupLabels = new Map(groups.map(g => [g.id, g.label]));
+  // Transform to the format the frontend expects
+  const products: Record<string, { colours: string[]; shapes: string[]; material: string | null; size: string | null }> = {};
+  for (const [key, filters] of Object.entries(productMap)) {
+    products[key] = {
+      colours: filters.colour ?? [],
+      shapes: filters.shape ?? [],
+      material: filters.material?.[0] ?? null,
+      size: filters.size?.[0] ?? null,
+    };
+  }
 
   return NextResponse.json({
-    data: {
-      options: {
-        colour: Array.from(allColours).sort(),
-        shape: Array.from(allShapes).sort(),
-        material: Array.from(allMaterials).sort(),
-        size: ['small', 'medium', 'large'],
-      },
-      colourLabels: Object.fromEntries(groups.map(g => [g.id, g.label])),
-      products: productFilters,
-    },
+    data: { options, colourLabels: labels, products },
   }, {
     headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
   });
