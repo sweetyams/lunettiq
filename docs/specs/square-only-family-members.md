@@ -184,3 +184,72 @@ System:
 6. `src/app/crm/settings/product-mapping/page.tsx` — Merge flow on confirm/link
 7. `src/lib/crm/product-sales.ts` — Attribute sales to placeholders
 8. `src/app/crm/products/ProductsClient.tsx` — Filter or badge placeholders
+
+## Auto-Creation from Unmatched Square Items
+
+### Rule
+When ≥4 unmatched Square catalog items share the same parsed frame name (e.g. "AIRE"), and no `product_families` row exists for that name, auto-create the family + placeholder members.
+
+### Trigger
+Runs as part of the existing "Auto-Match" button flow in Square Mapping (`/api/crm/system/auto-match-square`), after the normal matching pass.
+
+### Logic
+
+```
+1. Group all unmatched Square items by parsed_frame (already extracted by auto-match)
+2. For each group where count >= 4:
+   a. Check: does product_families row exist for this frame name? → skip if yes
+   b. CREATE product_families (id=lowercase frame, name=UPPERCASE frame)
+   c. For each item in group:
+      - CREATE products_projection placeholder (sq__xxx, title=square_name, status='placeholder')
+      - CREATE product_family_members (family_id, product_id=sq__xxx, type=parsed_type, colour=parsed_colour)
+      - UPDATE product_mappings SET shopify_product_id='sq__xxx', status='related'
+   d. regenerateFamilySlugs(familyId)
+3. Return count of auto-created families in the auto-match result
+```
+
+### Why ≥4?
+- Avoids creating families for one-off items or accessories
+- A real eyewear family typically has ≥2 colours × ≥2 types (optical+sun) = 4+
+- Configurable: store setting `auto_family_min_items` (default: 4)
+
+### Deduplication Within Auto-Created Family
+- Multiple Square items with same parsed colour+type (e.g. "AIRE BLACK SV" and "AIRE BLACK PROG") → one placeholder, multiple mappings
+- First item creates the placeholder + family member
+- Subsequent items with same colour+type just get a `product_mappings` row with `status='related'`
+
+### UI Feedback
+Auto-match result already shows `{ auto, familyOnly, unmatched, skipped }`. Add:
+- `familiesCreated: number` — how many new families were auto-created
+- `placeholdersCreated: number` — how many placeholder products
+
+### Stress Tests (additions)
+
+#### Test 8: Auto-create family from unmatched Square items
+1. Import 6 Square items: AIRE BLACK OPT, AIRE BLACK SUN, AIRE GREY OPT, AIRE GREY SUN, AIRE BLUE OPT, AIRE BLUE SUN
+2. Run auto-match → no Shopify matches
+3. Verify: AIRE family created with 6 placeholders
+4. Verify: slugs = aire-black, aire-black-sun, aire-grey, aire-grey-sun, etc.
+5. Verify: storefront unaffected (placeholders filtered)
+
+#### Test 9: Auto-create skips existing families
+1. MARAIS family already exists with Shopify products
+2. 5 unmatched Square items named "MARAIS ..."
+3. Run auto-match → should NOT create duplicate MARAIS family
+4. Should link Square items to existing family members via product_mappings
+
+#### Test 10: Auto-create with <4 items
+1. 3 unmatched Square items named "ZEPHYR ..."
+2. Run auto-match → no family created (below threshold)
+3. Items remain unmatched
+
+#### Test 11: Mixed matched and unmatched
+1. 6 Square items named "NOVA ...": 2 match Shopify products, 4 unmatched
+2. Run auto-match → 2 get normal matches
+3. Remaining 4 unmatched share name "NOVA" → family created
+4. The 2 matched items are NOT added to the auto-created family (they follow normal mapping)
+   Staff can manually add them later
+
+### Files to Modify (additions)
+9. `src/app/api/crm/system/auto-match-square/route.ts` — Auto-create pass after matching
+10. `src/lib/crm/store-settings.ts` — Add `auto_family_min_items` default
