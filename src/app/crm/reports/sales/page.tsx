@@ -221,13 +221,47 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Daily revenue */}
+      {/* Revenue over time */}
       <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
-        <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Daily Revenue</h2>
-        <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-          {data.revByDay.slice(-30).map(d => (
-            <Bar key={d.day} label={new Date(d.day).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })} value={Number(d.revenue)} max={maxDaily} display={fmt(d.revenue)} />
-          ))}
+        <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>
+          {days >= 365 ? 'Monthly' : days >= 90 ? 'Weekly' : 'Daily'} Revenue
+        </h2>
+        <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+          {(() => {
+            if (days >= 365) {
+              // Group by month
+              const byMonth = new Map<string, number>();
+              for (const d of data.revByDay) {
+                const key = d.day.slice(0, 7);
+                byMonth.set(key, (byMonth.get(key) ?? 0) + Number(d.revenue));
+              }
+              const entries = Array.from(byMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+              const max = Math.max(...entries.map(e => e[1]), 1);
+              return entries.map(([month, rev]) => (
+                <Bar key={month} label={new Date(month + '-01').toLocaleDateString('en-CA', { month: 'short', year: '2-digit' })} value={rev} max={max} display={fmt(rev)} />
+              ));
+            }
+            if (days >= 90) {
+              // Group by week
+              const byWeek = new Map<string, number>();
+              for (const d of data.revByDay) {
+                const date = new Date(d.day);
+                const weekStart = new Date(date);
+                weekStart.setDate(date.getDate() - date.getDay());
+                const key = weekStart.toISOString().slice(0, 10);
+                byWeek.set(key, (byWeek.get(key) ?? 0) + Number(d.revenue));
+              }
+              const entries = Array.from(byWeek.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+              const max = Math.max(...entries.map(e => e[1]), 1);
+              return entries.map(([week, rev]) => (
+                <Bar key={week} label={`Wk ${new Date(week).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}`} value={rev} max={max} display={fmt(rev)} />
+              ));
+            }
+            // Daily
+            return data.revByDay.map(d => (
+              <Bar key={d.day} label={new Date(d.day).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })} value={Number(d.revenue)} max={maxDaily} display={fmt(d.revenue)} />
+            ));
+          })()}
         </div>
       </div>
 
