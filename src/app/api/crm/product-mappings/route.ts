@@ -24,7 +24,7 @@ export const GET = handler(async (request) => {
   `;
 
   if (status) query = sql`${query} AND m.status = ${status}`;
-  if (search) query = sql`${query} AND (m.square_name ILIKE ${'%' + search + '%'} OR p.title ILIKE ${'%' + search + '%'})`;
+  if (search) query = sql`${query} AND (m.square_name ILIKE ${'%' + search + '%'} OR p.title ILIKE ${'%' + search + '%'} OR p.handle ILIKE ${'%' + search + '%'})`;
 
   query = sql`${query} ORDER BY m.confidence DESC NULLS LAST, m.square_name ASC LIMIT ${limit} OFFSET ${offset}`;
 

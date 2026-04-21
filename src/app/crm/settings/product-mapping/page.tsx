@@ -51,6 +51,12 @@ export default function ProductMappingPage() {
 
   function handleSearch() { setPage(0); load(filter, search, 0); }
 
+  // Search as you type with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => { setPage(0); load(filter, search, 0); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
@@ -137,7 +143,7 @@ export default function ProductMappingPage() {
           ))}
         </div>
         <form onSubmit={e => { e.preventDefault(); handleSearch(); }} style={{ display: 'flex', gap: 4 }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 180 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Square or Shopify name…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 240 }} />
           <button type="submit" className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>Go</button>
         </form>
       </div>
