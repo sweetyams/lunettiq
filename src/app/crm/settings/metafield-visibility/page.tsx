@@ -39,11 +39,11 @@ export default function MetafieldVisibilityPage() {
   }
 
   const LOGICAL_GROUPS: Array<{ label: string; keys: string[] }> = [
-    { label: 'Sizing & Fit', keys: ['custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.frame_width', 'custom.weight_grams', 'custom.size_category'] },
-    { label: 'Material & Construction', keys: ['custom.material_type', 'custom.material_description', 'custom.origin', 'custom.hinge_type'] },
-    { label: 'Classification', keys: ['custom.shape', 'custom.frame_colour', 'custom.gender_fit', 'custom.frame_type'] },
-    { label: 'Editorial', keys: ['custom.short_name', 'custom.designer_notes', 'custom.collection_season', 'custom.face_notes', 'custom.swatch'] },
-    { label: 'Rx & Lens', keys: ['custom.rx_compatible', 'custom.progressive_compatible', 'custom.max_lens_index', 'custom.supports_polarized'] },
+    { label: 'Sizing', keys: ['custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.frame_width', 'custom.weight_grams'] },
+    { label: 'Material', keys: ['custom.material_type', 'custom.material_description', 'custom.origin', 'custom.hinge_type'] },
+    { label: 'Classification', keys: ['custom.shape', 'custom.frame_colour', 'custom.size_category', 'custom.gender_fit', 'custom.frame_type'] },
+    { label: 'Editorial', keys: ['custom.designer_notes', 'custom.collection_season', 'custom.face_notes', 'custom.short_name', 'custom.swatch'] },
+    { label: 'Rx', keys: ['custom.rx_compatible', 'custom.progressive_compatible', 'custom.max_lens_index', 'custom.supports_polarized'] },
   ];
   const groupedKeySet = new Set(LOGICAL_GROUPS.flatMap(g => g.keys));
   const otherKeys = available.filter(k => !groupedKeySet.has(k));
