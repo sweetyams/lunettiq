@@ -43,7 +43,7 @@ async function autoAssignProduct(productId: string, handle: string) {
         type = tail[tail.length - 1] === 'sun' || tail[tail.length - 1] === 'sunglasses' ? 'sun' : 'optical';
         tail = tail.slice(0, -1);
       } else {
-        type = 'optical';
+        type = 'sun';
       }
       colour = tail.join('-');
     }
