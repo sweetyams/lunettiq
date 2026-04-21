@@ -67,7 +67,7 @@ export default function CollectionClient({
   const [filters, setFilters] = useState<ActiveFilters>(initialFilters);
   const [memberCtx, setMemberCtx] = useState<MemberContext | null>(null);
   const [fitFilterDismissed, setFitFilterDismissed] = useState(false);
-  const [filterData, setFilterData] = useState<{ options: Record<string, string[]>; products: Record<string, { colours: string[]; shapes: string[]; material: string | null; size: string | null }> } | null>(null);
+  const [filterData, setFilterData] = useState<{ options: Record<string, string[]>; colourLabels?: Record<string, string>; products: Record<string, { colours: string[]; shapes: string[]; material: string | null; size: string | null }> } | null>(null);
 
   useEffect(() => {
     fetch('/api/storefront/filters')
@@ -100,18 +100,21 @@ export default function CollectionClient({
     // Metafield-based filtering
     if (filterData?.products) {
       const fd = filterData.products;
-      const getId = (p: Product) => p.id.replace(/^gid:\/\/shopify\/Product\//, '');
+      const getFilterData = (p: Product) => {
+        const numId = p.id.replace(/^gid:\/\/shopify\/Product\//, '');
+        return fd[numId] ?? fd[p.handle] ?? null;
+      };
       if (filters.colour.length > 0) {
-        list = list.filter(p => { const pf = fd[getId(p)]; return pf && filters.colour.some(c => pf.colours.includes(c)); });
+        list = list.filter(p => { const pf = getFilterData(p); return pf && filters.colour.some(c => pf.colours.includes(c)); });
       }
       if (filters.shape.length > 0) {
-        list = list.filter(p => { const pf = fd[getId(p)]; return pf && filters.shape.some(s => pf.shapes.includes(s)); });
+        list = list.filter(p => { const pf = getFilterData(p); return pf && filters.shape.some(s => pf.shapes.includes(s)); });
       }
       if (filters.material.length > 0) {
-        list = list.filter(p => { const pf = fd[getId(p)]; return pf && pf.material && filters.material.includes(pf.material); });
+        list = list.filter(p => { const pf = getFilterData(p); return pf && pf.material && filters.material.includes(pf.material); });
       }
       if (filters.size.length > 0) {
-        list = list.filter(p => { const pf = fd[getId(p)]; return pf && pf.size && filters.size.includes(pf.size); });
+        list = list.filter(p => { const pf = getFilterData(p); return pf && pf.size && filters.size.includes(pf.size); });
       }
     }
 

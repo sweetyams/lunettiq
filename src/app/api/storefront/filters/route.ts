@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     db.execute(sql`
       SELECT
         p.shopify_product_id as id,
+        p.handle,
         p.metafields->'udesly'->>'available-in-these-colors' as colours_raw,
         p.metafields->'udesly'->>'face-shape-recommendation' as shapes_raw,
         p.metafields->'custom'->>'material' as material,
@@ -64,7 +65,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Key by both ID and handle for maximum compatibility
     productFilters[row.id] = { colours, shapes, material, size };
+    if (row.handle) productFilters[row.handle] = { colours, shapes, material, size };
   }
 
   // Use group labels for display
