@@ -28,6 +28,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Catalogue',
     items: [
       { href: '/crm/products', label: 'Products', icon: <BoxIcon />, tour: 'sidebar-products' },
+      { href: '/crm/products/families', label: 'Families', icon: <CircleIcon /> },
     ],
   },
   {
@@ -49,6 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
 function isActive(pathname: string, href: string) {
   if (href === '/crm') return pathname === '/crm';
   if (href === '/crm/settings') return pathname === '/crm/settings';
+  if (href === '/crm/products') return pathname === '/crm/products' || (pathname.startsWith('/crm/products/') && !pathname.startsWith('/crm/products/families'));
   return pathname === href || pathname.startsWith(href + '/');
 }
 

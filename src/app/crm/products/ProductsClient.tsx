@@ -33,7 +33,7 @@ function SkeletonGrid() {
   );
 }
 
-export function ProductsClient({ activeView, onSwitchView }: { activeView?: string; onSwitchView?: (v: 'products' | 'families') => void }) {
+export function ProductsClient() {
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -119,19 +119,7 @@ export function ProductsClient({ activeView, onSwitchView }: { activeView?: stri
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--crm-space-3)' }}>
-          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Catalogue</h1>
-          {onSwitchView && (
-            <div style={{ display: 'flex', gap: 0, marginLeft: 8 }}>
-              {(['products', 'families'] as const).map(v => (
-                <button key={v} onClick={() => onSwitchView(v)} style={{
-                  padding: '4px 12px', fontSize: 'var(--crm-text-xs)', border: 'none', cursor: 'pointer', background: 'none',
-                  borderBottom: activeView === v ? '2px solid var(--crm-text-primary)' : '2px solid transparent',
-                  color: activeView === v ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)',
-                  fontWeight: activeView === v ? 500 : 400, textTransform: 'capitalize',
-                }}>{v}</button>
-              ))}
-            </div>
-          )}
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Products</h1>
           <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
             {loading ? '…' : filtered.length}
           </span>
