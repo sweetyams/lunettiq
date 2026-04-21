@@ -12,8 +12,8 @@ export const GET = handler(async (request) => {
   const days = Number(params.get('days') ?? 30);
   const start = params.get('start');
   const end = params.get('end');
-  const locationFilter = params.get('location'); // location_id
-  const channelFilter = params.get('channel'); // 'shopify' | 'square'
+  const locationFilter = params.get('location'); // location_id or empty
+  const channelFilter = params.get('channel'); // 'shopify' | 'square' or empty
   const since = start ? new Date(start).toISOString() : new Date(Date.now() - days * 86400000).toISOString();
   const until = end ? new Date(end + 'T23:59:59').toISOString() : new Date().toISOString();
 
@@ -24,6 +24,32 @@ export const GET = handler(async (request) => {
     ? sql`AND source = ${channelFilter}`
     : sql``;
   const filterClauses = sql`${locationClause} ${channelClause}`;
+
+  // Channel breakdown (always returned for comparison view)
+  const channelBreakdown = await db.execute(sql`
+    SELECT source, count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue,
+      round(avg(total_price::numeric), 2) as aov
+    FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
+    GROUP BY source ORDER BY revenue DESC
+  `);
+
+  // Day-of-week by channel (for comparison)
+  const dowByChannel = await db.execute(sql`
+    SELECT source,
+      extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as dow,
+      count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue
+    FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
+    GROUP BY 1, 2 ORDER BY 1, 2
+  `);
+
+  // Hourly by channel
+  const hourlyByChannel = await db.execute(sql`
+    SELECT source,
+      extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as hour,
+      count(*) as orders
+    FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
+    GROUP BY 1, 2 ORDER BY 1, 2
+  `);
 
   const [
     revBySource,
@@ -109,5 +135,8 @@ export const GET = handler(async (request) => {
     hourlyDistribution: hourlyDist.rows,
     repeatCustomers: repeatCustomers.rows[0],
     dayOfWeek: dayOfWeek.rows,
+    channelBreakdown: channelBreakdown.rows,
+    dowByChannel: dowByChannel.rows,
+    hourlyByChannel: hourlyByChannel.rows,
   });
 });

@@ -12,6 +12,9 @@ interface SalesData {
   topProducts: Array<{ name: string; product_id: string | null; sold: string; revenue: string }>;
   hourlyDistribution: Array<{ hour: string; orders: string }>;
   dayOfWeek: Array<{ dow: string; orders: string; revenue: string }>;
+  channelBreakdown: Array<{ source: string; orders: string; revenue: string; aov: string }>;
+  dowByChannel: Array<{ source: string; dow: string; orders: string; revenue: string }>;
+  hourlyByChannel: Array<{ source: string; hour: string; orders: string }>;
   repeatCustomers: { one_time: string; two_orders: string; three_plus: string };
 }
 
@@ -33,6 +36,26 @@ function Bar({ label, value, max, display }: { label: string; value: number; max
         <div style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, height: '100%', background: 'var(--crm-text-primary)', borderRadius: 4 }} />
       </div>
       <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)', width: 60, textAlign: 'right' }}>{display}</span>
+    </div>
+  );
+}
+
+const CHANNEL_COLORS: Record<string, string> = { shopify: '#5E8E3E', square: '#006AFF' };
+
+function CompareBar({ label, values, max }: { label: string; values: Array<{ source: string; value: number; display: string }>; max: number }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{label}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+        {values.map(v => (
+          <div key={v.source} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ flex: 1, height: 14, background: 'var(--crm-surface-hover)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${max > 0 ? (v.value / max) * 100 : 0}%`, height: '100%', background: CHANNEL_COLORS[v.source] ?? 'var(--crm-text-primary)', borderRadius: 3 }} />
+            </div>
+            <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 50, textAlign: 'right' }}>{v.display}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -176,9 +199,12 @@ export default function SalesDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Channel</h2>
-          {data.revBySource.map(s => (
+          {(data.channelBreakdown ?? data.revBySource).map(s => (
             <div key={s.source} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--crm-border-light)' }}>
-              <span style={{ fontSize: 'var(--crm-text-sm)' }}>{s.source ?? 'shopify'}</span>
+              <span style={{ fontSize: 'var(--crm-text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s.source] ?? 'var(--crm-text-tertiary)' }} />
+                {s.source === 'shopify' ? 'Online' : s.source === 'square' ? 'In-store' : s.source ?? 'Unknown'}
+              </span>
               <span style={{ fontSize: 'var(--crm-text-sm)' }}>{fmt(s.revenue)} ({s.orders} orders, AOV {fmt(s.aov)})</span>
             </div>
           ))}
@@ -204,17 +230,48 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Hourly + Day of Week */}
+      {/* Hourly + Day of Week — comparison view */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Peak Hours</h2>
-          {data.hourlyDistribution.map(h => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Peak Hours</h2>
+            {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS.shopify }} />Online</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS.square }} />In-store</span>
+            </div>}
+          </div>
+          {!channel && data.hourlyByChannel?.length > 0 ? (() => {
+            const hours = Array.from(new Set(data.hourlyByChannel.map(h => h.hour))).sort((a, b) => Number(a) - Number(b));
+            const sources = Array.from(new Set(data.hourlyByChannel.map(h => h.source)));
+            const maxH = Math.max(...data.hourlyByChannel.map(h => Number(h.orders)), 1);
+            return hours.map(hour => (
+              <CompareBar key={hour} label={`${String(hour).padStart(2, '0')}:00`}
+                values={sources.map(s => ({ source: s, value: Number(data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? 0), display: data.hourlyByChannel.find(h => h.hour === hour && h.source === s)?.orders ?? '0' }))}
+                max={maxH} />
+            ));
+          })() : data.hourlyDistribution.map(h => (
             <Bar key={h.hour} label={`${String(h.hour).padStart(2, '0')}:00`} value={Number(h.orders)} max={maxHourly} display={`${h.orders}`} />
           ))}
         </div>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Day of Week</h2>
-          {(() => {
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Day of Week</h2>
+            {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS.shopify }} />Online</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS.square }} />In-store</span>
+            </div>}
+          </div>
+          {!channel && data.dowByChannel?.length > 0 ? (() => {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dows = Array.from(new Set(data.dowByChannel.map(d => d.dow))).sort((a, b) => Number(a) - Number(b));
+            const sources = Array.from(new Set(data.dowByChannel.map(d => d.source)));
+            const maxD = Math.max(...data.dowByChannel.map(d => Number(d.revenue)), 1);
+            return dows.map(dow => (
+              <CompareBar key={dow} label={dayNames[Number(dow)] ?? dow}
+                values={sources.map(s => ({ source: s, value: Number(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? 0), display: fmt(data.dowByChannel.find(d => d.dow === dow && d.source === s)?.revenue ?? '0') }))}
+                max={maxD} />
+            ));
+          })() : (() => {
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const maxDow = Math.max(...(data.dayOfWeek ?? []).map(d => Number(d.revenue)), 1);
             return (data.dayOfWeek ?? []).map(d => (
