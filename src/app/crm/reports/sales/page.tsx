@@ -201,7 +201,7 @@ export default function SalesDashboard() {
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Channel</h2>
           {(data.channelBreakdown ?? data.revBySource).map(s => (
-            <div key={s.source} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--crm-border-light)' }}>
+            <div key={s.source} onClick={() => setChannel(channel === s.source ? '' : s.source)} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--crm-border-light)', cursor: 'pointer', background: channel === s.source ? 'var(--crm-surface-hover)' : 'none', borderRadius: 4, paddingLeft: 6, paddingRight: 6 }}>
               <span style={{ fontSize: 'var(--crm-text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s.source] ?? 'var(--crm-text-tertiary)' }} />
                 {s.source === 'shopify' ? 'Online' : s.source === 'square' ? 'In-store' : s.source ?? 'Unknown'}
@@ -213,8 +213,8 @@ export default function SalesDashboard() {
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Location</h2>
           {data.revByLocation.map(l => (
-            <div key={l.location} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--crm-border-light)' }}>
-              <span style={{ fontSize: 'var(--crm-text-sm)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.location}</span>
+            <div key={l.location} onClick={() => setLocation(location === l.location ? '' : l.location)} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderBottom: '1px solid var(--crm-border-light)', cursor: 'pointer', background: location === l.location ? 'var(--crm-surface-hover)' : 'none', borderRadius: 4 }}>
+              <span style={{ fontSize: 'var(--crm-text-sm)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locations.find(loc => loc.id === l.location)?.name ?? l.location}</span>
               <span style={{ fontSize: 'var(--crm-text-sm)' }}>{fmt(l.revenue)} ({l.orders} orders)</span>
             </div>
           ))}
@@ -235,10 +235,10 @@ export default function SalesDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
-            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Peak Hours</h2>
+            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Peak Hours (In-Store)</h2>
             {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
               {Array.from(new Set(data.hourlyByChannel?.map(h => h.source) ?? [])).map((s, i) => (
-                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? (s === 'online' ? 'Online' : s)}</span>
+                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
               ))}
             </div>}
           </div>
@@ -257,10 +257,10 @@ export default function SalesDashboard() {
         </div>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
-            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Day of Week</h2>
+            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Day of Week (In-Store)</h2>
             {!channel && <div style={{ display: 'flex', gap: 8, fontSize: 10, flexWrap: 'wrap' }}>
               {Array.from(new Set(data.dowByChannel?.map(d => d.source) ?? [])).map((s, i) => (
-                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? (s === 'online' ? 'Online' : s)}</span>
+                <span key={s} style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: CHANNEL_COLORS[s] ?? LOCATION_COLORS[i % LOCATION_COLORS.length] }} />{locations.find(l => l.id === s)?.name ?? s}</span>
               ))}
             </div>}
           </div>
