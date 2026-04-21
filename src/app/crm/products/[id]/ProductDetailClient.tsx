@@ -317,6 +317,7 @@ interface Analytics {
   hotClients: Array<{ id: string; name: string; email: string | null; ltv: string; tier: string | null }>;
   salesByChannel: Record<string, { orders: number; units: number }>;
   salesByLocation: Record<string, { orders: number; units: number }>;
+  squareMappings: Array<{ square_name: string; status: string }>;
 }
 
 function ProductCanvas({ productId }: { productId: string }) {
@@ -540,12 +541,17 @@ function ProductCanvas({ productId }: { productId: string }) {
           </div>
         </div>
 
-        {/* Inventory by location */}
+        {/* Inventory & Square */}
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <div style={SH}>Inventory</div>
-          <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
-            Per-location inventory requires Square integration to be active. Shopify inventory totals are shown in the variants table above.
-          </div>
+          <div style={SH}>Square Mappings</div>
+          {data.squareMappings?.length ? data.squareMappings.map((m: any, i: number) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: i > 0 ? '1px solid var(--crm-border-light)' : 'none', fontSize: 'var(--crm-text-sm)' }}>
+              <span>{m.square_name}</span>
+              <span style={{ fontSize: 'var(--crm-text-xs)', padding: '2px 8px', borderRadius: 10, background: m.status === 'confirmed' ? '#dcfce7' : '#fef3c7', color: m.status === 'confirmed' ? '#16a34a' : '#d97706' }}>{m.status}</span>
+            </div>
+          )) : (
+            <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No Square mappings. <Link href="/crm/settings/product-mapping" style={{ color: 'var(--crm-accent)' }}>Set up mapping →</Link></div>
+          )}
         </div>
       </div>
 

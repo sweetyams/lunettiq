@@ -11,7 +11,7 @@ export const GET = handler(async (_request, ctx) => {
   const productId = ctx.params.id;
 
   // Get mapped Square names for this product
-  const mappedRows = await db.select({ squareName: productMappings.squareName }).from(productMappings)
+  const mappedRows = await db.select({ squareName: productMappings.squareName, status: productMappings.status }).from(productMappings)
     .where(sql`${productMappings.shopifyProductId} = ${productId} AND ${productMappings.status} IN ('confirmed', 'auto', 'manual', 'related')`);
   const squareNames = mappedRows.map(r => r.squareName?.toLowerCase()).filter(Boolean) as string[];
 
@@ -122,6 +122,9 @@ export const GET = handler(async (_request, ctx) => {
     })).sort((a, b) => Number(b.ltv) - Number(a.ltv)).slice(0, 10);
   }
 
+  // Square mappings for this product
+  const squareMappings = mappedRows.map(r => ({ square_name: r.squareName, status: (r as any).status }));
+
   return jsonOk({
     velocity: { weeks, d7, d30, d90 },
     sentiment: { love, neutral, dislike, total: totalFb, tryOns: totalTryOns },
@@ -129,5 +132,6 @@ export const GET = handler(async (_request, ctx) => {
     hotClients,
     salesByChannel,
     salesByLocation,
+    squareMappings,
   });
 });
