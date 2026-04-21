@@ -219,6 +219,12 @@ export function ProductsClient({ activeView, onSwitchView }: { activeView?: stri
                         ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
                         : null}
                     {p.priceMin && <span>${p.priceMin}</span>}
+                    {((p as any).sales?.units > 0 || (p as any).sales?.squareUnits > 0) && (
+                      <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--crm-text-tertiary)' }}>
+                        {(p as any).sales.units + (p as any).sales.squareUnits} sold
+                        {(p as any).sales.squareUnits > 0 && <span style={{ color: '#F59E0B' }}> · {(p as any).sales.squareUnits} in-store</span>}
+                      </span>
+                    )}
                   </div>
                   {variants.length > 0 && (
                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'var(--crm-space-2)' }}>
