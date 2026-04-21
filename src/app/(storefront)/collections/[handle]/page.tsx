@@ -38,20 +38,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   };
   const sortConfig = sortKeyMap[sortParam ?? 'relevance'];
 
-  // Build tag-based filters from search params
-  const tagFilters: Array<{ tag: string }> = [];
-  if (shapeParam) {
-    shapeParam.split(',').forEach((v) => tagFilters.push({ tag: `shape:${v}` }));
-  }
-  if (colourParam) {
-    colourParam.split(',').forEach((v) => tagFilters.push({ tag: `colour:${v}` }));
-  }
-  if (materialParam) {
-    materialParam.split(',').forEach((v) => tagFilters.push({ tag: `material:${v}` }));
-  }
-  if (sizeParam) {
-    sizeParam.split(',').forEach((v) => tagFilters.push({ tag: `size:${v}` }));
-  }
+  // Filters are applied client-side using metafield data from /api/storefront/filters
 
   try {
     const [result, editorialPanels] = await Promise.all([
@@ -60,7 +47,6 @@ export default async function CollectionPage({ params, searchParams }: Collectio
         first: 100,
         sortKey: sortConfig.sortKey as 'COLLECTION_DEFAULT' | 'PRICE' | 'TITLE' | 'CREATED' | 'BEST_SELLING',
         reverse: sortConfig.reverse,
-        filters: tagFilters.length > 0 ? tagFilters : undefined,
       }),
       getEditorialPanels().catch(() => []),
     ]);

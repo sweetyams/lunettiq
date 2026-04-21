@@ -67,6 +67,12 @@ export default function CollectionClient({
   const [filters, setFilters] = useState<ActiveFilters>(initialFilters);
   const [memberCtx, setMemberCtx] = useState<MemberContext | null>(null);
   const [fitFilterDismissed, setFitFilterDismissed] = useState(false);
+  const [filterData, setFilterData] = useState<{ options: Record<string, string[]>; products: Record<string, { colours: string[]; shapes: string[]; material: string | null; size: string | null }> } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/storefront/filters')
+      .then(r => r.json()).then(d => setFilterData(d.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/account/personalization')
@@ -91,11 +97,21 @@ export default function CollectionClient({
   const displayProducts = useMemo(() => {
     let list = [...initialProducts];
 
-    if (fitSizeTag && !filters.size.length) {
-      list = list.filter(p => {
-        const tags = getProductTags(p);
-        return tags.some(t => t === `size:${fitSizeTag}`) || !tags.some(t => t.startsWith('size:'));
-      });
+    // Metafield-based filtering
+    if (filterData?.products) {
+      const fd = filterData.products;
+      if (filters.colour.length > 0) {
+        list = list.filter(p => { const pf = fd[p.id]; return pf && filters.colour.some(c => pf.colours.includes(c)); });
+      }
+      if (filters.shape.length > 0) {
+        list = list.filter(p => { const pf = fd[p.id]; return pf && filters.shape.some(s => pf.shapes.includes(s)); });
+      }
+      if (filters.material.length > 0) {
+        list = list.filter(p => { const pf = fd[p.id]; return pf && pf.material && filters.material.includes(pf.material); });
+      }
+      if (filters.size.length > 0) {
+        list = list.filter(p => { const pf = fd[p.id]; return pf && pf.size && filters.size.includes(pf.size); });
+      }
     }
 
     if (sort === 'for-you' && memberCtx) {
@@ -115,7 +131,7 @@ export default function CollectionClient({
     }
 
     return list;
-  }, [initialProducts, sort, memberCtx, fitSizeTag, filters.size]);
+  }, [initialProducts, sort, memberCtx, fitSizeTag, filters, filterData]);
 
   const buildSearchParams = useCallback(
     (newFilters: ActiveFilters, newSort: SortOption) => {
@@ -174,7 +190,7 @@ export default function CollectionClient({
         onSortChange={handleSortChange}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
-        products={initialProducts}
+        filterOptions={filterData?.options as any}
       />
 
       <div className="h-8 mb-4 flex items-center">
