@@ -1,7 +1,7 @@
 import { requirePermission } from '@/lib/crm/auth';
 import { db } from '@/lib/db';
-import { ordersProjection, customersProjection } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { ordersProjection, customersProjection, productMappings, productsProjection } from '@/lib/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
@@ -14,7 +14,29 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     ? await db.select().from(customersProjection).where(eq(customersProjection.shopifyCustomerId, order.shopifyCustomerId)).then(r => r[0])
     : null;
 
-  const lineItems = (order.lineItems ?? []) as Array<{ name?: string; title?: string; quantity?: number; price?: string; image?: { src: string } }>;
+  const lineItems = (order.lineItems ?? []) as Array<{ name?: string; title?: string; quantity?: number; price?: string; image?: { src: string }; mappedTitle?: string; mappingStatus?: string }>;
+
+  // Enrich Square line items with Shopify product images via mappings
+  if (source === 'square') {
+    const mappings = await db.execute(sql`
+      SELECT m.square_name, m.status, p.title, p.images::jsonb->0->>'src' as image_url
+      FROM product_mappings m
+      JOIN products_projection p ON p.shopify_product_id = m.shopify_product_id
+      WHERE m.status IN ('confirmed', 'auto', 'manual', 'related')
+    `);
+    const mapByName = new Map<string, { title: string; imageUrl: string | null; status: string }>();
+    for (const m of mappings.rows as any[]) {
+      if (m.square_name) mapByName.set(m.square_name.toLowerCase(), { title: m.title, imageUrl: m.image_url, status: m.status });
+    }
+    for (const li of lineItems) {
+      const match = mapByName.get((li.name ?? '').toLowerCase());
+      if (match) {
+        if (match.imageUrl) li.image = { src: match.imageUrl };
+        li.mappedTitle = match.title;
+        li.mappingStatus = match.status;
+      }
+    }
+  }
   const shipping = order.shippingAddress as { name?: string; address1?: string; city?: string; province?: string; zip?: string; country?: string } | null;
   const source = (order.source ?? 'shopify') as 'shopify' | 'square';
   const isSquare = source === 'square';
@@ -67,7 +89,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                       : <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No img</span>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{li.name || li.title}</div>
+                    <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{li.mappedTitle ?? li.name ?? li.title}</div>
+                    {li.mappedTitle && li.name && <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 1 }}>{li.name}{li.mappingStatus === 'related' ? ' · related' : ''}</div>}
                     <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>Qty {li.quantity ?? 1}</div>
                   </div>
                   <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, flexShrink: 0 }}>${li.price ?? '0'}</div>
