@@ -6,6 +6,7 @@ import { ClientPicker } from '@/components/crm/ClientPicker';
 
 interface Product {
   shopifyProductId: string;
+  handle: string | null;
   title: string | null;
   description: string | null;
   vendor: string | null;
@@ -232,7 +233,7 @@ export function ProductDetailClient({ product, variants, siblings }: { product: 
               Manage
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <a href={`https://${process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN}/admin/products/${product.shopifyProductId}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
+              <a href={`https://admin.shopify.com/store/${(process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN ?? '').replace('.myshopify.com', '')}/products?query=${encodeURIComponent(product.handle ?? product.title ?? '')}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
                 View on Shopify ↗
               </a>
               <Link href="/crm/settings/product-mapping" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
