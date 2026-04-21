@@ -5,13 +5,15 @@ import { useEffect, useState } from 'react';
 export default function MetafieldVisibilityPage() {
   const [visible, setVisible] = useState<string[]>([]);
   const [available, setAvailable] = useState<string[]>([]);
+  const [coverage, setCoverage] = useState<Record<string, number>>({});
+  const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => { setVisible(d.data?.visible ?? []); setAvailable(d.data?.available ?? []); })
+      .then(d => { setVisible(d.data?.visible ?? []); setAvailable(d.data?.available ?? []); setCoverage(d.data?.coverage ?? {}); setTotalProducts(d.data?.totalProducts ?? 0); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -61,12 +63,17 @@ export default function MetafieldVisibilityPage() {
               <div key={ns} style={{ marginBottom: 'var(--crm-space-4)' }}>
                 <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>{ns}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
-                  {keys.sort().map(key => (
+                  {keys.sort().map(key => {
+                    const count = coverage[key] ?? 0;
+                    const pct = totalProducts > 0 ? Math.round((count / totalProducts) * 100) : 0;
+                    return (
                     <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--crm-text-sm)', cursor: 'pointer', padding: '4px 0' }}>
                       <input type="checkbox" checked={visible.includes(key)} onChange={() => toggle(key)} />
                       <span>{formatKey(key)}</span>
+                      <span style={{ fontSize: 9, color: pct >= 80 ? 'var(--crm-success, #16a34a)' : pct >= 40 ? 'var(--crm-warning, #d97706)' : 'var(--crm-text-tertiary)', marginLeft: 'auto' }}>{count}/{totalProducts} ({pct}%)</span>
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
