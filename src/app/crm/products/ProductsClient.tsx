@@ -212,8 +212,13 @@ export function ProductsClient({ activeView, onSwitchView }: { activeView?: stri
                   <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     <Highlight text={p.title ?? ''} query={debouncedQuery} />
                   </div>
-                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>
-                    <Highlight text={p.vendor ?? ''} query={debouncedQuery} />
+                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {p.metafields?.custom?.product_category === 'sun'
+                      ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e' }}>SUN</span>
+                      : p.metafields?.custom?.product_category === 'optical'
+                        ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
+                        : null}
+                    {p.priceMin && <span>${p.priceMin}</span>}
                   </div>
                   {variants.length > 0 && (
                     <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'var(--crm-space-2)' }}>
