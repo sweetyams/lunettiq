@@ -38,6 +38,7 @@ export function ProductsClient() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [vendorFilter, setVendorFilter] = useState('');
   const [materialFilter, setMaterialFilter] = useState('');
   const [rxFilter, setRxFilter] = useState('');
@@ -66,6 +67,7 @@ export function ProductsClient() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (typeFilter) params.set('type', typeFilter);
+    if (categoryFilter) params.set('category', categoryFilter);
     if (vendorFilter) params.set('vendor', vendorFilter);
     if (materialFilter) params.set('material', materialFilter);
     if (rxFilter) params.set('rx', rxFilter);
@@ -100,7 +102,7 @@ export function ProductsClient() {
       setSearching(false);
       setLoading(false);
     }
-  }, [typeFilter, vendorFilter, materialFilter, rxFilter, tagFilter, types.length]);
+  }, [typeFilter, categoryFilter, vendorFilter, materialFilter, rxFilter, tagFilter, types.length]);
 
   // Fetch on debounced query or filter change
   useEffect(() => {
@@ -138,6 +140,11 @@ export function ProductsClient() {
             <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--crm-border)', borderTopColor: 'var(--crm-text-primary)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
           )}
         </div>
+        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} className="crm-input">
+          <option value="">Optical & Sun</option>
+          <option value="optical">Optical</option>
+          <option value="sun">Sun</option>
+        </select>
         <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="crm-input">
           <option value="">All types</option>
           {types.map(t => <option key={t} value={t}>{t}</option>)}

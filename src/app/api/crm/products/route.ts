@@ -14,6 +14,7 @@ export const GET = handler(async (request) => {
   const material = request.nextUrl.searchParams.get('material');
   const rx = request.nextUrl.searchParams.get('rx');
   const tag = request.nextUrl.searchParams.get('tag');
+  const category = request.nextUrl.searchParams.get('category');
   const limit = Math.min(Number(request.nextUrl.searchParams.get('limit') ?? 250), 300);
 
   const conditions = [];
@@ -29,6 +30,7 @@ export const GET = handler(async (request) => {
   }
 
   if (type) conditions.push(ilike(productsProjection.productType, type));
+  if (category) conditions.push(sql`${productsProjection.metafields}->'custom'->>'product_category' = ${category}`);
   if (vendor) conditions.push(ilike(productsProjection.vendor, vendor));
   if (material) conditions.push(sql`${productsProjection.metafields}->'custom'->>'material' ILIKE ${material} OR ${productsProjection.metafields}->'custom'->>'acetate_source' ILIKE ${'%' + material + '%'}`);
   if (rx === 'true') conditions.push(sql`${productsProjection.metafields}->'custom'->>'rx_compatible' = 'true'`);

@@ -9,7 +9,7 @@ interface Mapping {
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
-interface ShopifyProduct { id: string; title: string; handle: string; variants?: Array<{ id: string; title: string | null }> }
+interface ShopifyProduct { id: string; title: string; handle: string; category?: string | null; variants?: Array<{ id: string; title: string | null }> }
 
 const STATUS_COLOURS: Record<string, string> = {
   auto: '#16a34a', confirmed: '#16a34a', related: '#2563eb', manual: '#8b5cf6', unmatched: '#dc2626', ignored: '#9ca3af',
@@ -48,7 +48,7 @@ export default function ProductMappingPage() {
   useEffect(() => { load(filter, search, page); }, [page]);
   useEffect(() => {
     fetch('/api/crm/products?limit=500', { credentials: 'include' })
-      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
+      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_category ?? null, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
     fetch('/api/crm/settings/families', { credentials: 'include' })
       .then(r => r.json()).then(d => { setFamilies(d.data?.families ?? []); setFamilyMembers(d.data?.members ?? []); })
@@ -190,7 +190,7 @@ export default function ProductMappingPage() {
                     <div style={{ fontWeight: 500 }}>{m.square_name}</div>
                     <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                       {m.parsed_frame} · {m.parsed_colour}
-                      {(m.family_type ?? m.parsed_type) && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: (m.family_type ?? m.parsed_type)?.includes('sun') ? '#fef3c7' : '#dbeafe', color: (m.family_type ?? m.parsed_type)?.includes('sun') ? '#92400e' : '#1e40af' }}>{(m.family_type ?? m.parsed_type) === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
+                      {(m.product_category ?? m.family_type ?? m.parsed_type) && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: (m.product_category ?? m.family_type ?? m.parsed_type)?.includes('sun') ? '#fef3c7' : '#dbeafe', color: (m.product_category ?? m.family_type ?? m.parsed_type)?.includes('sun') ? '#92400e' : '#1e40af' }}>{(m.product_category ?? m.family_type ?? m.parsed_type) === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
                       {m.family_name && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3e8ff', color: '#7c3aed' }}>{m.family_name}</span>}
                     </div>
                   </td>
@@ -337,11 +337,9 @@ function ProductSearch({ products, familyMembers, families, onSelect, hint }: { 
       {open && filtered.length > 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', maxHeight: 200, overflowY: 'auto' }}>
           {filtered.map(p => {
-            const isSun = p.handle.includes('-sun') || p.handle.includes('sunglasses');
-            const isOpt = p.handle.includes('-opt') || p.handle.includes('optic');
             const fm = familyMembers?.find(m => m.product_id === p.id);
             const famName = fm ? families?.find(f => f.id === fm.family_id)?.name : null;
-            const type = fm?.type ?? (isSun ? 'sun' : isOpt ? 'optical' : null);
+            const type = p.category ?? fm?.type ?? null;
             return (
             <button key={p.id} onClick={() => { setSelectedProduct(p); setOpen(false); setQuery(p.title); }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
