@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 
 interface Mapping {
   square_catalog_id: string; square_name: string; shopify_product_id: string | null;
-  shopify_title: string | null; shopify_handle: string | null;
+  shopify_title: string | null; shopify_handle: string | null; shopify_type: string | null;
+  shopify_image: string | null;
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
@@ -135,7 +136,15 @@ export default function ProductMappingPage() {
                   </td>
                   <td>
                     {m.shopify_title ? (
-                      <span style={{ color: 'var(--crm-text-primary)' }}>{m.shopify_title}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {m.shopify_image && (
+                          <img src={m.shopify_image.replace(/^"|"$/g, '')} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: 'var(--crm-surface-hover)' }} />
+                        )}
+                        <div>
+                          <span style={{ color: 'var(--crm-text-primary)' }}>{m.shopify_title}</span>
+                          {m.shopify_type && <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: m.shopify_type.toLowerCase().includes('sun') ? '#fef3c7' : '#dbeafe', color: m.shopify_type.toLowerCase().includes('sun') ? '#92400e' : '#1e40af' }}>{m.shopify_type}</span>}
+                        </div>
+                      </div>
                     ) : (
                       <select
                         onChange={e => { if (e.target.value) linkProduct(m.square_catalog_id, e.target.value); }}
