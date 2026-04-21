@@ -15,6 +15,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     : null;
 
   const lineItems = (order.lineItems ?? []) as Array<{ name?: string; title?: string; quantity?: number; price?: string; image?: { src: string }; mappedTitle?: string; mappingStatus?: string }>;
+  const shipping = order.shippingAddress as { name?: string; address1?: string; city?: string; province?: string; zip?: string; country?: string } | null;
+  const source = (order.source ?? 'shopify') as 'shopify' | 'square';
+  const isSquare = source === 'square';
 
   // Enrich Square line items with Shopify product images via mappings
   if (source === 'square') {
@@ -37,9 +40,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       }
     }
   }
-  const shipping = order.shippingAddress as { name?: string; address1?: string; city?: string; province?: string; zip?: string; country?: string } | null;
-  const source = (order.source ?? 'shopify') as 'shopify' | 'square';
-  const isSquare = source === 'square';
 
   const badgeStyle = (s: string | null) => {
     if (s === 'paid' || s === 'fulfilled') return { background: 'var(--crm-success-light)', color: 'var(--crm-success)' };
