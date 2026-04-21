@@ -669,10 +669,12 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
   const custom = (metafields as any).custom ?? {};
   const isVisible = (key: string) => showAll || !visibleSet || visibleSet.has(`custom.${key}`);
 
-  // Grouped fields — only show visible ones
+  // Grouped fields — include empty visible fields to show missing warning
   const grouped = fieldGroups.map(g => ({
     label: g.label,
-    fields: g.keys.map(k => ({ key: k, value: custom[k] })).filter(f => f.value !== undefined && f.value !== null && f.value !== '' && isVisible(f.key)),
+    fields: g.keys
+      .filter(k => isVisible(k))
+      .map(k => ({ key: k, value: custom[k] ?? null, empty: !custom[k] && custom[k] !== 0 && custom[k] !== false })),
   })).filter(g => g.fields.length > 0);
 
   // Ungrouped visible fields
@@ -690,8 +692,11 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
           </div>
           {g.fields.map(f => (
             <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
-              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
+              <span style={{ color: f.empty ? 'var(--crm-warning, #d97706)' : 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+              {f.empty
+                ? <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)', opacity: 0.8 }}>missing</span>
+                : <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
+              }
             </div>
           ))}
         </div>
