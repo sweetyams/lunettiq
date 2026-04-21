@@ -256,6 +256,8 @@ interface Analytics {
   sentiment: { love: number; neutral: number; dislike: number; total: number; tryOns: number };
   pairsWith: Array<{ productId: string; title: string; count: number }>;
   hotClients: Array<{ id: string; name: string; email: string | null; ltv: string; tier: string | null }>;
+  salesByChannel: Record<string, { orders: number; units: number }>;
+  salesByLocation: Record<string, { orders: number; units: number }>;
 }
 
 function ProductCanvas({ productId }: { productId: string }) {
@@ -335,6 +337,30 @@ function ProductCanvas({ productId }: { productId: string }) {
           ) : (
             <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No feedback yet</div>
           )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)' }}>
+        {/* Sales by channel */}
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <div style={SH}>Sales by channel</div>
+          {Object.entries(data.salesByChannel ?? {}).length > 0 ? Object.entries(data.salesByChannel).map(([ch, v]) => (
+            <div key={ch} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span>{ch === 'shopify' ? 'Online' : ch === 'square' ? 'In-store' : ch}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{v.units} units · {v.orders} orders</span>
+            </div>
+          )) : <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No sales data</div>}
+        </div>
+
+        {/* Sales by location */}
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <div style={SH}>Sales by location</div>
+          {Object.entries(data.salesByLocation ?? {}).length > 0 ? Object.entries(data.salesByLocation).map(([loc, v]) => (
+            <div key={loc} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderTop: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span>{loc === 'online' ? 'Online' : loc}</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{v.units} units · {v.orders} orders</span>
+            </div>
+          )) : <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No location data</div>}
         </div>
       </div>
 

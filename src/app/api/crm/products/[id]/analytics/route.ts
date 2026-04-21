@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
-import { ordersProjection, productFeedback, customersProjection } from '@/lib/db/schema';
+import { ordersProjection, productFeedback, customersProjection, productMappings } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
@@ -10,6 +10,11 @@ export const GET = handler(async (_request, ctx) => {
   await requireCrmAuth('org:products:read');
   const productId = ctx.params.id;
 
+  // Get mapped Square names for this product
+  const mappedRows = await db.select({ squareName: productMappings.squareName }).from(productMappings)
+    .where(sql`${productMappings.shopifyProductId} = ${productId} AND ${productMappings.status} IN ('confirmed', 'auto', 'manual', 'related')`);
+  const squareNames = mappedRows.map(r => r.squareName?.toLowerCase()).filter(Boolean) as string[];
+
   // --- Velocity: weekly units sold over 12 weeks ---
   const weeksAgo12 = new Date(Date.now() - 84 * 86400000).toISOString();
   const allOrders = await db.select({
@@ -17,15 +22,20 @@ export const GET = handler(async (_request, ctx) => {
     items: ordersProjection.lineItems,
     createdAt: ordersProjection.createdAt,
     customerId: ordersProjection.shopifyCustomerId,
+    source: ordersProjection.source,
+    locationId: ordersProjection.locationId,
   }).from(ordersProjection).where(sql`${ordersProjection.createdAt} >= ${weeksAgo12}`);
 
-  // Filter to orders containing this product
-  const productOrders: Array<{ createdAt: string; customerId: string | null; qty: number }> = [];
+  // Filter to orders containing this product (by product_id OR Square name)
+  const productOrders: Array<{ createdAt: string; customerId: string | null; qty: number; source: string; locationId: string | null }> = [];
   for (const o of allOrders) {
     const items = (o.items as any[]) ?? [];
-    const match = items.filter((li: any) => String(li.product_id) === productId);
+    const match = items.filter((li: any) =>
+      String(li.product_id) === productId ||
+      (squareNames.length > 0 && squareNames.includes((li.name ?? '').toLowerCase()))
+    );
     if (match.length) {
-      productOrders.push({ createdAt: o.createdAt as any, customerId: o.customerId, qty: match.reduce((s: number, li: any) => s + (li.quantity ?? 1), 0) });
+      productOrders.push({ createdAt: o.createdAt as any, customerId: o.customerId, qty: match.reduce((s: number, li: any) => s + (li.quantity ?? 1), 0), source: o.source ?? 'shopify', locationId: o.locationId });
     }
   }
 
@@ -49,7 +59,7 @@ export const GET = handler(async (_request, ctx) => {
   const totalFb = love + neutral + dislike;
   const totalTryOns = feedback.reduce((s, f) => s + (f.tryOnCount ?? 0), 0);
 
-  // --- Pairs-with: co-purchased products ---
+  // --- Pairs-with: co-purchased products (includes Square data) ---
   const buyerIds = Array.from(new Set(productOrders.map(o => o.customerId).filter(Boolean))) as string[];
   let pairsWith: Array<{ productId: string; title: string; count: number }> = [];
   if (buyerIds.length) {
@@ -58,14 +68,37 @@ export const GET = handler(async (_request, ctx) => {
     const coProducts = new Map<string, { title: string; count: number }>();
     for (const o of buyerOrders) {
       for (const li of (o.items as any[]) ?? []) {
-        const pid = String(li.product_id);
-        if (pid === productId || !pid) continue;
-        const existing = coProducts.get(pid);
+        const pid = String(li.product_id ?? '');
+        const liName = (li.name ?? '').toLowerCase();
+        // Skip self
+        if (pid === productId || squareNames.includes(liName)) continue;
+        if (!pid && !li.name) continue;
+        const key = pid || liName;
+        const title = li.name?.split(' - ')[0] ?? li.title ?? key;
+        const existing = coProducts.get(key);
         if (existing) existing.count++;
-        else coProducts.set(pid, { title: li.title?.split(' - ')[0] ?? pid, count: 1 });
+        else coProducts.set(key, { title, count: 1 });
       }
     }
-    pairsWith = Array.from(coProducts.entries()).map(([id, v]) => ({ productId: id, ...v })).sort((a, b) => b.count - a.count).slice(0, 5);
+    pairsWith = Array.from(coProducts.entries()).map(([id, v]) => ({ productId: id, ...v })).sort((a, b) => b.count - a.count).slice(0, 8);
+  }
+
+  // --- Sales by channel ---
+  const salesByChannel: Record<string, { orders: number; units: number }> = {};
+  for (const o of productOrders) {
+    const ch = o.source ?? 'shopify';
+    if (!salesByChannel[ch]) salesByChannel[ch] = { orders: 0, units: 0 };
+    salesByChannel[ch].orders++;
+    salesByChannel[ch].units += o.qty;
+  }
+
+  // --- Sales by location ---
+  const salesByLocation: Record<string, { orders: number; units: number }> = {};
+  for (const o of productOrders) {
+    const loc = o.locationId ?? 'online';
+    if (!salesByLocation[loc]) salesByLocation[loc] = { orders: 0, units: 0 };
+    salesByLocation[loc].orders++;
+    salesByLocation[loc].units += o.qty;
   }
 
   // --- Hot clients: loved but not purchased ---
@@ -91,5 +124,7 @@ export const GET = handler(async (_request, ctx) => {
     sentiment: { love, neutral, dislike, total: totalFb, tryOns: totalTryOns },
     pairsWith,
     hotClients,
+    salesByChannel,
+    salesByLocation,
   });
 });
