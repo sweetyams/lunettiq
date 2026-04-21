@@ -71,6 +71,30 @@ export const PATCH = handler(async (request) => {
   if (status) set.status = status;
   if (shopifyProductId) set.confidence = '1.00';
 
+  // Check if this mapping previously pointed to a placeholder — merge flow
+  if (shopifyProductId && !shopifyProductId.startsWith('sq__')) {
+    const [existing] = await db.select({ shopifyProductId: productMappings.shopifyProductId })
+      .from(productMappings).where(eq(productMappings.squareCatalogId, squareCatalogId));
+    const oldId = existing?.shopifyProductId;
+    if (oldId?.startsWith('sq__')) {
+      // Merge: move family member from placeholder to real product
+      const { productFamilyMembers } = await import('@/lib/db/schema');
+      const [member] = await db.select({ id: productFamilyMembers.id, familyId: productFamilyMembers.familyId })
+        .from(productFamilyMembers).where(eq(productFamilyMembers.productId, oldId));
+      if (member) {
+        await db.update(productFamilyMembers).set({ productId: shopifyProductId }).where(eq(productFamilyMembers.id, member.id));
+        set.familyId = member.familyId;
+        // Update any other mappings pointing to this placeholder
+        await db.update(productMappings).set({ shopifyProductId }).where(sql`${productMappings.shopifyProductId} = ${oldId}`);
+        // Delete placeholder
+        await db.delete(productsProjection).where(eq(productsProjection.shopifyProductId, oldId));
+        // Regenerate slugs
+        const { regenerateFamilySlugs } = await import('@/lib/crm/regenerate-slugs');
+        await regenerateFamilySlugs(member.familyId);
+      }
+    }
+  }
+
   await db.update(productMappings).set(set).where(eq(productMappings.squareCatalogId, squareCatalogId));
 
   return jsonOk({ updated: squareCatalogId });

@@ -123,11 +123,21 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
                         const memberMap = new Map((sales?.members ?? []).map((m: any) => [m.productId ?? m.product_id, m.sales]));
                         return uniqueProds.map(p => {
                         const ps = memberMap.get(p.id) as { units: number; orders: number; revenue: number } | undefined;
+                        const isPlaceholder = p.id.startsWith('sq__');
+                        const Wrapper = isPlaceholder ? 'div' as const : Link;
+                        const wrapperProps = isPlaceholder ? {} : { href: `/crm/products/${p.id}` };
                         return (
-                          <Link key={p.id} href={`/crm/products/${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', padding: '8px var(--crm-space-4)', borderBottom: '1px solid var(--crm-border-light)', textDecoration: 'none', color: 'inherit', transition: 'background 100ms' }} className="crm-hover-surface">
-                            {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                          <Wrapper key={p.id} {...wrapperProps as any} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', padding: '8px var(--crm-space-4)', borderBottom: '1px solid var(--crm-border-light)', textDecoration: 'none', color: 'inherit', transition: 'background 100ms' }} className="crm-hover-surface">
+                            {isPlaceholder ? (
+                              <div style={{ width: 32, height: 32, borderRadius: 4, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>■</div>
+                            ) : p.image ? (
+                              <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />
+                            ) : null}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.colour ?? p.title}</div>
+                              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {p.colour ?? p.title}
+                                {isPlaceholder && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQ</span>}
+                              </div>
                               <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{p.type ?? ''}</div>
                             </div>
                             {p.category && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.category === 'sun' ? '#fef3c7' : '#dbeafe', color: p.category === 'sun' ? '#92400e' : '#1e40af' }}>{p.category === 'sun' ? 'SUN' : 'OPT'}</span>}
@@ -139,7 +149,7 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
                             {Number(p.square_links) > 0
                               ? <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>■</span>
                               : <span style={{ fontSize: 10, color: 'var(--crm-warning)' }}>!■</span>}
-                          </Link>
+                          </Wrapper>
                         );
                       });
                       })()}

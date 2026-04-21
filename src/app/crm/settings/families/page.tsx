@@ -16,7 +16,10 @@ export default function FamiliesPage() {
   const [newFamily, setNewFamily] = useState({ id: '', name: '' });
   const [search, setSearch] = useState('');
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showAddSquare, setShowAddSquare] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
+  const [squareSearch, setSquareSearch] = useState('');
+  const [squareItems, setSquareItems] = useState<Array<{ squareCatalogId: string; squareName: string; parsedFrame: string | null; parsedColour: string | null; parsedType: string | null }>>([]);
   const [allProducts, setAllProducts] = useState<Array<{ id: string; title: string; handle: string }>>([]);
 
   const load = useCallback(() => {
@@ -230,7 +233,10 @@ export default function FamiliesPage() {
                 <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>
                   {families.find(f => f.id === activeFamily)?.name} — {familyMembers.length} products
                 </span>
-                <button onClick={() => setShowAddMember(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add Product</button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => setShowAddMember(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Shopify</button>
+                  <button onClick={() => { setShowAddSquare(true); if (!squareItems.length) fetch('/api/crm/product-mappings?limit=500&status=unmatched', { credentials: 'include' }).then(r => r.json()).then(d => setSquareItems(d.data?.mappings ?? [])).catch(() => {}); }} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: '1px solid #F59E0B', background: '#FFFBEB', color: '#92400E', cursor: 'pointer' }}>+ Square</button>
+                </div>
               </div>
 
               {/* Colour swatch preview */}
@@ -290,6 +296,45 @@ export default function FamiliesPage() {
                   <div style={{ color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Square item modal */}
+      {showAddSquare && (
+        <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowAddSquare(false); setSquareSearch(''); } }}>
+          <div className="crm-card crm-modal" style={{ width: 440, padding: 'var(--crm-space-5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+              <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Add Square Item to {families.find(f => f.id === activeFamily)?.name}</h2>
+              <button onClick={() => { setShowAddSquare(false); setSquareSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
+            </div>
+            <input value={squareSearch} onChange={e => setSquareSearch(e.target.value)} placeholder="Search Square items…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {squareItems
+                .filter(s => squareSearch.length >= 2 && s.squareName.toLowerCase().includes(squareSearch.toLowerCase()))
+                .slice(0, 15)
+                .map(s => (
+                <button key={s.squareCatalogId} onClick={async () => {
+                  await fetch('/api/crm/settings/families', {
+                    method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'add-square-member', familyId: activeFamily, squareCatalogId: s.squareCatalogId, squareName: s.squareName, type: s.parsedType === 'sun' ? 'sun' : 'optical', colour: s.parsedColour }),
+                  });
+                  load();
+                }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                  <div style={{ fontWeight: 500 }}>{s.squareName}</div>
+                  <div style={{ color: 'var(--crm-text-tertiary)', display: 'flex', gap: 6 }}>
+                    {s.parsedColour && <span>{s.parsedColour}</span>}
+                    {s.parsedType && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: s.parsedType === 'sun' ? '#fef3c7' : '#dbeafe', color: s.parsedType === 'sun' ? '#92400e' : '#1e40af' }}>{s.parsedType}</span>}
+                  </div>
+                </button>
+              ))}
+              {squareSearch.length >= 2 && squareItems.filter(s => s.squareName.toLowerCase().includes(squareSearch.toLowerCase())).length === 0 && (
+                <div style={{ padding: 12, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>No unmatched Square items found</div>
+              )}
             </div>
           </div>
         </div>

@@ -163,16 +163,26 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
             </tr>
           </thead>
           <tbody>
-            {members.map(m => (
+            {members.map(m => {
+              const isPlaceholder = m.productId.startsWith('sq__');
+              return (
               <tr key={m.productId}>
                 <td>
-                  <Link href={`/crm/products/${m.productId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
-                    {m.image && <img src={m.image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isPlaceholder ? (
+                      <div style={{ width: 36, height: 36, borderRadius: 4, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>■</div>
+                    ) : m.image ? (
+                      <Link href={`/crm/products/${m.productId}`}><img src={m.image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /></Link>
+                    ) : null}
                     <div>
-                      <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{m.title}</div>
+                      <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>
+                        {isPlaceholder ? <>{m.title} <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQUARE</span></> : (
+                          <Link href={`/crm/products/${m.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>{m.title}</Link>
+                        )}
+                      </div>
                       <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{m.colour}</div>
                     </div>
-                  </Link>
+                  </div>
                 </td>
                 <td>
                   {m.type && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: m.type === 'sun' ? '#fef3c7' : '#dbeafe', color: m.type === 'sun' ? '#92400e' : '#1e40af' }}>{m.type === 'sun' ? 'SUN' : 'OPT'}</span>}
@@ -186,7 +196,8 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
                   <button onClick={() => removeMember(m.productId)} style={{ fontSize: 9, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

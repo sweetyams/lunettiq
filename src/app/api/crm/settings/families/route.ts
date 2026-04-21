@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
-import { productFamilies, productFamilyMembers } from '@/lib/db/schema';
+import { productFamilies, productFamilyMembers, productsProjection } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
@@ -67,7 +67,33 @@ export const POST = handler(async (request) => {
     return jsonOk({ updated: id });
   }
 
-  return jsonError('Unknown action. Use: upsert-family, add-member, update-member', 400);
+  if (body.action === 'add-square-member') {
+    const { familyId, squareCatalogId, squareName, type, colour, colourHex } = body;
+    if (!familyId || !squareCatalogId || !squareName) return jsonError('familyId, squareCatalogId, squareName required', 400);
+    const placeholderId = `sq__${squareCatalogId}`;
+    // Check for existing member with same colour+type
+    const existing = await db.select({ id: productFamilyMembers.id }).from(productFamilyMembers)
+      .where(sql`${productFamilyMembers.familyId} = ${familyId} AND ${productFamilyMembers.colour} = ${colour ?? ''} AND ${productFamilyMembers.type} = ${type ?? 'optical'}`);
+    if (existing.length > 0) {
+      // Same colour+type exists — just add mapping, no new member
+      await db.execute(sql`INSERT INTO product_mappings (square_catalog_id, shopify_product_id, status) VALUES (${squareCatalogId}, ${existing[0].id}, 'related') ON CONFLICT DO NOTHING`);
+      return jsonOk({ familyId, linked: true });
+    }
+    // Create placeholder in products_projection
+    await db.insert(productsProjection).values({
+      shopifyProductId: placeholderId, title: squareName, status: 'placeholder', syncedAt: new Date(),
+    }).onConflictDoNothing();
+    // Add to family
+    await db.insert(productFamilyMembers)
+      .values({ familyId, productId: placeholderId, type: type ?? null, colour: colour ?? null, colourHex: colourHex ?? null, sortOrder: 0 })
+      .onConflictDoNothing();
+    // Create mapping
+    await db.execute(sql`INSERT INTO product_mappings (square_catalog_id, shopify_product_id, status) VALUES (${squareCatalogId}, ${placeholderId}, 'related') ON CONFLICT DO NOTHING`);
+    await regenerateFamilySlugs(familyId);
+    return jsonOk({ familyId, productId: placeholderId });
+  }
+
+  return jsonError('Unknown action. Use: upsert-family, add-member, add-square-member, update-member', 400);
 });
 
 // DELETE — remove family or member
@@ -81,14 +107,19 @@ export const DELETE = handler(async (request) => {
       .from(productFamilyMembers).where(eq(productFamilyMembers.familyId, body.familyId));
     await db.delete(productFamilyMembers).where(eq(productFamilyMembers.familyId, body.familyId));
     await db.delete(productFamilies).where(eq(productFamilies.id, body.familyId));
-    // Reset removed members to handle-based slugs
+    // Reset removed members to handle-based slugs, delete placeholders
     const { toSlug } = await import('@/lib/shopify/slug');
     const { productsProjection } = await import('@/lib/db/schema');
     for (const m of members) {
-      const [p] = await db.select({ handle: productsProjection.handle }).from(productsProjection)
-        .where(eq(productsProjection.shopifyProductId, m.productId));
-      if (p?.handle) await db.update(productsProjection).set({ slug: toSlug(p.handle) })
-        .where(eq(productsProjection.shopifyProductId, m.productId));
+      if (m.productId.startsWith('sq__')) {
+        await db.execute(sql`DELETE FROM product_mappings WHERE shopify_product_id = ${m.productId}`);
+        await db.delete(productsProjection).where(eq(productsProjection.shopifyProductId, m.productId));
+      } else {
+        const [p] = await db.select({ handle: productsProjection.handle }).from(productsProjection)
+          .where(eq(productsProjection.shopifyProductId, m.productId));
+        if (p?.handle) await db.update(productsProjection).set({ slug: toSlug(p.handle) })
+          .where(eq(productsProjection.shopifyProductId, m.productId));
+      }
     }
     return jsonOk({ deleted: body.familyId });
   }
@@ -99,15 +130,19 @@ export const DELETE = handler(async (request) => {
       .from(productFamilyMembers).where(eq(productFamilyMembers.id, body.memberId));
     await db.delete(productFamilyMembers).where(eq(productFamilyMembers.id, body.memberId));
     if (member) {
-      // Regenerate remaining family members' slugs
       await regenerateFamilySlugs(member.familyId);
-      // Reset removed product to handle-based slug
-      const { toSlug } = await import('@/lib/shopify/slug');
-      const { productsProjection } = await import('@/lib/db/schema');
-      const [p] = await db.select({ handle: productsProjection.handle }).from(productsProjection)
-        .where(eq(productsProjection.shopifyProductId, member.productId));
-      if (p?.handle) await db.update(productsProjection).set({ slug: toSlug(p.handle) })
-        .where(eq(productsProjection.shopifyProductId, member.productId));
+      if (member.productId.startsWith('sq__')) {
+        // Placeholder — delete projection row + mappings
+        await db.execute(sql`DELETE FROM product_mappings WHERE shopify_product_id = ${member.productId}`);
+        await db.delete(productsProjection).where(eq(productsProjection.shopifyProductId, member.productId));
+      } else {
+        // Real product — reset slug
+        const { toSlug } = await import('@/lib/shopify/slug');
+        const [p] = await db.select({ handle: productsProjection.handle }).from(productsProjection)
+          .where(eq(productsProjection.shopifyProductId, member.productId));
+        if (p?.handle) await db.update(productsProjection).set({ slug: toSlug(p.handle) })
+          .where(eq(productsProjection.shopifyProductId, member.productId));
+      }
     }
     return jsonOk({ deleted: body.memberId });
   }

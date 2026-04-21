@@ -44,7 +44,11 @@ export const GET = handler(async (request) => {
     ? sql`(CASE WHEN ${productsProjection.title} ILIKE ${q.trim() + '%'} THEN 0 ELSE 1 END) ASC, ${productsProjection.title} ASC`
     : sql`${productsProjection.title} ASC`;
 
-  const rows = await db.select().from(productsProjection).where(where).orderBy(orderBy).limit(limit);
+  // Exclude placeholders by default
+  const statusFilter = sql`COALESCE(${productsProjection.status}, 'active') != 'placeholder'`;
+  const finalWhere = where ? sql`${where} AND ${statusFilter}` : statusFilter;
+
+  const rows = await db.select().from(productsProjection).where(finalWhere).orderBy(orderBy).limit(limit);
 
   // Load variants
   const productIds = rows.map(r => r.shopifyProductId);

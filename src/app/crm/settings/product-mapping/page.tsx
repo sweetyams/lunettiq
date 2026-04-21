@@ -176,7 +176,8 @@ export default function ProductMappingPage() {
         <div className="crm-card" style={{ padding: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-4)', borderLeft: '3px solid var(--crm-success, #16a34a)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontSize: 'var(--crm-text-sm)' }}>
-              Auto-match complete: <strong>{autoMatchResult.auto}</strong> matched · <strong>{autoMatchResult.familyOnly}</strong> family-only · <strong>{autoMatchResult.unmatched}</strong> unmatched · {autoMatchResult.skipped} skipped (manual/confirmed)
+              Auto-match complete: <strong>{autoMatchResult.auto}</strong> matched · <strong>{autoMatchResult.familyOnly}</strong> family-only · <strong>{autoMatchResult.unmatched}</strong> unmatched · {autoMatchResult.skipped} skipped
+              {autoMatchResult.familiesCreated > 0 && <> · <strong style={{ color: 'var(--crm-success)' }}>{autoMatchResult.familiesCreated}</strong> families created · <strong>{autoMatchResult.placeholdersCreated}</strong> placeholders</>}
             </div>
             <button onClick={() => setAutoMatchResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--crm-text-tertiary)' }}>✕</button>
           </div>

@@ -177,12 +177,84 @@ export const POST = handler(async () => {
   const auto = results.filter(r => r.status === 'auto').length;
   const unmatched = results.filter(r => r.status === 'unmatched').length;
 
+  // ─── Auto-create families from ≥N unmatched same-name items ───
+  const { getSetting } = await import('@/lib/crm/store-settings');
+  const minItems = Number(await getSetting('auto_family_min_items') || '4');
+  const { regenerateFamilySlugs } = await import('@/lib/crm/regenerate-slugs');
+
+  // Group unmatched by parsed frame
+  const unmatchedMappings = await db.select().from(productMappings).where(eq(productMappings.status, 'unmatched'));
+  const frameGroups = new Map<string, typeof unmatchedMappings>();
+  for (const m of unmatchedMappings) {
+    const parsed = parseSquareName(m.squareName ?? '');
+    if (parsed.type === 'service') continue;
+    const key = normalize(parsed.frame);
+    if (!key) continue;
+    if (!frameGroups.has(key)) frameGroups.set(key, []);
+    frameGroups.get(key)!.push(m);
+  }
+
+  let familiesCreated = 0, placeholdersCreated = 0;
+
+  for (const [normName, items] of Array.from(frameGroups.entries())) {
+    if (items.length < minItems) continue;
+    const familySlug = normName.replace(/\s+/g, '-');
+    // Guard a: family already exists
+    if (familyByName.has(normName) || familyByName.has(familySlug)) continue;
+    const existingFam = await db.select({ id: productFamilies.id }).from(productFamilies).where(eq(productFamilies.id, familySlug)).limit(1);
+    if (existingFam.length > 0) continue;
+    // Guard b: Shopify product exists with this name
+    const shopifyExists = await db.select({ id: productsProjection.shopifyProductId }).from(productsProjection)
+      .where(sql`${productsProjection.title} ILIKE ${normName.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' %'} AND ${productsProjection.status} = 'active'`).limit(1);
+    if (shopifyExists.length > 0) continue;
+
+    // Create family
+    const familyName = items[0].parsedFrame ?? normName.toUpperCase();
+    await db.insert(productFamilies).values({ id: familySlug, name: familyName.toUpperCase() }).onConflictDoNothing();
+    familiesCreated++;
+
+    // Track created colour+type combos to dedup
+    const seen = new Set<string>();
+    for (const item of items) {
+      const parsed = parseSquareName(item.squareName ?? '');
+      const colour = normalizeColour(parsed.colour);
+      const type = parsed.type === 'service' || parsed.type === 'other' ? 'optical' : parsed.type;
+      const key = `${colour}|${type}`;
+
+      if (seen.has(key)) {
+        // Same colour+type — just link mapping to existing placeholder
+        const existingPlaceholder = `sq__${items.find((i: any) => {
+          const p = parseSquareName(i.squareName ?? '');
+          return normalizeColour(p.colour) === colour && (p.type === type || (p.type === 'other' && type === 'optical'));
+        })?.squareCatalogId}`;
+        await db.update(productMappings).set({ shopifyProductId: existingPlaceholder, familyId: familySlug, status: 'related', updatedAt: new Date() })
+          .where(eq(productMappings.squareCatalogId, item.squareCatalogId));
+        continue;
+      }
+      seen.add(key);
+
+      const placeholderId = `sq__${item.squareCatalogId}`;
+      await db.insert(productsProjection).values({
+        shopifyProductId: placeholderId, title: item.squareName, status: 'placeholder', syncedAt: new Date(),
+      }).onConflictDoNothing();
+      await db.insert(productFamilyMembers).values({
+        familyId: familySlug, productId: placeholderId, type, colour: colour || null, sortOrder: 0,
+      }).onConflictDoNothing();
+      await db.update(productMappings).set({ shopifyProductId: placeholderId, familyId: familySlug, status: 'related', updatedAt: new Date() })
+        .where(eq(productMappings.squareCatalogId, item.squareCatalogId));
+      placeholdersCreated++;
+    }
+    await regenerateFamilySlugs(familySlug);
+  }
+
   return jsonOk({
     processed: updated,
     skipped,
     auto,
     familyOnly,
     unmatched,
-    results: results.slice(0, 50), // preview
+    familiesCreated,
+    placeholdersCreated,
+    results: results.slice(0, 50),
   });
 });

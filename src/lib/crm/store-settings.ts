@@ -10,6 +10,7 @@ const DEFAULTS: Record<string, string> = {
   timezone: 'America/Montreal',
   shopify_api_version: '2024-10',
   shopify_admin_api_version: '2024-01',
+  auto_family_min_items: '4',
   frame_size_small_max: '128',
   frame_size_medium_max: '138',
   membership_sku_essential_monthly: 'MEMBERSHIP-ESSENTIAL-MONTHLY',
