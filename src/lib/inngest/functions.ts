@@ -1040,7 +1040,6 @@ export const rxExpiryReminder = inngest.createFunction(
   }
 );
 
-export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership];
 
 // ─── Membership: Activate on purchase ────────────────────
 
@@ -1120,3 +1119,7 @@ export const activateMembership = inngest.createFunction(
     return { activated: true, customerId, tier, period, creditAmount, isRenewal };
   }
 );
+
+// ─── Export all functions ────────────────────────────────
+
+export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership];
