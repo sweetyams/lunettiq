@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 interface Family {
   id: string; name: string;
   product_count: string; colour_count: string;
   optical_count: string; sun_count: string; square_count: string;
-  products: Array<{ id: string; image: string | null; title: string; category: string | null }> | null;
+  products: Array<{ id: string; image: string | null; title: string; category: string | null; colour: string | null; type: string | null; square_links: string }> | null;
 }
 
 export function FamiliesView({ activeView, onSwitchView }: { activeView: string; onSwitchView: (v: 'products' | 'families') => void }) {
   const [families, setFamilies] = useState<Family[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/crm/products/families', { credentials: 'include' })
@@ -69,20 +70,24 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView: string;
             <tbody>
               {filtered.map(f => {
                 const prods = (f.products ?? []).filter(p => p.id);
-                // Deduplicate by id
                 const seen = new Set<string>();
                 const uniqueProds = prods.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+                const isExpanded = expanded.has(f.id);
                 return (
-                  <tr key={f.id}>
+                  <React.Fragment key={f.id}>
+                  <tr onClick={() => setExpanded(prev => { const next = new Set(prev); if (next.has(f.id)) next.delete(f.id); else next.add(f.id); return next; })} style={{ cursor: 'pointer' }}>
                     <td>
-                      <Link href={`/crm/settings/families`} style={{ fontWeight: 600, color: 'var(--crm-text-primary)', textDecoration: 'none', fontSize: 'var(--crm-text-sm)' }}>
-                        {f.name}
-                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 12 }}>{isExpanded ? '▼' : '▶'}</span>
+                        <Link href={`/crm/settings/families`} onClick={e => e.stopPropagation()} style={{ fontWeight: 600, color: 'var(--crm-text-primary)', textDecoration: 'none', fontSize: 'var(--crm-text-sm)' }}>
+                          {f.name}
+                        </Link>
+                      </div>
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                         {uniqueProds.slice(0, 8).map(p => (
-                          <Link key={p.id} href={`/crm/products/${p.id}`} title={p.title}>
+                          <Link key={p.id} href={`/crm/products/${p.id}`} onClick={e => e.stopPropagation()} title={p.title}>
                             {p.image ? (
                               <img src={p.image} alt={p.title} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />
                             ) : (
@@ -114,6 +119,28 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView: string;
                       )}
                     </td>
                   </tr>
+                  {isExpanded && uniqueProds.map(p => (
+                    <tr key={`${f.id}-${p.id}`} style={{ background: 'var(--crm-surface-hover)' }}>
+                      <td style={{ paddingLeft: 32 }}>
+                        <Link href={`/crm/products/${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
+                          {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 3, background: '#f5f5f5' }} />}
+                          <div>
+                            <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{p.title}</div>
+                            <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.colour}{p.type ? ` · ${p.type}` : ''}</div>
+                          </div>
+                        </Link>
+                      </td>
+                      <td colSpan={3}>
+                        {p.category && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.category === 'sun' ? '#fef3c7' : '#dbeafe', color: p.category === 'sun' ? '#92400e' : '#1e40af' }}>{p.category === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
+                      </td>
+                      <td colSpan={2} style={{ textAlign: 'center' }}>
+                        {Number(p.square_links) > 0
+                          ? <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500 }}>{p.square_links} Square</span>
+                          : <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)' }}>no Square link</span>}
+                      </td>
+                    </tr>
+                  ))}
+                  </React.Fragment>
                 );
               })}
             </tbody>

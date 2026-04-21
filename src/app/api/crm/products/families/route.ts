@@ -16,12 +16,20 @@ export const GET = handler(async () => {
       count(*) FILTER (WHERE m.type = 'optical') as optical_count,
       count(*) FILTER (WHERE m.type = 'sun') as sun_count,
       count(DISTINCT pm.square_catalog_id) as square_count,
-      json_agg(DISTINCT jsonb_build_object(
-        'id', p.shopify_product_id,
-        'image', p.images->0->>'src',
-        'title', p.title,
-        'category', p.metafields->'custom'->>'product_category'
-      )) FILTER (WHERE p.shopify_product_id IS NOT NULL) as products
+      (
+        SELECT json_agg(row_to_json(sub)) FROM (
+          SELECT p2.shopify_product_id as id, p2.title, p2.images->0->>'src' as image,
+            p2.metafields->'custom'->>'product_category' as category,
+            m2.colour, m2.type,
+            (SELECT count(*) FROM product_mappings pm2
+             WHERE pm2.shopify_product_id = p2.shopify_product_id
+             AND pm2.status IN ('confirmed', 'auto', 'manual', 'related')) as square_links
+          FROM product_family_members m2
+          JOIN products_projection p2 ON p2.shopify_product_id = m2.product_id
+          WHERE m2.family_id = f.id
+          ORDER BY m2.sort_order
+        ) sub
+      ) as products
     FROM product_families f
     LEFT JOIN product_family_members m ON m.family_id = f.id
     LEFT JOIN products_projection p ON p.shopify_product_id = m.product_id
