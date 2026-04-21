@@ -11,6 +11,7 @@ const SETTINGS_SECTIONS = [
   { href: '/crm/settings/integrations', label: 'Integrations', description: 'Connect and manage third-party services' },
   { href: '/crm/settings/product-mapping', label: 'Product Mapping', description: 'Link Square catalog items to Shopify products' },
   { href: '/crm/settings/filters', label: 'Product Filters', description: 'Manage colour groups, shape, size filters' },
+  { href: '/crm/settings/families', label: 'Product Families', description: 'Group products by model for colour/type switching on PDP' },
   { href: '/crm/settings/store', label: 'Store Config', description: 'Timezone, API versions, membership SKUs, size thresholds' },
   { href: '/crm/settings/audit', label: 'Audit Log', description: 'View all system activity' },
   { href: '/crm/settings/system', label: 'System Setup', description: 'Run sync, reconciliation, and data maintenance tasks' },
