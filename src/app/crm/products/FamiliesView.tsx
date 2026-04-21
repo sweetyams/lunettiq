@@ -86,7 +86,7 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView: string;
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 12 }}>{isExpanded ? '▼' : '▶'}</span>
-                        <Link href={`/crm/settings/families`} onClick={e => e.stopPropagation()} style={{ fontWeight: 600, color: 'var(--crm-text-primary)', textDecoration: 'none', fontSize: 'var(--crm-text-sm)' }}>
+                        <Link href={`/crm/products/families/${f.id}`} onClick={e => e.stopPropagation()} style={{ fontWeight: 600, color: 'var(--crm-text-primary)', textDecoration: 'none', fontSize: 'var(--crm-text-sm)' }}>
                           {f.name}
                         </Link>
                       </div>
