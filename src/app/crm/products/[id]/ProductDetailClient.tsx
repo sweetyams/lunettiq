@@ -589,7 +589,7 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
 }
 
 // Hidden namespaces/keys that aren't useful to display
-const HIDDEN_KEYS = new Set(['link_to_products', 'q-backsplash', 'third-product-image', 'second-product-image', 'metadescription', 'description_tag']);
+const HIDDEN_KEYS = new Set(['link_to_products', 'q-backsplash', 'third-product-image', 'second-product-image', 'metadescription', 'description_tag', 'sibling_colours']);
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
   const [hiddenNs, setHiddenNs] = useState<Set<string>>(() => {

@@ -186,6 +186,15 @@ export const syncProduct = inngest.createFunction(
         if (!grouped[mf.namespace]) grouped[mf.namespace] = {};
         grouped[mf.namespace][mf.key] = mf.value;
       }
+      // Migrate udesly namespace into custom
+      if (grouped.udesly) {
+        if (!grouped.custom) grouped.custom = {};
+        const remap: Record<string, string> = { swatch: 'swatch', 'short-name': 'short_name', description: 'short_description', season: 'season', 'face-shape-recommendation': 'face_shapes', 'available-in-these-colors': 'sibling_colours', 'alter-ego': 'alter_ego', featured: 'featured', latest: 'latest', 'ben-s-favourites': 'staff_pick' };
+        for (const [oldKey, newKey] of Object.entries(remap)) {
+          if (grouped.udesly[oldKey] && !grouped.custom[newKey]) grouped.custom[newKey] = grouped.udesly[oldKey];
+        }
+        delete grouped.udesly;
+      }
       await db.update(productsProjection).set({ metafields: grouped }).where(eq(productsProjection.shopifyProductId, String(p.id)));
     }
   }
