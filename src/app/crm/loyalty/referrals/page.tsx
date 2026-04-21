@@ -23,10 +23,6 @@ export default function ReferralsPage() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Referrals</h1>
-        <Link href="/crm/loyalty" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>← Dashboard</Link>
-      </div>
 
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--crm-border-light)', marginBottom: 'var(--crm-space-4)' }}>
         {(['all', 'flagged'] as const).map(t => (

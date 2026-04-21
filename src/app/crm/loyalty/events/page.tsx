@@ -25,8 +25,7 @@ export default function EventsPage() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Events</h1>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 'var(--crm-space-5)' }}>
         <button onClick={() => setCreating(true)} className="crm-btn crm-btn-primary">+ New Event</button>
       </div>
 

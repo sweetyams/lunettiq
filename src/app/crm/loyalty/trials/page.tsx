@@ -20,10 +20,6 @@ export default async function TrialsPage() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Trials</h1>
-        <Link href="/crm/loyalty" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>← Dashboard</Link>
-      </div>
       <div className="crm-card" style={{ overflow: 'hidden' }}>
         <table className="crm-table">
           <thead><tr><th>Customer</th><th>Tier</th><th>Started</th><th>Converts</th><th>Credits Used</th><th>Outcome</th><th>Clawback</th></tr></thead>

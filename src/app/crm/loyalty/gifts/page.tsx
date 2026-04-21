@@ -19,10 +19,6 @@ export default function GiftsPage() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>VAULT Gifts</h1>
-        <Link href="/crm/loyalty" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>← Dashboard</Link>
-      </div>
       <div className="crm-card" style={{ overflow: 'hidden' }}>
         <table className="crm-table">
           <thead><tr><th>Member</th><th>Year</th><th>Status</th><th>Gift</th><th>Tracking</th><th>Actions</th></tr></thead>
