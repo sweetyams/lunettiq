@@ -294,13 +294,20 @@ function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[
       />
       {open && filtered.length > 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', maxHeight: 200, overflowY: 'auto' }}>
-          {filtered.map(p => (
+          {filtered.map(p => {
+            const isSun = p.handle.includes('-sun') || p.handle.includes('sunglasses');
+            const isOpt = p.handle.includes('-opt') || p.handle.includes('optic');
+            return (
             <button key={p.id} onClick={() => { setSelectedProduct(p); setOpen(false); setQuery(p.title); }}
-              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-            >{p.title}</button>
-          ))}
+            >
+              <span>{p.title}</span>
+              {(isSun || isOpt) && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: isSun ? '#fef3c7' : '#dbeafe', color: isSun ? '#92400e' : '#1e40af', flexShrink: 0, marginLeft: 6 }}>{isSun ? 'SUN' : 'OPTICAL'}</span>}
+            </button>
+            );
+          })}
         </div>
       )}
     </div>
