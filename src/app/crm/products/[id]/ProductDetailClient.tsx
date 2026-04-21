@@ -631,19 +631,18 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
   );
 }
 
-// Default visible fields
-const DEFAULT_VISIBLE = ['custom.short_name', 'custom.composition', 'custom.frame_width', 'custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.material', 'custom.acetate_source', 'custom.hinge_type', 'custom.uv_protection', 'custom.warranty', 'custom.included_accessories', 'custom.face_shapes', 'custom.season', 'custom.swatch'];
+const FIELD_GROUPS = [
+  { label: 'Sizing', keys: ['lens_width', 'bridge_width', 'temple_length', 'lens_height', 'frame_width', 'weight_grams'] },
+  { label: 'Material', keys: ['material_type', 'material_description', 'origin', 'hinge_type'] },
+  { label: 'Classification', keys: ['shape', 'frame_colour', 'size_category', 'gender_fit', 'frame_type'] },
+  { label: 'Editorial', keys: ['designer_notes', 'collection_season', 'face_notes', 'short_name', 'swatch'] },
+  { label: 'Rx', keys: ['rx_compatible', 'progressive_compatible', 'max_lens_index', 'supports_polarized'] },
+];
+
+const UNIT_SUFFIX: Record<string, string> = { lens_width: ' mm', bridge_width: ' mm', temple_length: ' mm', lens_height: ' mm', frame_width: ' mm', weight_grams: ' g' };
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
-  const [visibleFields, setVisibleFields] = useState<string[] | null>(null);
   const [showAll, setShowAll] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setVisibleFields(d.data?.visible ?? DEFAULT_VISIBLE))
-      .catch(() => setVisibleFields(DEFAULT_VISIBLE));
-  }, []);
 
   if (!metafields || !Object.keys(metafields).length) {
     return (
@@ -653,58 +652,58 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
     );
   }
 
-  const allFields: Array<{ key: string; fullKey: string; value: string }> = [];
-  for (const [ns, fields] of Object.entries(metafields)) {
-    for (const [key, val] of Object.entries(fields)) {
-      // Expand sizing_dimensions into individual fields
-      if (key === 'sizing_dimensions' && val) {
-        const dimMap: Record<string, string> = {};
-        for (const line of String(val).split('\n')) {
-          const [label, v] = line.split(':').map(s => s.trim());
-          if (!label || !v) continue;
-          const l = label.toLowerCase();
-          if (l.includes('frame') || (l === 'width' && !dimMap.frame_width)) dimMap.frame_width = v + ' mm';
-          else if (l.includes('nose') || l.includes('bridge')) dimMap.bridge_width = v + ' mm';
-          else if (l.includes('lens width')) dimMap.lens_width = v + ' mm';
-          else if (l.includes('height')) dimMap.lens_height = v + ' mm';
-          else if (l.includes('length') || l.includes('temple')) dimMap.temple_length = v + ' mm';
-          else if (l === 'width') dimMap.lens_width = v + ' mm';
-        }
-        for (const [dk, dv] of Object.entries(dimMap)) {
-          allFields.push({ key: dk, fullKey: `${ns}.${dk}`, value: dv });
-        }
-        continue;
-      }
-      allFields.push({ key, fullKey: `${ns}.${key}`, value: val });
-    }
-  }
+  const custom = (metafields as any).custom ?? {};
 
-  const visible = visibleFields ?? DEFAULT_VISIBLE;
-  const shownFields = showAll ? allFields : allFields.filter(f => visible.includes(f.fullKey));
+  // Grouped fields
+  const grouped = FIELD_GROUPS.map(g => ({
+    label: g.label,
+    fields: g.keys.map(k => ({ key: k, value: custom[k] })).filter(f => f.value !== undefined && f.value !== null && f.value !== ''),
+  })).filter(g => g.fields.length > 0);
+
+  // Ungrouped fields (everything else in custom not in any group)
+  const groupedKeys = new Set(FIELD_GROUPS.flatMap(g => g.keys));
+  const hidden = new Set(['link_to_products', 'sibling_colours', 'sizing_dimensions', 'composition', 'short_description', 'staff_pick', 'featured', 'latest', 'alter_ego', 'face_shapes', 'season', 'uv_protection', 'warranty', 'included_accessories', 'material', 'acetate_source']);
+  const ungrouped = Object.entries(custom).filter(([k]) => !groupedKeys.has(k) && !hidden.has(k)).map(([k, v]) => ({ key: k, value: v as string }));
 
   return (
-    <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
-        <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>
-          Metafields
-        </div>
-        <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          {showAll ? 'Show configured' : `Show all (${allFields.length})`}
-        </button>
-      </div>
-      {shownFields.length === 0 && <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No visible fields configured</div>}
-      {shownFields.map(f => (
-        <div key={f.fullKey} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-          <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
-          <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+    <>
+      {grouped.map(g => (
+        <div key={g.label} className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
+          <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-2)' }}>
+            {g.label}
+          </div>
+          {g.fields.map(f => (
+            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
+            </div>
+          ))}
         </div>
       ))}
-    </div>
+      {(ungrouped.length > 0 || showAll) && (
+        <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
+            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>Other</div>
+            <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
+              {showAll ? 'Hide' : 'Show all'}
+            </button>
+          </div>
+          {(showAll ? [...ungrouped, ...Object.entries(custom).filter(([k]) => hidden.has(k)).map(([k, v]) => ({ key: k, value: v as string }))] : ungrouped).map(f => (
+            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
 function formatValue(v: string): string {
   if (!v) return '—';
+  if (v === 'true') return '✓ Yes';
+  if (v === 'false') return '✗ No';
   try {
     const parsed = JSON.parse(v);
     if (Array.isArray(parsed)) return parsed.map((i: any) => i.handle ?? i.title ?? i).join(', ');
