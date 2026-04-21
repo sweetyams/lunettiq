@@ -62,24 +62,34 @@ export default function MetafieldVisibilityPage() {
       {loading ? <div style={{ color: 'var(--crm-text-tertiary)' }}>Loading…</div> : (
         <>
           <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-            {allGroups.map(({ label, keys }) => (
-              <div key={label} style={{ marginBottom: 'var(--crm-space-4)' }}>
-                <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>{label}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 6 }}>
-                  {keys.filter(k => available.includes(k)).sort().map(key => {
+            {allGroups.map(({ label, keys }) => {
+              const availableKeys = keys.filter(k => available.includes(k));
+              if (!availableKeys.length) return null;
+              return (
+              <div key={label} style={{ marginBottom: 'var(--crm-space-5)' }}>
+                <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', marginBottom: 8, letterSpacing: '0.04em' }}>{label}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {availableKeys.sort().map(key => {
                     const count = coverage[key] ?? 0;
                     const pct = totalProducts > 0 ? Math.round((count / totalProducts) * 100) : 0;
+                    const isOn = visible.includes(key);
                     return (
-                    <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--crm-text-sm)', cursor: 'pointer', padding: '4px 0' }}>
-                      <input type="checkbox" checked={visible.includes(key)} onChange={() => toggle(key)} />
+                    <button key={key} onClick={() => toggle(key)} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, cursor: 'pointer',
+                      border: isOn ? '1.5px solid var(--crm-text-primary)' : '1px solid var(--crm-border)',
+                      background: isOn ? 'var(--crm-text-primary)' : 'var(--crm-surface)',
+                      color: isOn ? 'white' : 'var(--crm-text-primary)',
+                      fontSize: 'var(--crm-text-xs)', fontWeight: 500, transition: 'all 150ms var(--ease-out)',
+                    }}>
                       <span>{formatKey(key)}</span>
-                      <span style={{ fontSize: 9, color: pct >= 80 ? 'var(--crm-success, #16a34a)' : pct >= 40 ? 'var(--crm-warning, #d97706)' : 'var(--crm-text-tertiary)', marginLeft: 'auto' }}>{count}/{totalProducts} ({pct}%)</span>
-                    </label>
+                      <span style={{ fontSize: 9, opacity: 0.7 }}>{pct}%</span>
+                    </button>
                     );
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div style={{ marginTop: 'var(--crm-space-4)', display: 'flex', alignItems: 'center', gap: 12 }}>
