@@ -27,11 +27,30 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     ORDER BY m.sort_order
   `).then(r => r.rows).catch(() => []);
 
+  // Look up real Shopify admin product ID by handle
+  let shopifyAdminId: string | null = null;
+  if (product.handle) {
+    try {
+      const shop = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
+      const token = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+      const r = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
+        method: 'POST',
+        headers: { 'X-Shopify-Access-Token': token!, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: `{ productByHandle(handle: "${product.handle}") { id } }` }),
+        next: { revalidate: 3600 },
+      });
+      const data = await r.json();
+      const gid = data?.data?.productByHandle?.id;
+      if (gid) shopifyAdminId = gid.replace('gid://shopify/Product/', '');
+    } catch {}
+  }
+
   return (
     <ProductDetailClient
       product={JSON.parse(JSON.stringify(product))}
       variants={JSON.parse(JSON.stringify(variants))}
       siblings={JSON.parse(JSON.stringify(siblings))}
+      shopifyAdminId={shopifyAdminId}
     />
   );
 }
