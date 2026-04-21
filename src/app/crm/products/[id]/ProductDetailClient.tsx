@@ -190,6 +190,24 @@ export function ProductDetailClient({ product, variants }: { product: Product; v
               <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No specs — manage in Shopify</div>
             )}
           </div>
+
+          {/* Quick links */}
+          <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
+            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-3)' }}>
+              Manage
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Link href="/crm/settings/product-mapping" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
+                Square Mapping →
+              </Link>
+              <Link href="/crm/settings/families" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
+                Product Families →
+              </Link>
+              <Link href="/crm/settings/filters" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-accent)', textDecoration: 'none' }}>
+                Product Filters →
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
