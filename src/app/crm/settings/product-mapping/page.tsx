@@ -9,7 +9,7 @@ interface Mapping {
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
-interface ShopifyProduct { id: string; title: string; handle: string }
+interface ShopifyProduct { id: string; title: string; handle: string; variants?: Array<{ id: string; title: string | null }> }
 
 const STATUS_COLOURS: Record<string, string> = {
   auto: '#16a34a', confirmed: '#16a34a', manual: '#2563eb', unmatched: '#dc2626', ignored: '#9ca3af',
@@ -40,17 +40,17 @@ export default function ProductMappingPage() {
   useEffect(() => { load(filter, search); }, [filter]);
   useEffect(() => {
     fetch('/api/crm/products?limit=500', { credentials: 'include' })
-      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle }))))
+      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
   }, []);
 
   function handleSearch() { load(filter, search); }
 
-  async function linkProduct(squareCatalogId: string, shopifyProductId: string) {
+  async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ squareCatalogId, shopifyProductId, status: 'manual' }),
+      body: JSON.stringify({ squareCatalogId, shopifyProductId, shopifyVariantId: shopifyVariantId ?? null, status: 'manual' }),
     });
     load(filter, search);
   }
@@ -194,7 +194,7 @@ export default function ProductMappingPage() {
             <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
               Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
             </div>
-            <ProductSearch products={products} onSelect={(id) => { linkProduct(choosing, id); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
+            <ProductSearch products={products} onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
           </div>
         </div>
       )}
@@ -202,13 +202,38 @@ export default function ProductMappingPage() {
   );
 }
 
-function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[]; onSelect: (id: string) => void; hint: string }) {
+function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[]; onSelect: (productId: string, variantId?: string) => void; hint: string }) {
   const [query, setQuery] = useState(hint);
   const [open, setOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ShopifyProduct | null>(null);
 
   const filtered = query.length >= 2
     ? products.filter(p => p.title.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
     : [];
+
+  if (selectedProduct) {
+    return (
+      <div>
+        <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, marginBottom: 8 }}>{selectedProduct.title}</div>
+        <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>Select variant (or link to product only):</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <button onClick={() => onSelect(selectedProduct.id)}
+            style={{ textAlign: 'left', padding: '8px 12px', fontSize: 'var(--crm-text-xs)', border: '1px solid var(--crm-border)', borderRadius: 4, background: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+          >Product only (no specific variant)</button>
+          {(selectedProduct.variants ?? []).map(v => (
+            <button key={v.id} onClick={() => onSelect(selectedProduct.id, v.id)}
+              style={{ textAlign: 'left', padding: '8px 12px', fontSize: 'var(--crm-text-xs)', border: '1px solid var(--crm-border)', borderRadius: 4, background: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >{v.title || 'Default'}</button>
+          ))}
+        </div>
+        <button onClick={() => setSelectedProduct(null)} style={{ marginTop: 8, fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>← Back to search</button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'relative' }}>
@@ -223,7 +248,7 @@ function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[
       {open && filtered.length > 0 && (
         <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', maxHeight: 200, overflowY: 'auto' }}>
           {filtered.map(p => (
-            <button key={p.id} onClick={() => { onSelect(p.id); setOpen(false); setQuery(p.title); }}
+            <button key={p.id} onClick={() => { setSelectedProduct(p); setOpen(false); setQuery(p.title); }}
               style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
