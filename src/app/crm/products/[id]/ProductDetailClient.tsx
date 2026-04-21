@@ -318,7 +318,7 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
 const SH = { fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-3)' };
 
 interface Analytics {
-  velocity: { weeks: Array<{ week: number; units: number }>; d7: number; d30: number; d90: number };
+  velocity: { weeks: Array<{ week: number; units: number }>; d7: number; d30: number; d90: number; total: number };
   sentiment: { love: number; neutral: number; dislike: number; total: number; tryOns: number };
   pairsWith: Array<{ productId: string; title: string; count: number }>;
   hotClients: Array<{ id: string; name: string; email: string | null; ltv: string; tier: string | null }>;
@@ -353,7 +353,7 @@ function ProductCanvas({ productId }: { productId: string }) {
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <div style={SH}>Velocity · 12 weeks</div>
           <div style={{ display: 'flex', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-3)' }}>
-            {[{ l: '7d', v: velocity.d7 }, { l: '30d', v: velocity.d30 }, { l: '90d', v: velocity.d90 }].map(s => (
+            {[{ l: '7d', v: velocity.d7 }, { l: '30d', v: velocity.d30 }, { l: '90d', v: velocity.d90 }, { l: 'Total', v: velocity.total }].map(s => (
               <div key={s.l}>
                 <div style={{ fontSize: 18, fontWeight: 500 }}>{s.v}</div>
                 <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textTransform: 'uppercase' }}>{s.l}</div>

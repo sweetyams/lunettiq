@@ -13,10 +13,9 @@ export const GET = handler(async (_request, ctx) => {
   // Get mapped Square names for this product
   const mappedRows = await db.select({ squareName: productMappings.squareName, status: productMappings.status }).from(productMappings)
     .where(sql`${productMappings.shopifyProductId} = ${productId} AND ${productMappings.status} IN ('confirmed', 'auto', 'manual', 'related')`);
-  const squareNames = mappedRows.map(r => r.squareName?.toLowerCase()).filter(Boolean) as string[];
+  const squareNames = mappedRows.map(r => r.squareName?.toLowerCase()?.trim()).filter(Boolean) as string[];
 
-  // --- Velocity: weekly units sold over 12 weeks ---
-  const weeksAgo12 = new Date(Date.now() - 84 * 86400000).toISOString();
+  // --- Velocity: all orders, weekly chart for last 12 weeks ---
   const allOrders = await db.select({
     id: ordersProjection.shopifyOrderId,
     items: ordersProjection.lineItems,
@@ -24,7 +23,7 @@ export const GET = handler(async (_request, ctx) => {
     customerId: ordersProjection.shopifyCustomerId,
     source: ordersProjection.source,
     locationId: ordersProjection.locationId,
-  }).from(ordersProjection).where(sql`${ordersProjection.createdAt} >= ${weeksAgo12}`);
+  }).from(ordersProjection);
 
   // Filter to orders containing this product (by product_id OR Square name)
   const productOrders: Array<{ createdAt: string; customerId: string | null; qty: number; source: string; locationId: string | null }> = [];
@@ -32,7 +31,7 @@ export const GET = handler(async (_request, ctx) => {
     const items = (o.items as any[]) ?? [];
     const match = items.filter((li: any) =>
       String(li.product_id) === productId ||
-      (squareNames.length > 0 && squareNames.includes((li.name ?? '').toLowerCase()))
+      (squareNames.length > 0 && squareNames.includes((li.name ?? '').toLowerCase().trim()))
     );
     if (match.length) {
       productOrders.push({ createdAt: o.createdAt as any, customerId: o.customerId, qty: match.reduce((s: number, li: any) => s + (li.quantity ?? 1), 0), source: o.source ?? 'shopify', locationId: o.locationId });
@@ -49,7 +48,8 @@ export const GET = handler(async (_request, ctx) => {
 
   const d7 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 7 * 86400000).reduce((s, o) => s + o.qty, 0);
   const d30 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 30 * 86400000).reduce((s, o) => s + o.qty, 0);
-  const d90 = productOrders.reduce((s, o) => s + o.qty, 0);
+  const d90 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 90 * 86400000).reduce((s, o) => s + o.qty, 0);
+  const total = productOrders.reduce((s, o) => s + o.qty, 0);
 
   // --- Sentiment from product_feedback ---
   const feedback = await db.select().from(productFeedback).where(eq(productFeedback.shopifyProductId, productId));
@@ -69,7 +69,7 @@ export const GET = handler(async (_request, ctx) => {
     for (const o of buyerOrders) {
       for (const li of (o.items as any[]) ?? []) {
         const pid = String(li.product_id ?? '');
-        const liName = (li.name ?? '').toLowerCase();
+        const liName = (li.name ?? '').toLowerCase().trim();
         // Skip self
         if (pid === productId || squareNames.includes(liName)) continue;
         if (!pid && !li.name) continue;
@@ -126,7 +126,7 @@ export const GET = handler(async (_request, ctx) => {
   const squareMappings = mappedRows.map(r => ({ square_name: r.squareName, status: (r as any).status }));
 
   return jsonOk({
-    velocity: { weeks, d7, d30, d90 },
+    velocity: { weeks, d7, d30, d90, total },
     sentiment: { love, neutral, dislike, total: totalFb, tryOns: totalTryOns },
     pairsWith,
     hotClients,
