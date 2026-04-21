@@ -26,25 +26,30 @@ export default function ProductMappingPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
-  function load(status?: string, q?: string) {
+  function load(status?: string, q?: string, p?: number) {
     setLoading(true);
     const params = new URLSearchParams();
     if (status && status !== 'all') params.set('status', status);
     if (q) params.set('q', q);
+    params.set('offset', String((p ?? page) * PAGE_SIZE));
+    params.set('limit', String(PAGE_SIZE));
     fetch(`/api/crm/product-mappings?${params}`, { credentials: 'include' })
       .then(r => r.json()).then(d => { setMappings(d.data?.mappings ?? []); setStats(d.data?.stats ?? {}); })
       .catch(() => {}).finally(() => setLoading(false));
   }
 
-  useEffect(() => { load(filter, search); }, [filter]);
+  useEffect(() => { setPage(0); load(filter, search, 0); }, [filter]);
+  useEffect(() => { load(filter, search, page); }, [page]);
   useEffect(() => {
     fetch('/api/crm/products?limit=500', { credentials: 'include' })
       .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
   }, []);
 
-  function handleSearch() { load(filter, search); }
+  function handleSearch() { setPage(0); load(filter, search, 0); }
 
   async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
     await fetch('/api/crm/product-mappings', {
@@ -201,6 +206,18 @@ export default function ProductMappingPage() {
             </tbody>
           </table>
           {mappings.length === 0 && <div style={{ padding: 'var(--crm-space-6)', textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>No items found</div>}
+        </div>
+        {/* Pagination */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--crm-space-3)' }}>
+          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
+            Showing {page * PAGE_SIZE + 1}–{page * PAGE_SIZE + mappings.length}
+          </span>
+          <div style={{ display: 'flex', gap: 4 }}>
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}>← Prev</button>
+            <button onClick={() => setPage(p => p + 1)} disabled={mappings.length < PAGE_SIZE}
+              style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: mappings.length < PAGE_SIZE ? 'default' : 'pointer', opacity: mappings.length < PAGE_SIZE ? 0.4 : 1 }}>Next →</button>
+          </div>
         </div>
       )}
 

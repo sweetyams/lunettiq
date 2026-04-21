@@ -12,6 +12,8 @@ export const GET = handler(async (request) => {
   const params = request.nextUrl.searchParams;
   const status = params.get('status'); // 'auto' | 'unmatched' | 'manual' | 'confirmed' | 'ignored'
   const search = params.get('q');
+  const offset = Number(params.get('offset') ?? 0);
+  const limit = Math.min(Number(params.get('limit') ?? 50), 200);
 
   let query = sql`
     SELECT m.*, p.title as shopify_title, p.handle as shopify_handle, p.product_type as shopify_type,
@@ -24,7 +26,7 @@ export const GET = handler(async (request) => {
   if (status) query = sql`${query} AND m.status = ${status}`;
   if (search) query = sql`${query} AND (m.square_name ILIKE ${'%' + search + '%'} OR p.title ILIKE ${'%' + search + '%'})`;
 
-  query = sql`${query} ORDER BY m.confidence DESC NULLS LAST, m.square_name ASC LIMIT 200`;
+  query = sql`${query} ORDER BY m.confidence DESC NULLS LAST, m.square_name ASC LIMIT ${limit} OFFSET ${offset}`;
 
   const rows = await db.execute(query);
 
