@@ -187,8 +187,10 @@ export default function ProductMappingPage() {
                   </td>
                   <td>
                     <div style={{ fontWeight: 500 }}>{m.square_name}</div>
-                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
-                      {m.parsed_frame} · {m.parsed_colour} · {m.parsed_type}
+                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {m.parsed_frame} · {m.parsed_colour}
+                      {(m.family_type ?? m.parsed_type) && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: (m.family_type ?? m.parsed_type)?.includes('sun') ? '#fef3c7' : '#dbeafe', color: (m.family_type ?? m.parsed_type)?.includes('sun') ? '#92400e' : '#1e40af' }}>{(m.family_type ?? m.parsed_type) === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
+                      {m.family_name && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3e8ff', color: '#7c3aed' }}>{m.family_name}</span>}
                     </div>
                   </td>
                   <td>
