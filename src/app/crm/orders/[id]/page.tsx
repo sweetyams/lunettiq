@@ -4,6 +4,7 @@ import { ordersProjection, customersProjection, productMappings, productsProject
 import { eq, sql } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { getLocationNames } from '@/lib/crm/location-names';
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   await requirePermission('org:orders:read');
@@ -18,6 +19,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const shipping = order.shippingAddress as { name?: string; address1?: string; city?: string; province?: string; zip?: string; country?: string } | null;
   const source = (order.source ?? 'shopify') as 'shopify' | 'square';
   const isSquare = source === 'square';
+  const locationNames = await getLocationNames();
+  const locationName = order.locationId ? locationNames.get(order.locationId) ?? order.locationId : null;
 
   // Enrich Square line items with Shopify product images via mappings
   if (source === 'square') {
@@ -63,6 +66,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Order #{order.orderNumber}</h1>
           <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--crm-radius-sm)', background: isSquare ? '#f3f0ff' : '#f0f7ff', color: isSquare ? '#6d28d9' : '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{source}</span>
+          {order.locationId && <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 'var(--crm-radius-sm)', background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)', fontWeight: 500 }}>{locationName}</span>}
         </div>
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)', alignItems: 'center' }}>
           {order.createdAt && <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>}

@@ -3,6 +3,7 @@ import { customersProjection, ordersProjection, preferencesDerived, productFeedb
 import { eq, desc, sql, inArray } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { requirePermission } from '@/lib/crm/auth';
+import { getLocationNames } from '@/lib/crm/location-names';
 import { ClientCanvas } from './ClientCanvas';
 
 export default async function ClientProfilePage({ params }: { params: { id: string } }) {
@@ -118,6 +119,8 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
     return { ...l, otherName: nameMap.get(otherId) ?? otherId.slice(0, 12) };
   });
 
+  const locationNames = await getLocationNames();
+
   return (
     <ClientCanvas
       client={JSON.parse(JSON.stringify(client))}
@@ -127,6 +130,7 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
       sessions={JSON.parse(JSON.stringify(sessions))}
       links={JSON.parse(JSON.stringify(enrichedLinks))}
       stats={{ returnRate, daysIdle, avgSpend, pairsOwned, cadence, creditBalance, orderCount }}
+      locationMap={Object.fromEntries(locationNames) as any}
     />
   );
 }

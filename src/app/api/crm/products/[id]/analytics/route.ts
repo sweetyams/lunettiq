@@ -92,13 +92,16 @@ export const GET = handler(async (_request, ctx) => {
     salesByChannel[ch].units += o.qty;
   }
 
-  // --- Sales by location ---
+  // --- Sales by location (with resolved names) ---
+  const { getLocationNames } = await import('@/lib/crm/location-names');
+  const locNames = await getLocationNames();
   const salesByLocation: Record<string, { orders: number; units: number }> = {};
   for (const o of productOrders) {
-    const loc = o.locationId ?? 'online';
-    if (!salesByLocation[loc]) salesByLocation[loc] = { orders: 0, units: 0 };
-    salesByLocation[loc].orders++;
-    salesByLocation[loc].units += o.qty;
+    const locId = o.locationId ?? 'online';
+    const name = locNames.get(locId) ?? locId;
+    if (!salesByLocation[name]) salesByLocation[name] = { orders: 0, units: 0 };
+    salesByLocation[name].orders++;
+    salesByLocation[name].units += o.qty;
   }
 
   // --- Hot clients: loved but not purchased ---

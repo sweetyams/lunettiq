@@ -26,11 +26,13 @@ interface Props {
   sessions: any[];
   links: any[];
   stats: { returnRate: number; daysIdle: number | null; avgSpend: number; pairsOwned: number; cadence: number | null; creditBalance: number; orderCount: number };
+  locationMap: Record<string, string>;
 }
 
 const SH: React.CSSProperties = { fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-3)' };
 
-export function ClientCanvas({ client, orders, derived, feedback, sessions, links, stats }: Props) {
+export function ClientCanvas({ client, orders, derived, feedback, sessions, links, stats, locationMap: locationMapRaw }: Props) {
+  const locationMap = new Map(Object.entries(locationMapRaw));
   const { toast } = useToast();
   const meta = (client.metafields ?? {}) as any;
   const custom = meta?.custom ?? {};
@@ -153,6 +155,7 @@ export function ClientCanvas({ client, orders, derived, feedback, sessions, link
                           <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
                             #{o.orderNumber}
                             <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 'var(--crm-radius-sm)', background: o.source === 'square' ? '#f3f0ff' : '#f0f7ff', color: o.source === 'square' ? '#6d28d9' : '#2563eb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{o.source ?? 'shopify'}</span>
+                            {o.locationId && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 'var(--crm-radius-sm)', background: 'var(--crm-surface-hover)', color: 'var(--crm-text-tertiary)' }}>{locationMap.get(o.locationId) ?? o.locationId}</span>}
                           </div>
                           <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
                             {items.length} item{items.length !== 1 ? 's' : ''} · {o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
