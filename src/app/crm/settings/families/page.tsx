@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 
 interface Family { id: string; name: string }
 interface Member { id: string; family_id: string; product_id: string; type: string | null; colour: string | null; colour_hex: string | null; sort_order: number; handle: string; title: string; image: string | null; status: string }
+interface UnassignedProduct { id: string; handle: string; title: string; image: string | null; status: string }
 
 export default function FamiliesPage() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
+  const [unassigned, setUnassigned] = useState<UnassignedProduct[]>([]);
   const [activeFamily, setActiveFamily] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -21,7 +23,7 @@ export default function FamiliesPage() {
     setLoading(true);
     fetch('/api/crm/settings/families', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => { setFamilies(d.data?.families ?? []); setMembers(d.data?.members ?? []); })
+      .then(d => { setFamilies(d.data?.families ?? []); setMembers(d.data?.members ?? []); setUnassigned(d.data?.unassigned ?? []); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -90,6 +92,25 @@ export default function FamiliesPage() {
     load();
   }
 
+  async function assignToFamily(productId: string, familyId: string) {
+    const product = allProducts.find(p => p.id === productId) ?? unassigned.find(p => p.id === productId);
+    let type: string | null = null;
+    let colour: string | null = null;
+    if (product) {
+      const parts = product.handle.split('-');
+      const typeIdx = parts.findIndex((p: string) => p === 'opt' || p === 'sun');
+      if (typeIdx >= 0) {
+        type = parts[typeIdx] === 'opt' ? 'optical' : 'sun';
+        colour = parts.slice(typeIdx + 1).join('-');
+      }
+    }
+    await fetch('/api/crm/settings/families', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add-member', familyId, productId, type, colour }),
+    });
+    load();
+  }
+
   async function updateMember(memberId: string, field: string, value: string) {
     await fetch('/api/crm/settings/families', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
@@ -143,12 +164,62 @@ export default function FamiliesPage() {
               </div>
             </div>
           )}
+          {/* Unassigned */}
+          {unassigned.length > 0 && (
+            <div onClick={() => setActiveFamily(activeFamily === '__unassigned' ? null : '__unassigned')} style={{
+              padding: '8px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginTop: 8, borderTop: '1px solid var(--crm-border-light)', paddingTop: 12,
+              background: activeFamily === '__unassigned' ? 'var(--crm-surface-hover)' : 'none',
+            }}>
+              <span style={{ fontSize: 'var(--crm-text-sm)', color: '#dc2626' }}>Unassigned</span>
+              <span style={{ fontSize: 10, color: '#dc2626' }}>{unassigned.length}</span>
+            </div>
+          )}
         </div>
 
         {/* Right: members */}
         <div className="crm-card" style={{ padding: 'var(--crm-space-3)' }}>
           {!activeFamily ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-sm)' }}>Select a family to manage members</div>
+          ) : activeFamily === '__unassigned' ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+                <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>Unassigned Products ({unassigned.length})</span>
+              </div>
+              <table className="crm-table" style={{ width: '100%', fontSize: 'var(--crm-text-sm)' }}>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th style={{ width: 180 }}>Assign to Family</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {unassigned.map(p => (
+                    <tr key={p.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {p.image && <img src={p.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                          <div>
+                            <div style={{ fontWeight: 500 }}>
+                              {p.title}
+                              {p.status !== 'active' && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280' }}>{p.status}</span>}
+                            </div>
+                            <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <select defaultValue="" onChange={e => { if (e.target.value) { assignToFamily(p.id, e.target.value); e.target.value = ''; } }}
+                          style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 8px', borderRadius: 4, border: '1px solid var(--crm-border)' }}>
+                          <option value="">Select…</option>
+                          {families.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>

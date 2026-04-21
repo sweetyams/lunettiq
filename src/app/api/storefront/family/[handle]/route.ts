@@ -1,25 +1,27 @@
-export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { sql } from 'drizzle-orm';
 
 /**
- * GET /api/storefront/family/[productId]
+ * GET /api/storefront/family/[handle]
  * Returns siblings grouped by colour and type for PDP switcher.
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: { handle: string } }
 ) {
-  const productId = params.productId;
+  const handle = decodeURIComponent(params.handle);
 
   const rows = await db.execute(sql`
     SELECT m.product_id, m.type, m.colour, m.colour_hex, m.sort_order,
-           p.handle, p.title, p.images->0->>'src' as image, p.status
+           p.handle, p.title, p.images->0->>'src' as image
     FROM product_family_members m
     JOIN products_projection p ON p.shopify_product_id = m.product_id
     WHERE m.family_id = (
-      SELECT family_id FROM product_family_members WHERE product_id = ${productId} LIMIT 1
+      SELECT m2.family_id FROM product_family_members m2
+      JOIN products_projection p2 ON p2.shopify_product_id = m2.product_id
+      WHERE p2.handle = ${handle}
+      LIMIT 1
     )
     AND p.status = 'active'
     ORDER BY m.sort_order
@@ -31,7 +33,7 @@ export async function GET(
     });
   }
 
-  // Group by colour, each colour has optical + sun variants
+  // Group by colour
   const colours = new Map<string, { colour: string; hex: string | null; optical: any | null; sun: any | null }>();
   for (const r of rows.rows as any[]) {
     const key = r.colour ?? r.handle;
@@ -44,7 +46,7 @@ export async function GET(
 
   return NextResponse.json({
     data: {
-      currentProductId: productId,
+      currentHandle: handle,
       siblings: Array.from(colours.values()),
     },
   }, {

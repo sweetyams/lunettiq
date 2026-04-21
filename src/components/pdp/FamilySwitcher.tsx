@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Sibling {
   colour: string;
@@ -17,26 +18,25 @@ interface FamilyData {
 
 interface FamilySwitcherProps {
   productId: string;
+  productHandle: string;
   currentType: 'optical' | 'sun';
 }
 
-export default function FamilySwitcher({ productId, currentType }: FamilySwitcherProps) {
+export default function FamilySwitcher({ productId, productHandle, currentType }: FamilySwitcherProps) {
   const [data, setData] = useState<FamilyData | null>(null);
 
   useEffect(() => {
-    const numId = productId.replace(/^gid:\/\/shopify\/Product\//, '');
-    fetch(`/api/storefront/family/${numId}`)
+    fetch(`/api/storefront/family/${encodeURIComponent(productHandle)}`)
       .then(r => r.json())
       .then(d => { if (d.data) setData(d.data); })
       .catch(() => {});
-  }, [productId]);
+  }, [productHandle]);
 
   if (!data || data.siblings.length < 2) return null;
 
   // Find current colour
   const currentSibling = data.siblings.find(s =>
-    s.optical?.productId === productId.replace(/^gid:\/\/shopify\/Product\//, '') ||
-    s.sun?.productId === productId.replace(/^gid:\/\/shopify\/Product\//, '')
+    s.optical?.handle === productHandle || s.sun?.handle === productHandle
   );
 
   // Type toggle: does this family have both optical and sun?
@@ -44,56 +44,66 @@ export default function FamilySwitcher({ productId, currentType }: FamilySwitche
   const hasSun = data.siblings.some(s => s.sun);
   const hasBothTypes = hasOptical && hasSun;
 
-  // Get the alternate type product for current colour
-  const alternateType = currentSibling
-    ? (currentType === 'optical' ? currentSibling.sun : currentSibling.optical)
-    : null;
-
   return (
-    <div className="space-y-4">
-      {/* Type toggle (optical/sun) */}
+    <div className="space-y-5">
+      {/* Optical / Sun toggle */}
       {hasBothTypes && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500 mr-1">Type</span>
-          <div className="flex border border-gray-200 rounded-full overflow-hidden">
+        <div>
+          <p className="text-sm text-gray-600 mb-2">Type</p>
+          <div className="inline-flex border border-gray-200 rounded-full overflow-hidden">
             <TypeButton
               label="Optical"
               active={currentType === 'optical'}
               href={currentType === 'optical' ? undefined : (currentSibling?.optical ? `/products/${currentSibling.optical.handle}` : undefined)}
             />
             <TypeButton
-              label="Sun"
+              label="Sunglasses"
               active={currentType === 'sun'}
-              href={currentType === 'sun' ? undefined : (alternateType ? `/products/${alternateType.handle}` : undefined)}
+              href={currentType === 'sun' ? undefined : (currentSibling?.sun ? `/products/${currentSibling.sun.handle}` : undefined)}
             />
           </div>
         </div>
       )}
 
-      {/* Colour swatches */}
+      {/* Colour options with product images */}
       <div>
-        <span className="text-xs text-gray-500 block mb-2">
-          Colour — {currentSibling?.colour?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) ?? ''}
-        </span>
-        <div className="flex flex-wrap gap-2">
+        <p className="text-sm text-gray-600 mb-3">
+          Colour: <span className="text-black font-medium">{formatColour(currentSibling?.colour)}</span>
+        </p>
+        <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Colour options">
           {data.siblings.map(s => {
             const product = currentType === 'sun' ? (s.sun ?? s.optical) : (s.optical ?? s.sun);
             if (!product) return null;
-            const numCurrentId = productId.replace(/^gid:\/\/shopify\/Product\//, '');
-            const isActive = product.productId === numCurrentId;
+            const isActive = product.handle === productHandle;
 
             return (
               <Link
                 key={s.colour}
                 href={`/products/${product.handle}`}
-                className={`relative w-8 h-8 rounded-full border-2 transition-all ${
-                  isActive ? 'border-black scale-110' : 'border-gray-200 hover:border-gray-400'
+                className={`relative block overflow-hidden transition-all ${
+                  isActive
+                    ? 'ring-2 ring-black ring-offset-2'
+                    : 'ring-1 ring-gray-200 hover:ring-gray-400'
                 }`}
-                style={{ background: s.hex || '#ccc' }}
-                title={s.colour.replace(/-/g, ' ')}
-                aria-label={`Switch to ${s.colour.replace(/-/g, ' ')}`}
-                aria-current={isActive ? 'true' : undefined}
-              />
+                style={{ width: 64, height: 80 }}
+                role="radio"
+                aria-checked={isActive}
+                aria-label={formatColour(s.colour)}
+              >
+                {product.image ? (
+                  <Image
+                    src={product.image}
+                    alt={formatColour(s.colour)}
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: s.hex || '#F5F5F9' }}>
+                    <span className="text-[10px] text-gray-500 text-center px-1">{formatColour(s.colour)}</span>
+                  </div>
+                )}
+              </Link>
             );
           })}
         </div>
@@ -103,12 +113,16 @@ export default function FamilySwitcher({ productId, currentType }: FamilySwitche
 }
 
 function TypeButton({ label, active, href }: { label: string; active: boolean; href?: string }) {
-  const className = `px-4 py-1.5 text-xs font-medium transition-colors ${
-    active ? 'bg-black text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
-  }`;
+  const base = "px-5 py-2 text-sm font-medium transition-colors";
+  const cls = active
+    ? `${base} bg-black text-white`
+    : `${base} bg-white text-gray-600 hover:bg-gray-50`;
 
-  if (!href || active) {
-    return <span className={className}>{label}</span>;
-  }
-  return <Link href={href} className={className}>{label}</Link>;
+  if (!href || active) return <span className={cls}>{label}</span>;
+  return <Link href={href} className={cls}>{label}</Link>;
+}
+
+function formatColour(colour: string | null | undefined): string {
+  if (!colour) return '';
+  return colour.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }

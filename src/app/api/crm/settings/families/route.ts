@@ -16,7 +16,15 @@ export const GET = handler(async () => {
     JOIN products_projection p ON p.shopify_product_id = m.product_id
     ORDER BY m.family_id, m.sort_order
   `);
-  return jsonOk({ families, members: members.rows });
+  const unassigned = await db.execute(sql`
+    SELECT p.shopify_product_id as id, p.handle, p.title, p.images->0->>'src' as image, p.status
+    FROM products_projection p
+    WHERE NOT EXISTS (
+      SELECT 1 FROM product_family_members m WHERE m.product_id = p.shopify_product_id
+    )
+    ORDER BY p.title
+  `);
+  return jsonOk({ families, members: members.rows, unassigned: unassigned.rows });
 });
 
 // POST — create/update family or add member

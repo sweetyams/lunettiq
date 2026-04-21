@@ -176,7 +176,12 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
 
             <ProductInfoPanel product={product} selectedVariant={selectedVariant} />
 
-            {colours.length > 0 && (
+            {/* Family switcher (colour + type) — primary; falls back to variant ColourSelector */}
+            <div className="mt-6">
+              <FamilySwitcher productId={product.id} productHandle={product.handle} currentType={isSunglasses ? 'sun' : 'optical'} />
+            </div>
+
+            {colours.length > 1 && (
               <div className="mt-6">
                 <ColourSelector
                   colours={colours}
@@ -186,10 +191,6 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
                 />
               </div>
             )}
-
-            <div className="mt-6">
-              <FamilySwitcher productId={product.id} currentType={isSunglasses ? 'sun' : 'optical'} />
-            </div>
 
             <div className="mt-4">
               <PDPPersonalization
