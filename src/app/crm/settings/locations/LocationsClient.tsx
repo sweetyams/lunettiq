@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/crm/CrmShell';
 
-interface Location { id: string; name: string; shopifyLocationId: string | null; address: any; active: boolean; syncedAt: string | null }
+interface Location { id: string; name: string; shopifyLocationId: string | null; squareLocationId: string | null; address: any; active: boolean; syncedAt: string | null }
 
 export function LocationsClient({ locations }: { locations: Location[] }) {
   const { toast } = useToast();
@@ -39,10 +39,11 @@ export function LocationsClient({ locations }: { locations: Location[] }) {
                 </div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-2)' }}>
+                {loc.squareLocationId && <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'var(--crm-surface-hover)', padding: '1px 6px', borderRadius: 4 }}>⬛ Square</span>}
+                {loc.shopifyLocationId && <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'var(--crm-surface-hover)', padding: '1px 6px', borderRadius: 4 }}>🛍️ Shopify</span>}
                 <span className="crm-badge" style={{ background: loc.active ? 'var(--crm-success-light)' : 'var(--crm-surface-hover)', color: loc.active ? 'var(--crm-success)' : 'var(--crm-text-tertiary)' }}>
                   {loc.active ? 'Active' : 'Inactive'}
                 </span>
-                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>ID: {loc.id}</span>
               </div>
             </div>
           ))}
