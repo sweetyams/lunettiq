@@ -632,7 +632,7 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
 }
 
 // Default visible fields
-const DEFAULT_VISIBLE = ['custom.short_name', 'custom.composition', 'custom.sizing_dimensions', 'custom.face_shapes', 'custom.season', 'custom.swatch', 'custom.short_description', 'custom.staff_pick', 'custom.featured', 'custom.latest', 'custom.alter_ego'];
+const DEFAULT_VISIBLE = ['custom.short_name', 'custom.composition', 'custom.frame_width', 'custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.material', 'custom.acetate_source', 'custom.hinge_type', 'custom.uv_protection', 'custom.warranty', 'custom.included_accessories', 'custom.face_shapes', 'custom.season', 'custom.swatch'];
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
   const [visibleFields, setVisibleFields] = useState<string[] | null>(null);
@@ -656,6 +656,25 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
   const allFields: Array<{ key: string; fullKey: string; value: string }> = [];
   for (const [ns, fields] of Object.entries(metafields)) {
     for (const [key, val] of Object.entries(fields)) {
+      // Expand sizing_dimensions into individual fields
+      if (key === 'sizing_dimensions' && val) {
+        const dimMap: Record<string, string> = {};
+        for (const line of String(val).split('\n')) {
+          const [label, v] = line.split(':').map(s => s.trim());
+          if (!label || !v) continue;
+          const l = label.toLowerCase();
+          if (l.includes('frame') || (l === 'width' && !dimMap.frame_width)) dimMap.frame_width = v + ' mm';
+          else if (l.includes('nose') || l.includes('bridge')) dimMap.bridge_width = v + ' mm';
+          else if (l.includes('lens width')) dimMap.lens_width = v + ' mm';
+          else if (l.includes('height')) dimMap.lens_height = v + ' mm';
+          else if (l.includes('length') || l.includes('temple')) dimMap.temple_length = v + ' mm';
+          else if (l === 'width') dimMap.lens_width = v + ' mm';
+        }
+        for (const [dk, dv] of Object.entries(dimMap)) {
+          allFields.push({ key: dk, fullKey: `${ns}.${dk}`, value: dv });
+        }
+        continue;
+      }
       allFields.push({ key, fullKey: `${ns}.${key}`, value: val });
     }
   }
