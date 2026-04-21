@@ -28,6 +28,7 @@ export default function ProductMappingPage() {
   const [choosing, setChoosing] = useState<string | null>(null);
   const [choosingFamily, setChoosingFamily] = useState<string | null>(null);
   const [families, setFamilies] = useState<Array<{ id: string; name: string }>>([]);
+  const [familyMembers, setFamilyMembers] = useState<Array<{ product_id: string; family_id: string; type: string | null }>>([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -50,7 +51,7 @@ export default function ProductMappingPage() {
       .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
     fetch('/api/crm/settings/families', { credentials: 'include' })
-      .then(r => r.json()).then(d => setFamilies(d.data?.families ?? []))
+      .then(r => r.json()).then(d => { setFamilies(d.data?.families ?? []); setFamilyMembers(d.data?.members ?? []); })
       .catch(() => {});
   }, []);
 
@@ -261,7 +262,7 @@ export default function ProductMappingPage() {
             <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
               Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
             </div>
-            <ProductSearch products={products} onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
+            <ProductSearch products={products} familyMembers={familyMembers} families={families} onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
           </div>
         </div>
       )}
@@ -294,7 +295,7 @@ export default function ProductMappingPage() {
   );
 }
 
-function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[]; onSelect: (productId: string, variantId?: string) => void; hint: string }) {
+function ProductSearch({ products, familyMembers, families, onSelect, hint }: { products: ShopifyProduct[]; familyMembers?: Array<{ product_id: string; family_id: string; type: string | null }>; families?: Array<{ id: string; name: string }>; onSelect: (productId: string, variantId?: string) => void; hint: string }) {
   const [query, setQuery] = useState(hint);
   const [open, setOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ShopifyProduct | null>(null);
@@ -342,6 +343,9 @@ function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[
           {filtered.map(p => {
             const isSun = p.handle.includes('-sun') || p.handle.includes('sunglasses');
             const isOpt = p.handle.includes('-opt') || p.handle.includes('optic');
+            const fm = familyMembers?.find(m => m.product_id === p.id);
+            const famName = fm ? families?.find(f => f.id === fm.family_id)?.name : null;
+            const type = fm?.type ?? (isSun ? 'sun' : isOpt ? 'optical' : null);
             return (
             <button key={p.id} onClick={() => { setSelectedProduct(p); setOpen(false); setQuery(p.title); }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
@@ -349,7 +353,10 @@ function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
               <span>{p.title}</span>
-              {(isSun || isOpt) && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: isSun ? '#fef3c7' : '#dbeafe', color: isSun ? '#92400e' : '#1e40af', flexShrink: 0, marginLeft: 6 }}>{isSun ? 'SUN' : 'OPTICAL'}</span>}
+              <span style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 6 }}>
+                {type && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: type === 'sun' ? '#fef3c7' : '#dbeafe', color: type === 'sun' ? '#92400e' : '#1e40af' }}>{type === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
+                {famName && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#f3e8ff', color: '#7c3aed' }}>{famName}</span>}
+              </span>
             </button>
             );
           })}
