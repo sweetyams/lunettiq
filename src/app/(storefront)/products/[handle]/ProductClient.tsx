@@ -10,7 +10,7 @@ import { requiresPrescription, isReaders } from '@/components/pdp/LensConfigurat
 import ImageGallery from '@/components/pdp/ImageGallery';
 import ProductInfoPanel from '@/components/pdp/ProductInfoPanel';
 import ColourSelector from '@/components/pdp/ColourSelector';
-import FamilySwitcher from '@/components/pdp/FamilySwitcher';
+import FamilySwitcher, { seedProductCache } from '@/components/pdp/FamilySwitcher';
 import AccordionSection from '@/components/pdp/AccordionSection';
 import AddToCartButton from '@/components/pdp/AddToCartButton';
 import StockNotification from '@/components/pdp/StockNotification';

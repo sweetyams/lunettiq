@@ -37,7 +37,7 @@ function Bar({ label, value, max, display }: { label: string; value: number; max
       <div style={{ flex: 1, height: 20, background: 'var(--crm-surface-hover)', borderRadius: 4, overflow: 'hidden' }}>
         <div style={{ width: `${max > 0 ? (value / max) * 100 : 0}%`, height: '100%', background: 'var(--crm-text-primary)', borderRadius: 4 }} />
       </div>
-      <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)', width: 60, textAlign: 'right' }}>{display}</span>
+      <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)', minWidth: 90, textAlign: 'right', whiteSpace: 'nowrap' }}>{display}</span>
     </div>
   );
 }
@@ -327,7 +327,8 @@ export default function SalesDashboard() {
       {/* Optical vs Sun + Top Families */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Optical vs Sun</h2>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 2 }}>Optical vs Sun</h2>
+          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>Linked Shopify products only</div>
           {data.categorySplit.length > 0 ? data.categorySplit.map(c => (
             <div key={c.category} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -338,7 +339,8 @@ export default function SalesDashboard() {
           )) : <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No category data — requires product_category metafield</div>}
         </div>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Top Families</h2>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 2 }}>Top Families</h2>
+          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>Linked Shopify products only</div>
           {data.topFamilies.length > 0 ? (() => {
             const maxFam = Math.max(...data.topFamilies.map(f => Number(f.sold)), 1);
             return data.topFamilies.slice(0, 10).map(f => (
