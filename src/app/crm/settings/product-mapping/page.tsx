@@ -186,7 +186,7 @@ export default function ProductMappingPage() {
       {choosing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setChoosing(null); }}>
-          <div className="crm-card" style={{ width: 480, maxHeight: '70vh', overflow: 'auto', padding: 'var(--crm-space-5)' }}>
+          <div className="crm-card" style={{ width: 480, maxHeight: '70vh', overflow: 'visible', padding: 'var(--crm-space-5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-4)' }}>
               <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Choose Shopify Product</h2>
               <button onClick={() => setChoosing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
