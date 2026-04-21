@@ -44,6 +44,7 @@ export default function SalesDashboard() {
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState('');
+  const [channel, setChannel] = useState('');
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
@@ -63,9 +64,10 @@ export default function SalesDashboard() {
       params.set('days', String(days));
     }
     if (location) params.set('location', location);
+    if (channel) params.set('channel', channel);
     fetch(`/api/crm/reports/sales?${params}`, { credentials: 'include' })
       .then(r => r.json()).then(d => setData(d.data)).catch(console.error).finally(() => setLoading(false));
-  }, [days, startDate, endDate, location]);
+  }, [days, startDate, endDate, location, channel]);
 
   function runAi() {
     if (!data) return;
@@ -91,8 +93,12 @@ export default function SalesDashboard() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select value={location} onChange={e => setLocation(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 140 }}>
             <option value="">All locations</option>
-            <option value="online">Online only</option>
             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+          <select value={channel} onChange={e => setChannel(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 120 }}>
+            <option value="">All channels</option>
+            <option value="shopify">Online</option>
+            <option value="square">In-store</option>
           </select>
           <div style={{ width: 1, height: 20, background: 'var(--crm-border)' }} />
           <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); if (!endDate) setEndDate(new Date().toISOString().slice(0, 10)); }} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 130 }} />
