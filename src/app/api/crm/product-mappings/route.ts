@@ -56,13 +56,14 @@ export const PATCH = handler(async (request) => {
     return jsonOk({ ignoredNoMatch: true });
   }
 
-  const { squareCatalogId, shopifyProductId, shopifyVariantId, status } = body;
+  const { squareCatalogId, shopifyProductId, shopifyVariantId, status, familyId } = body;
 
   if (!squareCatalogId) return jsonError('squareCatalogId required', 400);
 
   const set: Record<string, any> = { updatedAt: new Date(), matchedBy: session.userId };
   if (shopifyProductId !== undefined) set.shopifyProductId = shopifyProductId;
   if (shopifyVariantId !== undefined) set.shopifyVariantId = shopifyVariantId;
+  if (familyId !== undefined) set.familyId = familyId;
   if (status) set.status = status;
   if (shopifyProductId) set.confidence = '1.00';
 

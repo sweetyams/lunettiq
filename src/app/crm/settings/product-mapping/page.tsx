@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 interface Mapping {
   square_catalog_id: string; square_name: string; shopify_product_id: string | null;
   shopify_title: string | null; shopify_handle: string | null; shopify_type: string | null;
-  shopify_image: string | null;
+  shopify_image: string | null; family_id: string | null;
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
@@ -26,6 +26,8 @@ export default function ProductMappingPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [choosing, setChoosing] = useState<string | null>(null);
+  const [choosingFamily, setChoosingFamily] = useState<string | null>(null);
+  const [families, setFamilies] = useState<Array<{ id: string; name: string }>>([]);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -46,6 +48,9 @@ export default function ProductMappingPage() {
   useEffect(() => {
     fetch('/api/crm/products?limit=500', { credentials: 'include' })
       .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
+      .catch(() => {});
+    fetch('/api/crm/settings/families', { credentials: 'include' })
+      .then(r => r.json()).then(d => setFamilies(d.data?.families ?? []))
       .catch(() => {});
   }, []);
 
@@ -108,6 +113,16 @@ export default function ProductMappingPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, status: 'ignored', shopifyProductId: null }),
     });
+    load(filter, search);
+  }
+
+  async function linkFamily(squareCatalogId: string, familyId: string) {
+    await fetch('/api/crm/product-mappings', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ squareCatalogId, familyId, status: 'related' }),
+    });
+    setChoosingFamily(null);
     load(filter, search);
   }
 
@@ -187,6 +202,8 @@ export default function ProductMappingPage() {
                           {m.shopify_type && <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: m.shopify_type.toLowerCase().includes('sun') ? '#fef3c7' : '#dbeafe', color: m.shopify_type.toLowerCase().includes('sun') ? '#92400e' : '#1e40af' }}>{m.shopify_type}</span>}
                         </div>
                       </div>
+                    ) : m.family_id ? (
+                      <span style={{ fontSize: 'var(--crm-text-xs)', color: '#8b5cf6' }}>↳ Family: {families.find(f => f.id === m.family_id)?.name ?? m.family_id}</span>
                     ) : (
                       <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No match</span>
                     )}
@@ -206,6 +223,7 @@ export default function ProductMappingPage() {
                         <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
                       )}
                       <button onClick={() => setChoosing(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-text-primary)', background: 'none', color: 'var(--crm-text-primary)', cursor: 'pointer' }}>Choose</button>
+                      <button onClick={() => setChoosingFamily(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #8b5cf6', background: 'none', color: '#8b5cf6', cursor: 'pointer' }}>Family</button>
                     </div>
                   </td>
                 </tr>
@@ -242,6 +260,31 @@ export default function ProductMappingPage() {
               Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
             </div>
             <ProductSearch products={products} onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
+          </div>
+        </div>
+      )}
+
+      {/* Link to family modal */}
+      {choosingFamily && (
+        <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setChoosingFamily(null); }}>
+          <div className="crm-card crm-modal" style={{ width: 360, padding: 'var(--crm-space-5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
+              <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Link to Family</h2>
+              <button onClick={() => setChoosingFamily(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
+            </div>
+            <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
+              {mappings.find(m => m.square_catalog_id === choosingFamily)?.square_name}
+            </div>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {families.map(f => (
+                <button key={f.id} onClick={() => linkFamily(choosingFamily, f.id)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-sm)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4, fontWeight: 500 }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >{f.name}</button>
+              ))}
+            </div>
           </div>
         </div>
       )}

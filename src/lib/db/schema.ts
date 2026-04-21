@@ -872,6 +872,7 @@ export const productMappings = pgTable('product_mappings', {
   parsedFrame: text('parsed_frame'),
   parsedColour: text('parsed_colour'),
   parsedType: text('parsed_type'), // 'optical' | 'sun' | 'service' | 'other'
+  familyId: text('family_id'), // link to product_families when no exact Shopify product exists
   matchedBy: text('matched_by'), // userId who confirmed/manual linked
   updatedAt: timestamp('updated_at').defaultNow(),
 });
