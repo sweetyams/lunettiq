@@ -115,11 +115,14 @@ export function ProductsClient() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Products</h1>
-        <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
-          {loading ? '…' : filtered.length}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--crm-space-3)' }}>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Products</h1>
+          <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
+            {loading ? '…' : filtered.length}
+          </span>
+        </div>
+        <Link href="/crm/settings/product-mapping" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>Square Mapping ↗</Link>
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-5)', flexWrap: 'wrap' }}>

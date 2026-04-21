@@ -8,6 +8,7 @@ const SETTINGS_SECTIONS = [
   { href: '/crm/settings/staff', label: 'Staff', description: 'Staff accounts and role assignment' },
   { href: '/crm/settings/appointment-types', label: 'Appointment Types', description: 'Services offered for booking' },
   { href: '/crm/settings/loyalty', label: 'Loyalty Tiers', description: 'Membership tiers, credits, and perks' },
+  { href: '/crm/settings/product-mapping', label: 'Product Mapping', description: 'Link Square catalog items to Shopify products' },
   { href: '/crm/settings/audit', label: 'Audit Log', description: 'View all system activity' },
 ];
 
