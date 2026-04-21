@@ -137,6 +137,31 @@ export default function CollectionClient({
     return list;
   }, [initialProducts, sort, memberCtx, fitSizeTag, filters, filterData]);
 
+  // Compute available filter options based on products in this collection
+  const availableOptions = useMemo(() => {
+    if (!filterData?.products) return filterData?.options as any;
+    const fd = filterData.products;
+    const colours = new Set<string>();
+    const shapes = new Set<string>();
+    const materials = new Set<string>();
+    const sizes = new Set<string>();
+    for (const p of initialProducts) {
+      const numId = p.id.replace(/^gid:\/\/shopify\/Product\//, '');
+      const pf = fd[numId] ?? fd[p.handle] ?? null;
+      if (!pf) continue;
+      pf.colours.forEach((c: string) => colours.add(c));
+      pf.shapes.forEach((s: string) => shapes.add(s));
+      if (pf.material) materials.add(pf.material);
+      if (pf.size) sizes.add(pf.size);
+    }
+    return {
+      colour: Array.from(colours).sort(),
+      shape: Array.from(shapes).sort(),
+      material: Array.from(materials).sort(),
+      size: Array.from(sizes).sort(),
+    };
+  }, [initialProducts, filterData]);
+
   const buildSearchParams = useCallback(
     (newFilters: ActiveFilters, newSort: SortOption) => {
       const params = new URLSearchParams();
@@ -194,7 +219,7 @@ export default function CollectionClient({
         onSortChange={handleSortChange}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
-        filterOptions={filterData?.options as any}
+        filterOptions={availableOptions}
         colourLabels={filterData?.colourLabels}
       />
 
