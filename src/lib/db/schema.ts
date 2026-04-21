@@ -168,6 +168,7 @@ export const ordersProjection = pgTable(
     shopifyUpdatedAt: timestamp('shopify_updated_at'),
     syncedAt: timestamp('synced_at').defaultNow(),
     source: text('source').default('shopify'), // 'shopify' | 'square'
+    locationId: text('location_id'), // references locations.id
   },
   (t) => [
     index('idx_orders_customer').on(t.shopifyCustomerId),

@@ -862,9 +862,10 @@ export const syncSquareOrder = inngest.createFunction(
       shopifyUpdatedAt: new Date(order.updated_at),
       syncedAt: new Date(),
       source: 'square',
+      locationId: loc?.id ?? null,
     }).onConflictDoUpdate({
       target: ordersProjection.shopifyOrderId,
-      set: { lineItems, totalPrice, syncedAt: new Date(), shopifyUpdatedAt: new Date(order.updated_at) },
+      set: { lineItems, totalPrice, locationId: loc?.id ?? null, syncedAt: new Date(), shopifyUpdatedAt: new Date(order.updated_at) },
     });
 
     // Issue loyalty points (1 pt per $1)

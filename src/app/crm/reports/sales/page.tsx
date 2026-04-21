@@ -43,8 +43,15 @@ export default function SalesDashboard() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [location, setLocation] = useState('');
+  const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/crm/settings/locations', { credentials: 'include' })
+      .then(r => r.json()).then(d => setLocations(d.data ?? [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -55,9 +62,10 @@ export default function SalesDashboard() {
     } else {
       params.set('days', String(days));
     }
+    if (location) params.set('location', location);
     fetch(`/api/crm/reports/sales?${params}`, { credentials: 'include' })
       .then(r => r.json()).then(d => setData(d.data)).catch(console.error).finally(() => setLoading(false));
-  }, [days, startDate, endDate]);
+  }, [days, startDate, endDate, location]);
 
   function runAi() {
     if (!data) return;
@@ -81,6 +89,12 @@ export default function SalesDashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
         <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Sales</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select value={location} onChange={e => setLocation(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 140 }}>
+            <option value="">All locations</option>
+            <option value="online">Online only</option>
+            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+          <div style={{ width: 1, height: 20, background: 'var(--crm-border)' }} />
           <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); if (!endDate) setEndDate(new Date().toISOString().slice(0, 10)); }} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 130 }} />
           <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>→</span>
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 130 }} />
