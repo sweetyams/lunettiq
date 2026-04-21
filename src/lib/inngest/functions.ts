@@ -9,8 +9,100 @@ import {
   collectionsProjection,
   duplicateCandidates,
   creditsLedger,
+  productFamilies,
+  productFamilyMembers,
+  productFilters,
+  filterGroups,
 } from '@/lib/db/schema';
 import { getProductMetafields } from '@/lib/crm/shopify-admin';
+
+const TYPE_SUFFIXES = ['sun', 'optic', 'optics', 'sunglasses', 'copy'];
+
+/** Auto-assign a product to family + filters based on handle pattern */
+async function autoAssignProduct(productId: string, handle: string) {
+  if (!handle) return;
+  const parts = handle.split('-');
+
+  // Parse handle for family, type, colour
+  let family: string | null = null;
+  let type: string | null = null;
+  let colour: string | null = null;
+
+  const typeIdx = parts.findIndex(p => p === 'opt' || p === 'sun');
+  if (typeIdx >= 0 && typeIdx < parts.length - 1) {
+    family = parts.slice(0, typeIdx).join('-');
+    type = parts[typeIdx] === 'opt' ? 'optical' : 'sun';
+    colour = parts.slice(typeIdx + 1).join('-');
+  } else {
+    const cIdx = parts.indexOf('©');
+    if (cIdx >= 0 && cIdx < parts.length - 1) {
+      family = parts.slice(0, cIdx).join('-');
+      let tail = parts.slice(cIdx + 1);
+      if (tail.length > 1 && /^\d+$/.test(tail[tail.length - 1])) tail = tail.slice(0, -1);
+      if (tail.length > 1 && TYPE_SUFFIXES.includes(tail[tail.length - 1])) {
+        type = tail[tail.length - 1] === 'sun' || tail[tail.length - 1] === 'sunglasses' ? 'sun' : 'optical';
+        tail = tail.slice(0, -1);
+      } else {
+        type = 'optical';
+      }
+      colour = tail.join('-');
+    }
+  }
+
+  // Auto-assign to family
+  if (family) {
+    const existing = await db.select().from(productFamilies).where(eq(productFamilies.id, family)).then(r => r[0]);
+    if (existing) {
+      await db.insert(productFamilyMembers)
+        .values({ familyId: family, productId, type, colour, colourHex: null, sortOrder: 0 })
+        .onConflictDoNothing();
+    }
+  }
+
+  // Auto-assign colour filter
+  if (colour) {
+    const colourGroup = await db.select().from(filterGroups)
+      .where(eq(filterGroups.id, `colour:${colour}`)).then(r => r[0]);
+    if (colourGroup) {
+      await db.insert(productFilters)
+        .values({ productId, filterGroupId: `colour:${colour}`, status: 'auto' })
+        .onConflictDoNothing();
+    }
+  }
+
+  // Auto-assign shape filters from metafields
+  const product = await db.execute(sql`
+    SELECT metafields->'custom'->>'face_shapes' as shapes
+    FROM products_projection WHERE shopify_product_id = ${productId}
+  `).then(r => r.rows[0] as { shapes: string | null } | undefined);
+  if (product?.shapes) {
+    try {
+      const shapes = JSON.parse(product.shapes);
+      for (const s of shapes) {
+        const shapeSlug = s.handle ?? s;
+        await db.insert(productFilters)
+          .values({ productId, filterGroupId: `shape:${shapeSlug}`, status: 'auto' })
+          .onConflictDoNothing();
+      }
+    } catch {}
+  }
+
+  // Auto-assign size from sizing_dimensions
+  const sizing = await db.execute(sql`
+    SELECT metafields->'custom'->>'sizing_dimensions' as sizing
+    FROM products_projection WHERE shopify_product_id = ${productId}
+  `).then(r => r.rows[0] as { sizing: string | null } | undefined);
+  if (sizing?.sizing) {
+    const fwMatch = sizing.sizing.match(/(?:Frame width|Width):\s*(\d+)/i);
+    if (fwMatch) {
+      const fw = Number(fwMatch[1]);
+      const size = fw <= 128 ? 'small' : fw <= 138 ? 'medium' : 'large';
+      await db.insert(productFilters)
+        .values({ productId, filterGroupId: `size:${size}`, status: 'auto' })
+        .onConflictDoNothing();
+    }
+  }
+}
 
 // ─── Customer sync ───────────────────────────────────────
 
@@ -197,6 +289,9 @@ export const syncProduct = inngest.createFunction(
       }
       await db.update(productsProjection).set({ metafields: grouped }).where(eq(productsProjection.shopifyProductId, String(p.id)));
     }
+
+    // Auto-assign to family and filters for new/updated products
+    await autoAssignProduct(String(p.id), p.handle);
   }
 );
 
