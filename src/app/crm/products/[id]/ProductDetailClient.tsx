@@ -114,31 +114,68 @@ export function ProductDetailClient({ product, variants, siblings }: { product: 
             </div>
 
             {/* Family switcher */}
-            {siblings && siblings.length > 1 && (
+            {siblings && siblings.length > 1 && (() => {
+              const currentSibling = siblings.find((s: any) => s.shopify_product_id === product.shopifyProductId);
+              const currentType = currentSibling?.type ?? 'optical';
+              const hasOptical = siblings.some((s: any) => s.type === 'optical');
+              const hasSun = siblings.some((s: any) => s.type === 'sun');
+              const hasBothTypes = hasOptical && hasSun;
+              // Group by colour
+              const colours = new Map<string, any>();
+              for (const s of siblings as any[]) {
+                const key = s.colour ?? s.handle;
+                if (!colours.has(key)) colours.set(key, { colour: key, hex: s.colour_hex, optical: null, sun: null });
+                const entry = colours.get(key)!;
+                if (s.type === 'sun') entry.sun = s; else entry.optical = s;
+              }
+              const colourList = Array.from(colours.values());
+              const currentTypeProducts = colourList.filter(c => currentType === 'sun' ? c.sun : c.optical);
+
+              return (
               <div style={{ marginBottom: 'var(--crm-space-4)' }}>
-                <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 6 }}>Family</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {siblings.map((s: any) => {
-                    const isActive = s.shopify_product_id === product.shopifyProductId;
-                    return (
-                      <Link key={s.shopify_product_id} href={`/crm/products/${s.shopify_product_id}`}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 6,
-                          border: isActive ? '2px solid var(--crm-text-primary)' : '1px solid var(--crm-border)',
-                          textDecoration: 'none', color: 'inherit', background: isActive ? 'var(--crm-surface-hover)' : 'none',
-                        }}>
-                        {s.image && <img src={s.image} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} />}
-                        {!s.image && s.colour_hex && <div style={{ width: 20, height: 20, borderRadius: '50%', background: s.colour_hex, border: '1px solid var(--crm-border)' }} />}
-                        <div style={{ fontSize: 'var(--crm-text-xs)' }}>
-                          <div style={{ fontWeight: isActive ? 600 : 400 }}>{s.colour ?? s.handle}</div>
-                          <div style={{ color: 'var(--crm-text-tertiary)', fontSize: 9 }}>{s.type}</div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+                {/* Type toggle */}
+                {hasBothTypes && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 4 }}>Type</div>
+                    <div style={{ display: 'inline-flex', border: '1px solid var(--crm-border)', borderRadius: 20, overflow: 'hidden' }}>
+                      {['optical', 'sun'].map(t => {
+                        const isActive = currentType === t;
+                        const target = currentSibling ? colours.get(currentSibling.colour)?.[t] : null;
+                        const inner = <span style={{ padding: '5px 14px', fontSize: 'var(--crm-text-xs)', fontWeight: 500, background: isActive ? 'var(--crm-text-primary)' : 'none', color: isActive ? 'white' : 'var(--crm-text-secondary)', cursor: isActive ? 'default' : 'pointer' }}>{t === 'sun' ? 'Sunglasses' : 'Optical'}</span>;
+                        if (isActive || !target) return <span key={t}>{inner}</span>;
+                        return <Link key={t} href={`/crm/products/${target.shopify_product_id}`} style={{ textDecoration: 'none' }}>{inner}</Link>;
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Colour swatches */}
+                {currentTypeProducts.length > 1 && (
+                  <div>
+                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 6 }}>Colour</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {currentTypeProducts.map(c => {
+                        const s = currentType === 'sun' ? c.sun : c.optical;
+                        if (!s) return null;
+                        const isActive = s.shopify_product_id === product.shopifyProductId;
+                        return (
+                          <Link key={s.shopify_product_id} href={`/crm/products/${s.shopify_product_id}`}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 6,
+                              border: isActive ? '2px solid var(--crm-text-primary)' : '1px solid var(--crm-border)',
+                              textDecoration: 'none', color: 'inherit', background: isActive ? 'var(--crm-surface-hover)' : 'none',
+                            }}>
+                            {s.image && <img src={s.image} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} />}
+                            {!s.image && c.hex && <div style={{ width: 20, height: 20, borderRadius: '50%', background: c.hex, border: '1px solid var(--crm-border)' }} />}
+                            <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: isActive ? 600 : 400 }}>{c.colour}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              );
+            })()}
 
             <button onClick={() => { if (variants.length > 1) setVariantPickerOpen(true); else { setRecVariants(variants.slice(0, 1)); setPickerOpen(true); } }} className="crm-btn crm-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '8px 16px' }}>
               Recommend to Client
