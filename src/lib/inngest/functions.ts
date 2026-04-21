@@ -1043,15 +1043,6 @@ export const rxExpiryReminder = inngest.createFunction(
 
 // ─── Membership: Activate on purchase ────────────────────
 
-const MEMBERSHIP_SKUS: Record<string, { tier: string; period: 'monthly' | 'annual' }> = {
-  'MEMBERSHIP-ESSENTIAL-MONTHLY': { tier: 'essential', period: 'monthly' },
-  'MEMBERSHIP-ESSENTIAL-ANNUAL': { tier: 'essential', period: 'annual' },
-  'MEMBERSHIP-CULT-MONTHLY': { tier: 'cult', period: 'monthly' },
-  'MEMBERSHIP-CULT-ANNUAL': { tier: 'cult', period: 'annual' },
-  'MEMBERSHIP-VAULT-MONTHLY': { tier: 'vault', period: 'monthly' },
-  'MEMBERSHIP-VAULT-ANNUAL': { tier: 'vault', period: 'annual' },
-};
-
 export const activateMembership = inngest.createFunction(
   { id: 'activate-membership', retries: 2, triggers: [{ event: 'shopify/order.created' }] },
   async ({ event }) => {
@@ -1060,6 +1051,8 @@ export const activateMembership = inngest.createFunction(
     if (!customerId) return { skipped: true, reason: 'no customer' };
 
     // Check if any line item is a membership product
+    const { getMembershipSkus } = await import('@/lib/crm/store-settings');
+    const MEMBERSHIP_SKUS = await getMembershipSkus();
     const lineItems = (o.line_items ?? []) as Array<{ sku?: string; title?: string; product_id?: number }>;
     const membershipItem = lineItems.find(li => li.sku && MEMBERSHIP_SKUS[li.sku]);
     if (!membershipItem) return { skipped: true, reason: 'no membership item' };

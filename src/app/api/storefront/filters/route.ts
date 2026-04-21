@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { colourGroups } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
+import { getSizeThresholds } from '@/lib/crm/store-settings';
 
 /**
  * GET /api/storefront/filters
@@ -10,6 +11,7 @@ import { sql } from 'drizzle-orm';
  * Colour groups collapse raw colours into display groups.
  */
 export async function GET(request: NextRequest) {
+  const sizeThresholds = await getSizeThresholds();
   const [rows, groups] = await Promise.all([
     db.execute(sql`
       SELECT
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
       const fwMatch = row.sizing.match(/Frame width:\s*(\d+)/i);
       if (fwMatch) {
         const fw = Number(fwMatch[1]);
-        size = fw <= 128 ? 'small' : fw <= 138 ? 'medium' : 'large';
+        size = fw <= sizeThresholds.smallMax ? 'small' : fw <= sizeThresholds.mediumMax ? 'medium' : 'large';
       }
     }
 

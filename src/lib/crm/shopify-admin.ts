@@ -16,7 +16,13 @@ import type {
   StagedUploadTarget,
 } from './shopify-admin.types';
 
-const API_VERSION = '2024-01';
+let _apiVersion: string | null = null;
+async function getApiVersion(): Promise<string> {
+  if (_apiVersion) return _apiVersion;
+  const { getSetting } = await import('./store-settings');
+  _apiVersion = await getSetting('shopify_admin_api_version');
+  return _apiVersion;
+}
 
 function getShop(): string {
   return process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN!;
@@ -27,12 +33,14 @@ async function getToken(): Promise<string> {
   return (await getKey('SHOPIFY_ADMIN_API_ACCESS_TOKEN')) ?? process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN!;
 }
 
-function restUrl(path: string): string {
-  return `https://${getShop()}/admin/api/${API_VERSION}${path}`;
+async function restUrl(path: string): Promise<string> {
+  const v = await getApiVersion();
+  return `https://${getShop()}/admin/api/${v}${path}`;
 }
 
-function graphqlUrl(): string {
-  return `https://${getShop()}/admin/api/${API_VERSION}/graphql.json`;
+async function graphqlUrl(): Promise<string> {
+  const v = await getApiVersion();
+  return `https://${getShop()}/admin/api/${v}/graphql.json`;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,7 +50,8 @@ function graphqlUrl(): string {
 async function restFetch<T>(path: string, options: RequestInit = {}): Promise<AdminResult<T>> {
   try {
     const token = await getToken();
-    const res = await fetch(restUrl(path), {
+    const url = await restUrl(path);
+    const res = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -62,7 +71,8 @@ async function restFetch<T>(path: string, options: RequestInit = {}): Promise<Ad
 async function graphqlFetch<T>(query: string, variables?: Record<string, unknown>): Promise<AdminResult<T>> {
   try {
     const token = await getToken();
-    const res = await fetch(graphqlUrl(), {
+    const url = await graphqlUrl();
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

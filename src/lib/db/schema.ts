@@ -792,12 +792,53 @@ export const searchSynonyms = pgTable('search_synonyms', {
 
 // ─── Integration Config ──────────────────────────────────
 
+// ─── Unified Filter System ───────────────────────────────────────────────
+// filter_groups: defines available filter values per type (colour, shape, size, material, etc.)
+// product_filters: maps products to filter groups with auto/confirmed/manual status
+
+export const filterGroups = pgTable('filter_groups', {
+  id: text('id').primaryKey(), // e.g. 'colour:brown', 'shape:round', 'size:small'
+  type: text('type').notNull(), // 'colour', 'shape', 'size', 'material', etc.
+  slug: text('slug').notNull(), // 'brown', 'round', 'small'
+  label: text('label').notNull(), // 'Brown', 'Round', 'Small'
+  sortOrder: integer('sort_order').default(0),
+}, (t) => ({
+  idxType: index('idx_fg_type').on(t.type),
+}));
+
+export const productFilters = pgTable('product_filters', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  productId: text('product_id').notNull(),
+  filterGroupId: text('filter_group_id').notNull(),
+  status: text('status').notNull().default('auto'), // 'auto' | 'confirmed' | 'manual'
+  matchedBy: text('matched_by'), // userId who confirmed/set manually
+}, (t) => ({
+  uniq: uniqueIndex('pf_product_filter_uniq').on(t.productId, t.filterGroupId),
+  idxProduct: index('idx_pf_product').on(t.productId),
+  idxFilter: index('idx_pf_filter').on(t.filterGroupId),
+}));
+
+// Legacy — kept for migration reference, can be dropped later
 export const colourGroups = pgTable('colour_groups', {
-  id: text('id').primaryKey(), // display name: 'brown', 'blue', 'orange'
-  label: text('label').notNull(), // 'Brown', 'Blue', 'Orange'
-  members: text('members').array().notNull(), // ['brown-2', 'bronze', 'tortoise']
+  id: text('id').primaryKey(),
+  label: text('label').notNull(),
+  members: text('members').array().notNull(),
   sortOrder: integer('sort_order').default(0),
 });
+
+export const storeSettings = pgTable('store_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const productColours = pgTable('product_colours', {
+  productId: text('product_id').notNull(),
+  colourGroupId: text('colour_group_id').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('product_colours_pk').on(t.productId, t.colourGroupId),
+  idxProduct: index('idx_pc_product').on(t.productId),
+}));
 
 export const productMappings = pgTable('product_mappings', {
   squareCatalogId: text('square_catalog_id').primaryKey(),

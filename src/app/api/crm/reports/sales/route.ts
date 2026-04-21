@@ -5,9 +5,11 @@ import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { sql } from 'drizzle-orm';
+import { getTimezone } from '@/lib/crm/store-settings';
 
 export const GET = handler(async (request) => {
   await requireCrmAuth('org:reports:read');
+  const tz = await getTimezone();
   const params = request.nextUrl.searchParams;
   const days = Number(params.get('days') ?? 30);
   const start = params.get('start');
@@ -36,7 +38,7 @@ export const GET = handler(async (request) => {
   // Day-of-week by location (in-store only for comparison)
   const dowByChannel = await db.execute(sql`
     SELECT coalesce(location_id, source) as source,
-      extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as dow,
+      extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE ${tz}) as dow,
       count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue
     FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until} AND source = 'square'
     GROUP BY 1, 2 ORDER BY 1, 2
@@ -45,7 +47,7 @@ export const GET = handler(async (request) => {
   // Hourly by location (in-store only)
   const hourlyByChannel = await db.execute(sql`
     SELECT coalesce(location_id, source) as source,
-      extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as hour,
+      extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE ${tz}) as hour,
       count(*) as orders
     FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until} AND source = 'square'
     GROUP BY 1, 2 ORDER BY 1, 2
@@ -101,7 +103,7 @@ export const GET = handler(async (request) => {
 
     // Hourly distribution — convert UTC to app timezone
     db.execute(sql`
-      SELECT extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as hour, count(*) as orders
+      SELECT extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE ${tz}) as hour, count(*) as orders
       FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until} ${filterClauses}
       GROUP BY 1 ORDER BY 1`),
 
@@ -119,7 +121,7 @@ export const GET = handler(async (request) => {
 
     // Day of week distribution
     db.execute(sql`
-      SELECT extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as dow,
+      SELECT extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE ${tz}) as dow,
         count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue
       FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until} ${filterClauses}
       GROUP BY 1 ORDER BY 1`),
