@@ -1,7 +1,7 @@
 import { requirePermission } from '@/lib/crm/auth';
-import { ProductsClient } from './ProductsClient';
+import { CatalogueShell } from './CatalogueShell';
 
 export default async function ProductsPage() {
   await requirePermission('org:products:read');
-  return <ProductsClient />;
+  return <CatalogueShell />;
 }
