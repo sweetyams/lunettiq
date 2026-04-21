@@ -32,7 +32,7 @@ export default function FamilySwitcher({ productId, productHandle, currentType }
       .catch(() => {});
   }, [productHandle]);
 
-  if (!data || data.siblings.length < 2) return null;
+  if (!data || data.siblings.length === 0) return null;
 
   // Find current colour
   const currentSibling = data.siblings.find(s =>
@@ -43,6 +43,9 @@ export default function FamilySwitcher({ productId, productHandle, currentType }
   const hasOptical = data.siblings.some(s => s.optical);
   const hasSun = data.siblings.some(s => s.sun);
   const hasBothTypes = hasOptical && hasSun;
+
+  // Show if multiple colours OR can switch type
+  if (data.siblings.length < 2 && !hasBothTypes) return null;
 
   return (
     <div className="space-y-5">
@@ -66,6 +69,7 @@ export default function FamilySwitcher({ productId, productHandle, currentType }
       )}
 
       {/* Colour options with product images */}
+      {data.siblings.length > 1 && (
       <div>
         <p className="text-sm text-gray-600 mb-3">
           Colour: <span className="text-black font-medium">{formatColour(currentSibling?.colour)}</span>
@@ -108,6 +112,7 @@ export default function FamilySwitcher({ productId, productHandle, currentType }
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }
