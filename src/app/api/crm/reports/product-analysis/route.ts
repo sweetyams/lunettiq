@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
-import { productsProjection, productVariantsProjection } from '@/lib/db/schema';
+import { productsProjection, productVariantsProjection, productFilters } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
@@ -128,10 +128,19 @@ export const GET = handler(async () => {
     else sizeBreakdown.large++;
   }
 
-  // Tag extraction
-  const shapes = countBy(parsed.flatMap(p => p.tags.filter(t => t.startsWith('shape:')).map(t => t.replace('shape:', ''))));
-  const colours = countBy(parsed.flatMap(p => p.tags.filter(t => t.startsWith('colour:')).map(t => t.replace('colour:', ''))));
-  const materials = countBy(parsed.map(p => p.material));
+  // Tag extraction — use product_filters table for real data
+  const filterRows = await db.select({ filterGroupId: productFilters.filterGroupId }).from(productFilters);
+  const filterCounts: Record<string, Record<string, number>> = {};
+  for (const r of filterRows) {
+    const [type, ...slugParts] = r.filterGroupId.split(':');
+    const slug = slugParts.join(':');
+    if (!filterCounts[type]) filterCounts[type] = {};
+    filterCounts[type][slug] = (filterCounts[type][slug] ?? 0) + 1;
+  }
+  const toSorted = (obj: Record<string, number>) => Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }));
+  const shapes = toSorted(filterCounts.shape ?? {});
+  const colours = toSorted(filterCounts.colour ?? {});
+  const materials = toSorted(filterCounts.material ?? {});
 
   // Gaps analysis
   const gaps: string[] = [];
