@@ -423,9 +423,10 @@ function FrameHistory({ orders, feedback, pairsOwned, customerId, clientName }: 
 
   // Build unified list
   const owned = orders.flatMap(o => ((o.lineItems as any[]) ?? []).map((li: any, i: number) => {
-    const name = li.name?.split(' - ')[0]?.trim() ?? 'Product';
-    const [frameName, variant] = name.includes('©') ? name.split('©').map((s: string) => s.trim()) : [name, ''];
-    return { key: `${o.shopifyOrderId}-${i}`, type: 'owned' as const, frameName, variant, imageUrl: li.imageUrl, productId: null, sub: `${o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : ''}${li.price ? ' · $' + li.price : ''}` };
+    const displayName = li.productTitle ?? li.name?.split(' - ')[0]?.trim() ?? 'Product';
+    const [frameName, variant] = displayName.includes('©') ? displayName.split('©').map((s: string) => s.trim()) : [displayName, ''];
+    const isRelated = li.mappingStatus === 'related';
+    return { key: `${o.shopifyOrderId}-${i}`, type: 'owned' as const, frameName, variant, imageUrl: li.imageUrl, productId: null, sub: `${o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : ''}${li.price ? ' · $' + li.price : ''}${isRelated ? ' · related' : ''}` };
   }));
 
   // Collect owned frame names for dedup — format as "MARAIS © GREEN" to match productTitle

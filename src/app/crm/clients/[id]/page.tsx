@@ -40,13 +40,35 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
     if (p.title) productByTitle.set(p.title.toUpperCase(), entry);
   }
 
-  // Enrich line items: match "MARAIS © GREEN - PLAIN" → "MARAIS © GREEN"
+  // Load product mappings for Square item resolution
+  const { productMappings: productMappingsTable } = await import('@/lib/db/schema');
+  const mappings = await db.select().from(productMappingsTable).where(
+    sql`${productMappingsTable.status} IN ('confirmed', 'auto', 'manual', 'related') AND ${productMappingsTable.shopifyProductId} IS NOT NULL`
+  );
+  const mappingByName = new Map<string, { shopifyProductId: string; status: string }>();
+  for (const m of mappings) {
+    if (m.squareName) mappingByName.set(m.squareName.toLowerCase(), { shopifyProductId: m.shopifyProductId!, status: m.status! });
+  }
+
+  // Enrich line items: match by title or product mapping
   for (const o of orders) {
     for (const li of ((o.lineItems as any[]) ?? [])) {
       if (li.name) {
         const matchKey = li.name.split(' - ')[0].trim().toUpperCase();
         const match = productByTitle.get(matchKey);
         if (match) { li.imageUrl = match.imageUrl; li.productTitle = match.title; }
+        else {
+          // Try product mapping (Square items)
+          const mapping = mappingByName.get(li.name.toLowerCase());
+          if (mapping) {
+            const mapped = productById.get(mapping.shopifyProductId);
+            if (mapped) {
+              li.imageUrl = mapped.imageUrl;
+              li.productTitle = mapped.title;
+              li.mappingStatus = mapping.status; // 'confirmed'|'related'
+            }
+          }
+        }
       }
     }
   }
