@@ -38,13 +38,16 @@ export default function MetafieldVisibilityPage() {
     return field;
   }
 
-  // Group by namespace
-  const grouped = new Map<string, string[]>();
-  for (const key of available) {
-    const ns = key.split('.')[0];
-    if (!grouped.has(ns)) grouped.set(ns, []);
-    grouped.get(ns)!.push(key);
-  }
+  const LOGICAL_GROUPS: Array<{ label: string; keys: string[] }> = [
+    { label: 'Sizing & Fit', keys: ['custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.frame_width', 'custom.weight_grams', 'custom.size_category'] },
+    { label: 'Material & Construction', keys: ['custom.material_type', 'custom.material_description', 'custom.origin', 'custom.hinge_type'] },
+    { label: 'Classification', keys: ['custom.shape', 'custom.frame_colour', 'custom.gender_fit', 'custom.frame_type'] },
+    { label: 'Editorial', keys: ['custom.short_name', 'custom.designer_notes', 'custom.collection_season', 'custom.face_notes', 'custom.swatch'] },
+    { label: 'Rx & Lens', keys: ['custom.rx_compatible', 'custom.progressive_compatible', 'custom.max_lens_index', 'custom.supports_polarized'] },
+  ];
+  const groupedKeySet = new Set(LOGICAL_GROUPS.flatMap(g => g.keys));
+  const otherKeys = available.filter(k => !groupedKeySet.has(k));
+  const allGroups = [...LOGICAL_GROUPS, ...(otherKeys.length ? [{ label: 'Other', keys: otherKeys }] : [])];
 
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
@@ -59,11 +62,11 @@ export default function MetafieldVisibilityPage() {
       {loading ? <div style={{ color: 'var(--crm-text-tertiary)' }}>Loading…</div> : (
         <>
           <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-            {Array.from(grouped.entries()).map(([ns, keys]) => (
-              <div key={ns} style={{ marginBottom: 'var(--crm-space-4)' }}>
-                <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>{ns}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 6 }}>
-                  {keys.sort().map(key => {
+            {allGroups.map(({ label, keys }) => (
+              <div key={label} style={{ marginBottom: 'var(--crm-space-4)' }}>
+                <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>{label}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 6 }}>
+                  {keys.filter(k => available.includes(k)).sort().map(key => {
                     const count = coverage[key] ?? 0;
                     const pct = totalProducts > 0 ? Math.round((count / totalProducts) * 100) : 0;
                     return (
