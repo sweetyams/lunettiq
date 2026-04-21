@@ -10,6 +10,8 @@ interface SalesData {
   revByDay: Array<{ day: string; orders: string; revenue: string }>;
   revByLocation: Array<{ location: string; orders: string; revenue: string; aov: string }>;
   topProducts: Array<{ name: string; product_id: string | null; sold: string; revenue: string }>;
+  topFamilies: Array<{ id: string; name: string; sold: string; revenue: string }>;
+  categorySplit: Array<{ category: string; sold: string; revenue: string }>;
   hourlyDistribution: Array<{ hour: string; orders: string }>;
   dayOfWeek: Array<{ dow: string; orders: string; revenue: string }>;
   channelBreakdown: Array<{ source: string; orders: string; revenue: string; aov: string }>;
@@ -319,6 +321,30 @@ export default function SalesDashboard() {
               <Bar key={d.dow} label={days[Number(d.dow)] ?? d.dow} value={Number(d.revenue)} max={maxDow} display={fmt(d.revenue)} />
             ));
           })()}
+        </div>
+      </div>
+
+      {/* Optical vs Sun + Top Families */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Optical vs Sun</h2>
+          {data.categorySplit.length > 0 ? data.categorySplit.map(c => (
+            <div key={c.category} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: c.category === 'sun' ? '#fef3c7' : '#dbeafe', color: c.category === 'sun' ? '#92400e' : '#1e40af' }}>{c.category === 'sun' ? 'SUN' : 'OPTICAL'}</span>
+              </span>
+              <span style={{ fontFamily: 'monospace', fontSize: 'var(--crm-text-xs)' }}>{c.sold} sold · {fmt(c.revenue)}</span>
+            </div>
+          )) : <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No category data — requires product_category metafield</div>}
+        </div>
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Top Families</h2>
+          {data.topFamilies.length > 0 ? (() => {
+            const maxFam = Math.max(...data.topFamilies.map(f => Number(f.sold)), 1);
+            return data.topFamilies.slice(0, 10).map(f => (
+              <Bar key={f.id} label={f.name?.slice(0, 20) ?? '?'} value={Number(f.sold)} max={maxFam} display={`${f.sold} · ${fmt(f.revenue)}`} />
+            ));
+          })() : <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No family data — requires product families setup</div>}
         </div>
       </div>
 

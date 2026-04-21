@@ -127,6 +127,30 @@ export const GET = handler(async (request) => {
       GROUP BY 1 ORDER BY 1`),
   ]);
 
+  // Top families (resolve products to families via product_family_members)
+  const topFamilies = await db.execute(sql`
+    SELECT f.id, f.name, count(*) as sold,
+      coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
+    FROM orders_projection o, jsonb_array_elements(o.line_items) as item
+    JOIN product_family_members m ON m.product_id = item->>'product_id'
+    JOIN product_families f ON f.id = m.family_id
+    WHERE o.created_at >= ${since} AND o.created_at <= ${until} ${filterClauses}
+    GROUP BY f.id, f.name
+    ORDER BY sold DESC LIMIT 15
+  `).catch(() => ({ rows: [] }));
+
+  // Optical vs Sun split (using product_category metafield)
+  const categorySplit = await db.execute(sql`
+    SELECT p.metafields->'custom'->>'product_category' as category,
+      count(*) as sold,
+      coalesce(sum((item->>'price')::numeric * coalesce((item->>'quantity')::int, 1)), 0) as revenue
+    FROM orders_projection o, jsonb_array_elements(o.line_items) as item
+    JOIN products_projection p ON p.shopify_product_id = item->>'product_id'
+    WHERE o.created_at >= ${since} AND o.created_at <= ${until}
+    AND p.metafields->'custom'->>'product_category' IS NOT NULL ${filterClauses}
+    GROUP BY 1
+  `).catch(() => ({ rows: [] }));
+
   return jsonOk({
     period: { days, since },
     summary: orderStats.rows[0],
@@ -134,6 +158,8 @@ export const GET = handler(async (request) => {
     revByDay: revByDay.rows,
     revByLocation: revByLocation.rows,
     topProducts: topProducts.rows,
+    topFamilies: topFamilies.rows,
+    categorySplit: categorySplit.rows,
     hourlyDistribution: hourlyDist.rows,
     repeatCustomers: repeatCustomers.rows[0],
     dayOfWeek: dayOfWeek.rows,
