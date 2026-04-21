@@ -127,6 +127,15 @@ export default function ProductMappingPage() {
     load(filter, search);
   }
 
+  async function unlinkProduct(squareCatalogId: string) {
+    await fetch('/api/crm/product-mappings', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ squareCatalogId, shopifyProductId: null, shopifyVariantId: null, status: 'related' }),
+    });
+    load(filter, search);
+  }
+
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
 
   return (
@@ -224,6 +233,9 @@ export default function ProductMappingPage() {
                       )}
                       {m.status !== 'ignored' && (
                         <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
+                      )}
+                      {m.shopify_product_id && (
+                        <button onClick={() => unlinkProduct(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-warning, #d97706)', background: 'none', color: 'var(--crm-warning, #d97706)', cursor: 'pointer' }}>Unlink</button>
                       )}
                       <button onClick={() => setChoosing(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-text-primary)', background: 'none', color: 'var(--crm-text-primary)', cursor: 'pointer' }}>Choose</button>
                       <button onClick={() => setChoosingFamily(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #8b5cf6', background: 'none', color: '#8b5cf6', cursor: 'pointer' }}>Family</button>
