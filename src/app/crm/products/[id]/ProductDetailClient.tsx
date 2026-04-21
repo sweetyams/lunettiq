@@ -631,7 +631,7 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
   );
 }
 
-const FIELD_GROUPS = [
+const FALLBACK_GROUPS = [
   { label: 'Sizing', keys: ['lens_width', 'bridge_width', 'temple_length', 'lens_height', 'frame_width', 'weight_grams'] },
   { label: 'Material', keys: ['material_type', 'material_description', 'origin', 'hinge_type'] },
   { label: 'Classification', keys: ['shape', 'frame_colour', 'size_category', 'gender_fit', 'frame_type'] },
@@ -644,11 +644,17 @@ const UNIT_SUFFIX: Record<string, string> = { lens_width: ' mm', bridge_width: '
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
   const [showAll, setShowAll] = useState(false);
   const [visibleSet, setVisibleSet] = useState<Set<string> | null>(null);
+  const [fieldGroups, setFieldGroups] = useState(FALLBACK_GROUPS);
 
   useEffect(() => {
     fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setVisibleSet(new Set(d.data?.visible ?? [])))
+      .then(d => {
+        setVisibleSet(new Set(d.data?.visible ?? []));
+        if (d.data?.groups?.length) {
+          setFieldGroups(d.data.groups.map((g: any) => ({ label: g.label, keys: g.keys.map((k: string) => k.replace(/^custom\./, '')) })));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -664,13 +670,13 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
   const isVisible = (key: string) => showAll || !visibleSet || visibleSet.has(`custom.${key}`);
 
   // Grouped fields — only show visible ones
-  const grouped = FIELD_GROUPS.map(g => ({
+  const grouped = fieldGroups.map(g => ({
     label: g.label,
     fields: g.keys.map(k => ({ key: k, value: custom[k] })).filter(f => f.value !== undefined && f.value !== null && f.value !== '' && isVisible(f.key)),
   })).filter(g => g.fields.length > 0);
 
   // Ungrouped visible fields
-  const groupedKeys = new Set(FIELD_GROUPS.flatMap(g => g.keys));
+  const groupedKeys = new Set(fieldGroups.flatMap(g => g.keys));
   const ungrouped = Object.entries(custom)
     .filter(([k]) => !groupedKeys.has(k) && isVisible(k))
     .map(([k, v]) => ({ key: k, value: v as string }));
