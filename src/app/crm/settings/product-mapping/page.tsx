@@ -146,14 +146,7 @@ export default function ProductMappingPage() {
                         </div>
                       </div>
                     ) : (
-                      <select
-                        onChange={e => { if (e.target.value) linkProduct(m.square_catalog_id, e.target.value); }}
-                        defaultValue=""
-                        style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', width: '100%' }}
-                      >
-                        <option value="">Select product…</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                      </select>
+                      <ProductSearch products={products} onSelect={(id) => linkProduct(m.square_catalog_id, id)} hint={m.parsed_frame ?? ''} />
                     )}
                   </td>
                   <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>
@@ -174,6 +167,39 @@ export default function ProductMappingPage() {
             </tbody>
           </table>
           {mappings.length === 0 && <div style={{ padding: 'var(--crm-space-6)', textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>No items found</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductSearch({ products, onSelect, hint }: { products: ShopifyProduct[]; onSelect: (id: string) => void; hint: string }) {
+  const [query, setQuery] = useState(hint);
+  const [open, setOpen] = useState(false);
+
+  const filtered = query.length >= 2
+    ? products.filter(p => p.title.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+    : [];
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search Shopify product…"
+        className="crm-input"
+        style={{ fontSize: 'var(--crm-text-xs)', width: '100%' }}
+      />
+      {open && filtered.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: 'var(--crm-surface)', border: '1px solid var(--crm-border)', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', maxHeight: 200, overflowY: 'auto' }}>
+          {filtered.map(p => (
+            <button key={p.id} onClick={() => { onSelect(p.id); setOpen(false); setQuery(p.title); }}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >{p.title}</button>
+          ))}
         </div>
       )}
     </div>
