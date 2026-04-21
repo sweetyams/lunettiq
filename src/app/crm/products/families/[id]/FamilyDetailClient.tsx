@@ -124,11 +124,11 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
       )}
 
       {/* Shopify Products */}
-      <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
-          <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Shopify Products ({members.length})</div>
-          <button onClick={() => setShowAddProduct(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add Product</button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
+        <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Shopify Products ({members.length})</div>
+        <button onClick={() => setShowAddProduct(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add Product</button>
+      </div>
+      <div className="crm-card" style={{ overflow: 'hidden', marginBottom: 'var(--crm-space-5)' }}>
         <table className="crm-table">
           <thead>
             <tr>
@@ -170,11 +170,11 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
       </div>
 
       {/* Square-only items */}
-      <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
-          <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Square-Only Items ({familyOnlySquare.length})</div>
-          <button onClick={() => setShowAddSquare(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Link Square Item</button>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
+        <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Square-Only Items ({familyOnlySquare.length})</div>
+        <button onClick={() => setShowAddSquare(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Link Square Item</button>
+      </div>
+      <div className="crm-card" style={{ overflow: 'hidden', marginBottom: 'var(--crm-space-4)' }}>
         {familyOnlySquare.length > 0 ? (
           <table className="crm-table">
             <thead>
@@ -202,7 +202,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
             </tbody>
           </table>
         ) : (
-          <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No Square-only items linked. Use "+ Link Square Item" to add unmatched Square products to this family.</div>
+          <div style={{ padding: 'var(--crm-space-4)', fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>No Square-only items linked. Use "+ Link Square Item" to add unmatched Square products to this family.</div>
         )}
       </div>
 
