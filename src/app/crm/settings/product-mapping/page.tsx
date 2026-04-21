@@ -82,6 +82,15 @@ export default function ProductMappingPage() {
     load(filter, search);
   }
 
+  async function ignoreNoMatch() {
+    await fetch('/api/crm/product-mappings', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ignoreAllNoMatch: true }),
+    });
+    load(filter, search);
+  }
+
   async function ignore(squareCatalogId: string) {
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
@@ -106,6 +115,7 @@ export default function ProductMappingPage() {
         <div style={{ textAlign: 'right', fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
           {total} items · {stats.auto ?? 0} auto · {stats.confirmed ?? 0} confirmed · {stats.manual ?? 0} manual · {stats.unmatched ?? 0} unmatched
           {(stats.auto ?? 0) > 0 && <button onClick={confirmAll} style={{ marginLeft: 12, fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', background: 'var(--crm-success, #16a34a)', color: 'white' }}>✓ Confirm All Auto</button>}
+          {filter === 'unmatched' && <button onClick={ignoreNoMatch} style={{ marginLeft: 8, fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', background: 'var(--crm-border)', color: 'var(--crm-text-secondary)' }}>Ignore All No Match</button>}
         </div>
       </div>
 

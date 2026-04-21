@@ -47,6 +47,13 @@ export const PATCH = handler(async (request) => {
     return jsonOk({ confirmedAll: true });
   }
 
+  // Bulk ignore all unmatched with no shopify product
+  if (body.ignoreAllNoMatch) {
+    await db.update(productMappings).set({ status: 'ignored', matchedBy: session.userId, updatedAt: new Date() })
+      .where(sql`${productMappings.status} = 'unmatched' AND ${productMappings.shopifyProductId} IS NULL`);
+    return jsonOk({ ignoredNoMatch: true });
+  }
+
   const { squareCatalogId, shopifyProductId, shopifyVariantId, status } = body;
 
   if (!squareCatalogId) return jsonError('squareCatalogId required', 400);
