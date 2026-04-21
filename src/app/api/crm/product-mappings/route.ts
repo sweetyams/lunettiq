@@ -36,10 +36,18 @@ export const GET = handler(async (request) => {
   return jsonOk({ mappings: rows.rows, stats: Object.fromEntries(stats.rows.map((r: any) => [r.status, Number(r.count)])) });
 });
 
-// PATCH: manual link or confirm
+// PATCH: manual link, confirm, or confirm all auto
 export const PATCH = handler(async (request) => {
   const session = await requireCrmAuth('org:settings:integrations');
-  const { squareCatalogId, shopifyProductId, shopifyVariantId, status } = await request.json();
+  const body = await request.json();
+
+  // Bulk confirm all auto-matched
+  if (body.confirmAllAuto) {
+    await db.update(productMappings).set({ status: 'confirmed', matchedBy: session.userId, updatedAt: new Date() }).where(eq(productMappings.status, 'auto'));
+    return jsonOk({ confirmedAll: true });
+  }
+
+  const { squareCatalogId, shopifyProductId, shopifyVariantId, status } = body;
 
   if (!squareCatalogId) return jsonError('squareCatalogId required', 400);
 
