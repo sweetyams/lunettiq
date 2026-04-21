@@ -174,16 +174,18 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Daily revenue + Hourly + Day of Week */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
-        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Daily Revenue</h2>
-          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-            {data.revByDay.slice(-30).map(d => (
-              <Bar key={d.day} label={new Date(d.day).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })} value={Number(d.revenue)} max={maxDaily} display={fmt(d.revenue)} />
-            ))}
-          </div>
+      {/* Daily revenue */}
+      <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
+        <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Daily Revenue</h2>
+        <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+          {data.revByDay.slice(-30).map(d => (
+            <Bar key={d.day} label={new Date(d.day).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })} value={Number(d.revenue)} max={maxDaily} display={fmt(d.revenue)} />
+          ))}
         </div>
+      </div>
+
+      {/* Hourly + Day of Week */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Peak Hours</h2>
           {data.hourlyDistribution.map(h => (
