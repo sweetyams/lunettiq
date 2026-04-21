@@ -224,19 +224,13 @@ export default function ProductAnalysisPage() {
       </div>
 
       {/* Categories */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--crm-space-4)' }}>
-        {[
-          { title: 'Materials', data: data.categories.materials },
-          { title: 'Types', data: data.categories.types },
-          { title: 'Vendors', data: data.categories.vendors },
-        ].map(cat => (
-          <div key={cat.title} className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-            <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>{cat.title}</h2>
-            {cat.data.length ? cat.data.map(d => (
-              <Bar key={d.name} label={d.name} value={d.count} max={cat.data[0].count} count={d.count} />
-            )) : <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No data</div>}
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 'var(--crm-space-4)' }}>
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Types</h2>
+          {data.categories.types.length ? data.categories.types.map(d => (
+            <Bar key={d.name} label={d.name} value={d.count} max={data.categories.types[0].count} count={d.count} />
+          )) : <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>No data</div>}
+        </div>
       </div>
     </div>
   );
