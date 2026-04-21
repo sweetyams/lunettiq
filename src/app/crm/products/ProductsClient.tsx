@@ -157,8 +157,6 @@ export function ProductsClient() {
           ))}
         </div>
       </div>
-        </div>
-      </div>
 
       {loading ? <SkeletonGrid /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--crm-space-4)' }}>
