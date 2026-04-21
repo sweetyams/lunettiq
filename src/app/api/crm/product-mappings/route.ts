@@ -23,8 +23,8 @@ export const GET = handler(async (request) => {
     WHERE 1=1
   `;
 
-  if (status) query = sql`${query} AND m.status = ${status}`;
-  if (search) query = sql`${query} AND (m.square_name ILIKE ${'%' + search + '%'} OR p.title ILIKE ${'%' + search + '%'} OR p.handle ILIKE ${'%' + search + '%'})`;
+  if (status && !search) query = sql`${query} AND m.status = ${status}`;
+  if (search) query = sql`${query} AND (m.square_name ILIKE ${'%' + search + '%'} OR p.title ILIKE ${'%' + search + '%'} OR p.handle ILIKE ${'%' + search + '%'} OR m.parsed_frame ILIKE ${'%' + search + '%'} OR m.parsed_colour ILIKE ${'%' + search + '%'})`;
 
   query = sql`${query} ORDER BY m.confidence DESC NULLS LAST, m.square_name ASC LIMIT ${limit} OFFSET ${offset}`;
 
