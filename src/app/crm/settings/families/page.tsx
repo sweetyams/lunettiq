@@ -17,6 +17,7 @@ export default function FamiliesPage() {
   const [search, setSearch] = useState('');
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
+  const [linkFilter, setLinkFilter] = useState<'all' | 'shopify' | 'square'>('all');
   const [memberSearch, setMemberSearch] = useState('');
   const [squareSearch, setSquareSearch] = useState('');
   const [squareItems, setSquareItems] = useState<Array<{ squareCatalogId: string; squareName: string; parsedFrame: string | null; parsedColour: string | null; parsedType: string | null }>>([]);
@@ -40,7 +41,13 @@ export default function FamiliesPage() {
   }, []);
 
   const familyMembers = activeFamily ? members.filter(m => m.family_id === activeFamily) : [];
-  const filteredFamilies = search ? families.filter(f => f.name.toLowerCase().includes(search.toLowerCase())) : families;
+  const filteredFamilies = families.filter(f => {
+    if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (linkFilter === 'all') return true;
+    const fMembers = members.filter(m => m.family_id === f.id);
+    const hasShopify = fMembers.some(m => !m.product_id.startsWith('sq__'));
+    return linkFilter === 'shopify' ? hasShopify : !hasShopify;
+  });
   const memberProductIds = new Set(activeFamily ? familyMembers.map(m => m.product_id) : []);
   const searchedProducts = memberSearch.length >= 2
     ? allProducts.filter(p => !memberProductIds.has(p.id) && p.title.toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 10)
@@ -143,16 +150,29 @@ export default function FamiliesPage() {
             <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)' }}>Families ({families.length})</span>
             <button onClick={() => setShowAdd(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '2px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add</button>
           </div>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 6 }} />
+          <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+            {([['all', 'All'], ['shopify', 'Shopify'], ['square', 'Square-only']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setLinkFilter(key)} style={{
+                fontSize: 10, padding: '3px 8px', borderRadius: 12, cursor: 'pointer', border: 'none',
+                background: linkFilter === key ? (key === 'square' ? '#FFFBEB' : key === 'shopify' ? '#DBEAFE' : 'var(--crm-text-primary)') : 'var(--crm-surface-hover)',
+                color: linkFilter === key ? (key === 'square' ? '#92400E' : key === 'shopify' ? '#1E40AF' : 'white') : 'var(--crm-text-tertiary)',
+              }}>{label}</button>
+            ))}
+          </div>
           <div style={{ maxHeight: 500, overflowY: 'auto' }}>
             {filteredFamilies.map(f => {
               const count = members.filter(m => m.family_id === f.id).length;
+              const hasShopify = members.some(m => m.family_id === f.id && !m.product_id.startsWith('sq__'));
               return (
                 <div key={f.id} onClick={() => setActiveFamily(activeFamily === f.id ? null : f.id)} style={{
                   padding: '8px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   background: activeFamily === f.id ? 'var(--crm-surface-hover)' : 'none',
                 }}>
-                  <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{f.name}</span>
+                  <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: hasShopify ? '#16a34a' : '#F59E0B', flexShrink: 0 }} />
+                    {f.name}
+                  </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{count}</span>
                     <button onClick={e => { e.stopPropagation(); deleteFamily(f.id); }} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
@@ -313,7 +333,7 @@ export default function FamiliesPage() {
             <input value={squareSearch} onChange={e => setSquareSearch(e.target.value)} placeholder="Search Square items…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               {squareItems
-                .filter(s => squareSearch.length >= 2 && s.squareName.toLowerCase().includes(squareSearch.toLowerCase()))
+                .filter(s => squareSearch.length >= 2 && (s.squareName ?? '').toLowerCase().includes(squareSearch.toLowerCase()))
                 .slice(0, 15)
                 .map(s => (
                 <button key={s.squareCatalogId} onClick={async () => {
@@ -332,7 +352,7 @@ export default function FamiliesPage() {
                   </div>
                 </button>
               ))}
-              {squareSearch.length >= 2 && squareItems.filter(s => s.squareName.toLowerCase().includes(squareSearch.toLowerCase())).length === 0 && (
+              {squareSearch.length >= 2 && squareItems.filter(s => (s.squareName ?? '').toLowerCase().includes(squareSearch.toLowerCase())).length === 0 && (
                 <div style={{ padding: 12, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>No unmatched Square items found</div>
               )}
             </div>

@@ -91,8 +91,7 @@ export const POST = handler(async () => {
 
   for (const mapping of allMappings) {
     // Skip manually managed items
-    if (['manual', 'confirmed', 'related'].includes(mapping.status ?? '')) { skipped++; continue; }
-    if (mapping.status === 'ignored' && mapping.parsedType === 'service') { skipped++; continue; }
+    if (['manual', 'confirmed', 'related', 'ignored'].includes(mapping.status ?? '')) { skipped++; continue; }
 
     const parsed = parseSquareName(mapping.squareName ?? '');
     if (parsed.type === 'service') {
@@ -184,14 +183,15 @@ export const POST = handler(async () => {
 
   // Group unmatched by parsed frame
   const unmatchedMappings = await db.select().from(productMappings).where(eq(productMappings.status, 'unmatched'));
+  // Group unmatched by first word of parsed frame (handles multi-word like "Lox Black")
   const frameGroups = new Map<string, typeof unmatchedMappings>();
   for (const m of unmatchedMappings) {
     const parsed = parseSquareName(m.squareName ?? '');
     if (parsed.type === 'service') continue;
-    const key = normalize(parsed.frame);
-    if (!key) continue;
-    if (!frameGroups.has(key)) frameGroups.set(key, []);
-    frameGroups.get(key)!.push(m);
+    const firstWord = normalize(parsed.frame).split(/\s+/)[0];
+    if (!firstWord) continue;
+    if (!frameGroups.has(firstWord)) frameGroups.set(firstWord, []);
+    frameGroups.get(firstWord)!.push(m);
   }
 
   let familiesCreated = 0, placeholdersCreated = 0;
@@ -199,19 +199,28 @@ export const POST = handler(async () => {
   for (const [normName, items] of Array.from(frameGroups.entries())) {
     if (items.length < minItems) continue;
     const familySlug = normName.replace(/\s+/g, '-');
-    // Guard a: family already exists
-    if (familyByName.has(normName) || familyByName.has(familySlug)) continue;
-    const existingFam = await db.select({ id: productFamilies.id }).from(productFamilies).where(eq(productFamilies.id, familySlug)).limit(1);
-    if (existingFam.length > 0) continue;
-    // Guard b: Shopify product exists with this name
-    const shopifyExists = await db.select({ id: productsProjection.shopifyProductId }).from(productsProjection)
-      .where(sql`${productsProjection.title} ILIKE ${normName.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' %'} AND ${productsProjection.status} = 'active'`).limit(1);
-    if (shopifyExists.length > 0) continue;
 
-    // Create family
-    const familyName = items[0].parsedFrame ?? normName.toUpperCase();
-    await db.insert(productFamilies).values({ id: familySlug, name: familyName.toUpperCase() }).onConflictDoNothing();
-    familiesCreated++;
+    // Check if family already exists — if so, populate it with placeholders instead of skipping
+    const existingFamId = familyByName.get(normName) ?? familyByName.get(familySlug);
+    const existingFam = existingFamId
+      ? [{ id: existingFamId }]
+      : await db.select({ id: productFamilies.id }).from(productFamilies).where(eq(productFamilies.id, familySlug)).limit(1);
+    const targetFamilyId = existingFam[0]?.id;
+
+    if (!targetFamilyId) {
+      // Guard b: Shopify product exists with this name → skip
+      const shopifyExists = await db.select({ id: productsProjection.shopifyProductId }).from(productsProjection)
+        .where(sql`${productsProjection.title} ILIKE ${normName.split(/\s+/).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' %'} AND ${productsProjection.status} = 'active'`).limit(1);
+      if (shopifyExists.length > 0) continue;
+    }
+
+    // Create family if it doesn't exist
+    const famId = targetFamilyId ?? familySlug;
+    if (!targetFamilyId) {
+      const familyName = items[0].parsedFrame ?? normName.toUpperCase();
+      await db.insert(productFamilies).values({ id: famId, name: familyName.toUpperCase() }).onConflictDoNothing();
+      familiesCreated++;
+    }
 
     // Track created colour+type combos to dedup
     const seen = new Set<string>();
@@ -227,7 +236,7 @@ export const POST = handler(async () => {
           const p = parseSquareName(i.squareName ?? '');
           return normalizeColour(p.colour) === colour && (p.type === type || (p.type === 'other' && type === 'optical'));
         })?.squareCatalogId}`;
-        await db.update(productMappings).set({ shopifyProductId: existingPlaceholder, familyId: familySlug, status: 'related', updatedAt: new Date() })
+        await db.update(productMappings).set({ shopifyProductId: existingPlaceholder, familyId: famId, status: 'related', updatedAt: new Date() })
           .where(eq(productMappings.squareCatalogId, item.squareCatalogId));
         continue;
       }
@@ -238,13 +247,13 @@ export const POST = handler(async () => {
         shopifyProductId: placeholderId, title: item.squareName, status: 'placeholder', syncedAt: new Date(),
       }).onConflictDoNothing();
       await db.insert(productFamilyMembers).values({
-        familyId: familySlug, productId: placeholderId, type, colour: colour || null, sortOrder: 0,
+        familyId: famId, productId: placeholderId, type, colour: colour || null, sortOrder: 0,
       }).onConflictDoNothing();
-      await db.update(productMappings).set({ shopifyProductId: placeholderId, familyId: familySlug, status: 'related', updatedAt: new Date() })
+      await db.update(productMappings).set({ shopifyProductId: placeholderId, familyId: famId, status: 'related', updatedAt: new Date() })
         .where(eq(productMappings.squareCatalogId, item.squareCatalogId));
       placeholdersCreated++;
     }
-    await regenerateFamilySlugs(familySlug);
+    await regenerateFamilySlugs(famId);
   }
 
   return jsonOk({

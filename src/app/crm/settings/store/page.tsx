@@ -8,6 +8,7 @@ const FIELDS = [
   { key: 'shopify_api_version', label: 'Shopify Storefront API Version', placeholder: '2024-10' },
   { key: 'frame_size_small_max', label: 'Frame Size: Small Max (mm)', placeholder: '128' },
   { key: 'frame_size_medium_max', label: 'Frame Size: Medium Max (mm)', placeholder: '138' },
+  { key: 'auto_family_min_items', label: 'Auto-Create Family Min Items', placeholder: '4' },
   { key: 'membership_sku_essential_monthly', label: 'Membership SKU: Essential Monthly', placeholder: 'MEMBERSHIP-ESSENTIAL-MONTHLY' },
   { key: 'membership_sku_essential_annual', label: 'Membership SKU: Essential Annual', placeholder: 'MEMBERSHIP-ESSENTIAL-ANNUAL' },
   { key: 'membership_sku_cult_monthly', label: 'Membership SKU: Cult Monthly', placeholder: 'MEMBERSHIP-CULT-MONTHLY' },

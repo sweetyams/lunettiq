@@ -25,9 +25,11 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = search
-    ? families.filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
-    : families;
+  const [showSquareOnly, setShowSquareOnly] = useState(false);
+
+  const filtered = families
+    .filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(f => showSquareOnly || Number(f.product_count) - (f.products ?? []).filter(p => p.id.startsWith('sq__')).length > 0);
 
   function toggle(f: Family) {
     setExpanded(prev => { const next = new Set(prev); if (next.has(f.id)) next.delete(f.id); else next.add(f.id); return next; });
@@ -49,8 +51,12 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
         <Link href="/crm/settings/families" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>Manage Families ↗</Link>
       </div>
 
-      <div style={{ marginBottom: 'var(--crm-space-4)' }}>
+      <div style={{ marginBottom: 'var(--crm-space-4)', display: 'flex', gap: 8, alignItems: 'center' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search families…" className="crm-input" style={{ width: 260 }} />
+        <button onClick={() => setShowSquareOnly(!showSquareOnly)} style={{
+          fontSize: 'var(--crm-text-xs)', padding: '5px 12px', borderRadius: 20, cursor: 'pointer', border: showSquareOnly ? '1.5px solid #F59E0B' : '1px solid var(--crm-border)',
+          background: showSquareOnly ? '#FFFBEB' : 'var(--crm-surface)', color: showSquareOnly ? '#92400E' : 'var(--crm-text-secondary)',
+        }}>Show Square-only</button>
       </div>
 
       {loading ? <div style={{ color: 'var(--crm-text-tertiary)' }}>Loading…</div> : (

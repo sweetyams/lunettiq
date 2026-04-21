@@ -66,36 +66,39 @@ export default function ProductMappingPage() {
     return () => clearTimeout(timer);
   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function updateLocal(squareCatalogId: string, updates: Partial<Mapping>) {
+    setMappings(prev => prev.map(m => m.square_catalog_id === squareCatalogId ? { ...m, ...updates } : m));
+  }
+
   async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
     // Auto-resolve family from the chosen product
     const fm = familyMembers.find(m => m.product_id === shopifyProductId);
+    updateLocal(squareCatalogId, { shopify_product_id: shopifyProductId, status: 'manual' } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, shopifyProductId, shopifyVariantId: shopifyVariantId ?? null, familyId: fm?.family_id ?? null, status: 'manual' }),
     });
-    load(filter, search);
   }
 
   async function confirm(squareCatalogId: string) {
+    updateLocal(squareCatalogId, { status: 'confirmed' } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, status: 'confirmed' }),
     });
-    load(filter, search);
   }
 
   async function markRelated(squareCatalogId: string) {
-    // Auto-resolve family from the linked product
     const mapping = mappings.find(m => m.square_catalog_id === squareCatalogId);
     const fm = mapping?.shopify_product_id ? familyMembers.find(m => m.product_id === mapping.shopify_product_id) : null;
+    updateLocal(squareCatalogId, { status: 'related' } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, status: 'related', familyId: fm?.family_id ?? null }),
     });
-    load(filter, search);
   }
 
   async function confirmAll() {
@@ -117,22 +120,22 @@ export default function ProductMappingPage() {
   }
 
   async function ignore(squareCatalogId: string) {
+    updateLocal(squareCatalogId, { status: 'ignored', shopify_product_id: null } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, status: 'ignored', shopifyProductId: null }),
     });
-    load(filter, search);
   }
 
   async function linkFamily(squareCatalogId: string, familyId: string) {
+    updateLocal(squareCatalogId, { status: 'related', family_id: familyId } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ squareCatalogId, familyId, shopifyProductId: null, shopifyVariantId: null, status: 'related' }),
     });
     setChoosingFamily(null);
-    load(filter, search);
   }
 
   async function unlinkProduct(squareCatalogId: string) {
