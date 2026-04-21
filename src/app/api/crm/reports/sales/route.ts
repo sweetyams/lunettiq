@@ -33,18 +33,18 @@ export const GET = handler(async (request) => {
     GROUP BY source ORDER BY revenue DESC
   `);
 
-  // Day-of-week by channel (for comparison)
+  // Day-of-week by location (for comparison)
   const dowByChannel = await db.execute(sql`
-    SELECT source,
+    SELECT coalesce(location_id, 'online') as source,
       extract(dow from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as dow,
       count(*) as orders, coalesce(sum(total_price::numeric), 0) as revenue
     FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
     GROUP BY 1, 2 ORDER BY 1, 2
   `);
 
-  // Hourly by channel
+  // Hourly by location
   const hourlyByChannel = await db.execute(sql`
-    SELECT source,
+    SELECT coalesce(location_id, 'online') as source,
       extract(hour from (created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Montreal') as hour,
       count(*) as orders
     FROM orders_projection WHERE created_at >= ${since} AND created_at <= ${until}
