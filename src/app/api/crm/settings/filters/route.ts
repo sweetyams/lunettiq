@@ -19,19 +19,18 @@ export const GET = handler(async (request) => {
   // Get assignments with product handles
   const assignments = await db.execute(sql`
     SELECT pf.id, pf.product_id, pf.filter_group_id, pf.status, pf.matched_by,
-           p.handle, p.title
+           p.handle, p.title, p.images->0->>'src' as image
     FROM product_filters pf
     JOIN products_projection p ON p.shopify_product_id = pf.product_id
     ${type ? sql`WHERE pf.filter_group_id LIKE ${type + ':%'}` : sql``}
     ORDER BY pf.filter_group_id, p.title
   `);
 
-  // Get products with no assignment for this filter type
+  // Get products with no assignment for this filter type (all statuses)
   const unassigned = type ? await db.execute(sql`
-    SELECT p.shopify_product_id as id, p.handle, p.title
+    SELECT p.shopify_product_id as id, p.handle, p.title, p.images->0->>'src' as image, p.status
     FROM products_projection p
-    WHERE p.status = 'active'
-    AND NOT EXISTS (
+    WHERE NOT EXISTS (
       SELECT 1 FROM product_filters pf
       WHERE pf.product_id = p.shopify_product_id
       AND pf.filter_group_id LIKE ${type + ':%'}

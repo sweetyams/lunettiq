@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 
 interface FilterGroup { id: string; type: string; slug: string; label: string; sortOrder: number | null }
-interface Assignment { id: string; product_id: string; filter_group_id: string; status: string; matched_by: string | null; handle: string; title: string }
-interface Product { id: string; title: string; handle: string }
-interface UnassignedProduct { id: string; handle: string; title: string }
+interface Assignment { id: string; product_id: string; filter_group_id: string; status: string; matched_by: string | null; handle: string; title: string; image: string | null }
+interface UnassignedProduct { id: string; handle: string; title: string; image: string | null; status: string }
 
 const STATUS_COLOURS: Record<string, string> = { auto: '#f59e0b', confirmed: '#16a34a', manual: '#8b5cf6' };
 const STATUS_LABELS: Record<string, string> = { auto: 'Auto', confirmed: 'Confirmed', manual: 'Manual' };
@@ -14,7 +13,6 @@ export default function FiltersPage() {
   const [groups, setGroups] = useState<FilterGroup[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [unassigned, setUnassigned] = useState<UnassignedProduct[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [activeType, setActiveType] = useState<string>('colour');
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,18 +31,12 @@ export default function FiltersPage() {
   }, [activeType]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    fetch('/api/crm/products?limit=500', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle }))))
-      .catch(() => {});
-  }, []);
 
-  const types = [...new Set(groups.map(g => g.type))].sort();
+  const types = Array.from(new Set(groups.map(g => g.type))).sort();
   if (!types.includes(activeType) && types.length > 0 && !loading) {
     // keep activeType even if no groups yet
   }
-  const allTypes = [...new Set([...types, 'colour', 'shape', 'size', 'material'])].sort();
+  const allTypes = Array.from(new Set([...types, 'colour', 'shape', 'size', 'material'])).sort();
 
   const typeGroups = groups.filter(g => g.type === activeType);
   const groupAssignments = activeGroup === '__unassigned'
@@ -127,9 +119,9 @@ export default function FiltersPage() {
     load();
   }
 
-  const assignedProductIds = new Set(groupAssignments.map(a => a.product_id));
+  const assignedProductIds = new Set(assignments.map(a => a.product_id));
   const filteredProducts = assignSearch.length >= 2
-    ? products.filter(p => !assignedProductIds.has(p.id) && p.title.toLowerCase().includes(assignSearch.toLowerCase())).slice(0, 10)
+    ? unassigned.filter(p => p.title.toLowerCase().includes(assignSearch.toLowerCase())).slice(0, 10)
     : [];
 
   const autoCount = groupAssignments.filter(a => a.status === 'auto').length;
@@ -239,8 +231,16 @@ export default function FiltersPage() {
                 {unassigned.map(p => (
                   <tr key={p.id}>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{p.title}</div>
-                      <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {p.image && <img src={p.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                        <div>
+                          <div style={{ fontWeight: 500 }}>
+                            {p.title}
+                            {p.status !== 'active' && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280' }}>{p.status}</span>}
+                          </div>
+                          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       <select
@@ -270,8 +270,13 @@ export default function FiltersPage() {
                 {groupAssignments.map(a => (
                   <tr key={a.id}>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{a.title}</div>
-                      <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{a.handle}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        {a.image && <img src={a.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                        <div>
+                          <div style={{ fontWeight: 500 }}>{a.title}</div>
+                          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{a.handle}</div>
+                        </div>
+                      </div>
                     </td>
                     {!activeGroup && <td style={{ fontSize: 'var(--crm-text-xs)' }}>{a.filter_group_id}</td>}
                     <td>
@@ -310,6 +315,11 @@ export default function FiltersPage() {
               <button onClick={() => { setShowAssign(false); setAssignSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
             </div>
             <input value={assignSearch} onChange={e => setAssignSearch(e.target.value)} placeholder="Search products…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
+            {filteredProducts.length > 1 && (
+              <button onClick={async () => { for (const p of filteredProducts) await assignProduct(p.id); }} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', background: 'var(--crm-text-primary)', color: 'white', cursor: 'pointer', marginBottom: 8 }}>
+                Select All ({filteredProducts.length})
+              </button>
+            )}
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredProducts.map(p => (
                 <button key={p.id} onClick={() => assignProduct(p.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4 }}

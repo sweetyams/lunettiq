@@ -792,6 +792,28 @@ export const searchSynonyms = pgTable('search_synonyms', {
 
 // ─── Integration Config ──────────────────────────────────
 
+// ─── Product Families ────────────────────────────────────────────────────
+// Groups products by model (e.g. SHELBY) for colour/type switching on PDP
+
+export const productFamilies = pgTable('product_families', {
+  id: text('id').primaryKey(), // e.g. 'shelby', 'fontaine'
+  name: text('name').notNull(), // 'SHELBY', 'FONTAINE'
+});
+
+export const productFamilyMembers = pgTable('product_family_members', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  familyId: text('family_id').notNull(),
+  productId: text('product_id').notNull(),
+  type: text('type'), // 'optical' | 'sun'
+  colour: text('colour'), // display colour e.g. 'green', 'black'
+  colourHex: text('colour_hex'), // swatch hex for frontend
+  sortOrder: integer('sort_order').default(0),
+}, (t) => ({
+  uniq: uniqueIndex('pfm_family_product_uniq').on(t.familyId, t.productId),
+  idxFamily: index('idx_pfm_family').on(t.familyId),
+  idxProduct: index('idx_pfm_product').on(t.productId),
+}));
+
 // ─── Unified Filter System ───────────────────────────────────────────────
 // filter_groups: defines available filter values per type (colour, shape, size, material, etc.)
 // product_filters: maps products to filter groups with auto/confirmed/manual status
