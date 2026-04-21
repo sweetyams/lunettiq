@@ -679,35 +679,31 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
     <>
       {grouped.map(g => (
         <div key={g.label} className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-          <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 8 }}>
+          <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-2)' }}>
             {g.label}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {g.fields.map(f => (
-              <span key={f.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20, background: 'var(--crm-surface-hover)', fontSize: 'var(--crm-text-xs)' }}>
-                <span style={{ color: 'var(--crm-text-tertiary)' }}>{formatKey(f.key)}</span>
-                <span style={{ fontWeight: 500 }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
-              </span>
-            ))}
-          </div>
+          {g.fields.map(f => (
+            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
+            </div>
+          ))}
         </div>
       ))}
       {(ungrouped.length > 0 || !showAll) && (
         <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ungrouped.length ? 8 : 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ungrouped.length ? 'var(--crm-space-2)' : 0 }}>
             <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>{ungrouped.length > 0 ? 'Other' : ''}</div>
             <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
               {showAll ? 'Show configured only' : 'Show all fields'}
             </button>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {ungrouped.map(f => (
-              <span key={f.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20, background: 'var(--crm-surface-hover)', fontSize: 'var(--crm-text-xs)' }}>
-                <span style={{ color: 'var(--crm-text-tertiary)' }}>{formatKey(f.key)}</span>
-                <span style={{ fontWeight: 500 }}>{formatValue(f.value)}</span>
-              </span>
-            ))}
-          </div>
+          {ungrouped.map(f => (
+            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+            </div>
+          ))}
         </div>
       )}
     </>
