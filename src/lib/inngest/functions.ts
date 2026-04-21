@@ -291,6 +291,7 @@ export const syncProduct = inngest.createFunction(
             compareAtPrice: v.compare_at_price,
             inventoryQuantity: v.inventory_quantity,
             selectedOptions: v.option_values ?? null,
+            imageUrl: v.image_id ? p.images?.find((i: { id: number }) => i.id === v.image_id)?.src : null,
             availableForSale: v.inventory_quantity > 0,
             syncedAt: new Date(),
           },

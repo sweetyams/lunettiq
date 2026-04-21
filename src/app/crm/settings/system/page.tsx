@@ -6,6 +6,7 @@ interface ActionResult { success: boolean; message: string }
 
 const ACTIONS = [
   { id: 'sync-locations', label: 'Sync Locations', description: 'Pull locations from Shopify + Square, link IDs, update names', endpoint: '/api/crm/settings/locations/sync' },
+  { id: 'full-product-sync', label: 'Full Product Sync', description: 'Pull all products + variants + metafields + images from Shopify (slow, ~2min)', endpoint: '/api/crm/system/full-product-sync' },
   { id: 'reconcile-products', label: 'Reconcile Products', description: 'Check all DB products against Shopify Storefront API, archive missing ones', endpoint: '/api/crm/system/reconcile-products' },
   { id: 'auto-match-square', label: 'Auto-Match Square Products', description: 'Run auto-matching of Square catalog items to Shopify products', endpoint: '/api/crm/system/auto-match-square' },
   { id: 'backfill-locations', label: 'Backfill Order Locations', description: 'Assign location_id to Square orders missing it (fetches from Square API)', endpoint: '/api/crm/system/backfill-locations' },

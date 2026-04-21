@@ -62,6 +62,16 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
               Search…
               <kbd style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'var(--crm-bg)', padding: '1px 5px', borderRadius: 3, border: '1px solid var(--crm-border-light)' }}>⌘K</kbd>
             </button>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--crm-border)', textDecoration: 'none', color: 'var(--crm-text-secondary)', fontSize: 11, fontWeight: 500, transition: 'border-color 150ms var(--ease-out)' }}
+            >
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', boxShadow: '0 0 0 2px rgba(22,163,74,0.2)' }} />
+              Storefront
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </a>
             <div style={{ flex: 1 }} />
             {/* Notification bell */}
             <div style={{ position: 'relative' }} data-tour="topbar-notifications">

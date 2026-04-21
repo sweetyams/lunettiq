@@ -44,8 +44,8 @@ export const GET = handler(async (request) => {
     ? sql`(CASE WHEN ${productsProjection.title} ILIKE ${q.trim() + '%'} THEN 0 ELSE 1 END) ASC, ${productsProjection.title} ASC`
     : sql`${productsProjection.title} ASC`;
 
-  // Exclude placeholders by default
-  const statusFilter = sql`COALESCE(${productsProjection.status}, 'active') != 'placeholder'`;
+  // Default: show only active products (exclude archived, draft, placeholder)
+  const statusFilter = sql`COALESCE(${productsProjection.status}, 'active') = 'active'`;
   const finalWhere = where ? sql`${where} AND ${statusFilter}` : statusFilter;
 
   const rows = await db.select().from(productsProjection).where(finalWhere).orderBy(orderBy).limit(limit);

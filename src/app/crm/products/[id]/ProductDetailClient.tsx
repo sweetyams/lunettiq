@@ -40,13 +40,11 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
   const images = (product.images ?? []) as Array<{ src?: string } | string>;
   const imgSrcs = images.map(i => typeof i === 'string' ? i : i?.src).filter(Boolean) as string[];
 
-  // Build variant→images mapping using imageUrl match and filename keyword
+  // Map variant → its specific image
   const variantImages = new Map<string, string[]>();
   for (const v of variants) {
     if (!v.imageUrl) continue;
-    const keyword = v.imageUrl.split('/').pop()?.split('.')[0]?.split('?')[0]?.replace(/-\d+$/, '') ?? '';
-    const matched = imgSrcs.filter(src => src === v.imageUrl || (keyword && src.includes(keyword)));
-    if (matched.length) variantImages.set(v.shopifyVariantId, matched);
+    variantImages.set(v.shopifyVariantId, [v.imageUrl]);
   }
 
   const filteredImgs = variantFilter && variantImages.has(variantFilter)
