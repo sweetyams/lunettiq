@@ -29,6 +29,8 @@ export default function ProductMappingPage() {
   const [choosingFamily, setChoosingFamily] = useState<string | null>(null);
   const [families, setFamilies] = useState<Array<{ id: string; name: string }>>([]);
   const [familyMembers, setFamilyMembers] = useState<Array<{ product_id: string; family_id: string; type: string | null }>>([]);
+  const [autoMatchResult, setAutoMatchResult] = useState<any>(null);
+  const [autoMatching, setAutoMatching] = useState(false);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -154,8 +156,28 @@ export default function ProductMappingPage() {
           {total} items · {stats.auto ?? 0} auto · {stats.confirmed ?? 0} confirmed · {stats.manual ?? 0} manual · {stats.unmatched ?? 0} unmatched
           {(stats.auto ?? 0) > 0 && <button onClick={confirmAll} style={{ marginLeft: 12, fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', background: 'var(--crm-success, #16a34a)', color: 'white' }}>✓ Confirm All Auto</button>}
           {filter === 'unmatched' && <button onClick={ignoreNoMatch} style={{ marginLeft: 8, fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', background: 'var(--crm-border)', color: 'var(--crm-text-secondary)' }}>Ignore All No Match</button>}
+          <button onClick={async () => {
+            setAutoMatching(true); setAutoMatchResult(null);
+            const r = await fetch('/api/crm/system/auto-match-square', { method: 'POST', credentials: 'include' });
+            const d = await r.json();
+            setAutoMatchResult(d.data); setAutoMatching(false); load(filter, search);
+          }} disabled={autoMatching} style={{ marginLeft: 8, fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer', background: 'var(--crm-text-primary)', color: 'white' }}>
+            {autoMatching ? 'Matching…' : '⟳ Auto-Match'}
+          </button>
         </div>
       </div>
+
+      {/* Auto-match results */}
+      {autoMatchResult && (
+        <div className="crm-card" style={{ padding: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-4)', borderLeft: '3px solid var(--crm-success, #16a34a)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 'var(--crm-text-sm)' }}>
+              Auto-match complete: <strong>{autoMatchResult.auto}</strong> matched · <strong>{autoMatchResult.familyOnly}</strong> family-only · <strong>{autoMatchResult.unmatched}</strong> unmatched · {autoMatchResult.skipped} skipped (manual/confirmed)
+            </div>
+            <button onClick={() => setAutoMatchResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--crm-text-tertiary)' }}>✕</button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs + Search */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-4)' }}>
