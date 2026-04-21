@@ -11,6 +11,7 @@ const SETTINGS_SECTIONS = [
   { href: '/crm/settings/product-mapping', label: 'Product Mapping', description: 'Link Square catalog items to Shopify products' },
   { href: '/crm/settings/colour-groups', label: 'Colour Groups', description: 'Group related colours for storefront filters' },
   { href: '/crm/settings/audit', label: 'Audit Log', description: 'View all system activity' },
+  { href: '/crm/settings/system', label: 'System Setup', description: 'Run sync, reconciliation, and data maintenance tasks' },
 ];
 
 export default async function SettingsPage() {
