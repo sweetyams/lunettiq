@@ -290,9 +290,9 @@ export default function FamiliesPage() {
 
       {/* Add member modal */}
       {showAddMember && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowAddMember(false); setMemberSearch(''); } }}>
-          <div className="crm-card" style={{ width: 400, padding: 'var(--crm-space-5)' }}>
+          <div className="crm-card crm-modal" style={{ width: 400, padding: 'var(--crm-space-5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
               <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Add Product to {families.find(f => f.id === activeFamily)?.name}</h2>
               <button onClick={() => { setShowAddMember(false); setMemberSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>

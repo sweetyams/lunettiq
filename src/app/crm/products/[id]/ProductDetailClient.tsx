@@ -250,7 +250,7 @@ export function ProductDetailClient({ product, variants, siblings }: { product: 
       <ProductCanvas productId={product.shopifyProductId} />
 
       {toast && (
-        <div style={{ position: 'fixed', bottom: 16, right: 16, background: 'var(--crm-text-primary)', color: 'var(--crm-text-inverse)', padding: '10px 16px', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', fontSize: 'var(--crm-text-sm)', zIndex: 50 }}>
+        <div className="crm-toast" style={{ position: 'fixed', bottom: 16, right: 16, background: 'var(--crm-text-primary)', color: 'var(--crm-text-inverse)', padding: '10px 16px', borderRadius: 'var(--crm-radius-md)', boxShadow: 'var(--crm-shadow-lg)', fontSize: 'var(--crm-text-sm)', zIndex: 50 }}>
           ✓ {toast}
         </div>
       )}

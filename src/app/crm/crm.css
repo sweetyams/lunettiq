@@ -73,6 +73,11 @@
   /* Sidebar */
   --crm-sidebar-width: 220px;
   --crm-sidebar-collapsed: 56px;
+
+  /* Easing curves (Emil Kowalski) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-out-soft: cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 /* ─── CRM Root Reset ──────────────────────────────────── */
@@ -106,7 +111,7 @@
   background: var(--crm-surface);
   color: var(--crm-text-primary);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 }
 .crm-input:focus {
   border-color: var(--crm-border-focus);
@@ -132,11 +137,14 @@ select.crm-input {
   padding: 6px 12px;
   border-radius: var(--crm-radius-md);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 160ms var(--ease-out);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   border: none;
+}
+.crm-btn:active {
+  transform: scale(0.97);
 }
 .crm-btn-primary {
   background: var(--crm-text-primary);
@@ -193,3 +201,104 @@ select.crm-input {
 .crm-root ::-webkit-scrollbar-track { background: transparent; }
 .crm-root ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
 .crm-root ::-webkit-scrollbar-thumb:hover { background: #a3a3a3; }
+
+/* ─── Table Row Transitions ───────────────────────────── */
+.crm-table tbody tr {
+  transition: background 120ms var(--ease-out);
+}
+
+/* ─── Card Hover ──────────────────────────────────────── */
+.crm-card {
+  transition: box-shadow 200ms var(--ease-out);
+}
+.crm-card-interactive:hover {
+  box-shadow: var(--crm-shadow-md);
+}
+
+/* ─── Modal / Overlay Animations ──────────────────────── */
+.crm-overlay {
+  animation: crm-overlay-in 200ms var(--ease-out);
+}
+.crm-modal {
+  animation: crm-modal-in 250ms var(--ease-out);
+}
+
+@keyframes crm-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes crm-modal-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Dropdown / Popover Enter ────────────────────────── */
+.crm-dropdown {
+  animation: crm-dropdown-in 150ms var(--ease-out);
+  transform-origin: var(--crm-dropdown-origin, top left);
+}
+@keyframes crm-dropdown-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ─── Stagger Animation for Lists ─────────────────────── */
+.crm-stagger > * {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: crm-stagger-in 250ms var(--ease-out) forwards;
+}
+.crm-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.crm-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.crm-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.crm-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.crm-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.crm-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.crm-stagger > *:nth-child(n+7) { animation-delay: 240ms; }
+
+@keyframes crm-stagger-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Toast Enter/Exit ────────────────────────────────── */
+.crm-toast {
+  animation: crm-toast-in 300ms var(--ease-out);
+}
+@keyframes crm-toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Hover Media Query ───────────────────────────────── */
+@media (hover: hover) and (pointer: fine) {
+  .crm-table tbody tr:hover {
+    background: var(--crm-surface-hover);
+  }
+  .crm-card-interactive:hover {
+    box-shadow: var(--crm-shadow-md);
+  }
+}
+/* Remove hover on touch devices */
+@media (hover: none) {
+  .crm-table tbody tr:hover {
+    background: inherit;
+  }
+}
+
+/* ─── Reduced Motion ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .crm-btn:active { transform: none; }
+  .crm-overlay,
+  .crm-modal,
+  .crm-dropdown,
+  .crm-toast { animation-duration: 0ms; }
+  .crm-stagger > * {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .crm-card,
+  .crm-table tbody tr,
+  .crm-input,
+  .crm-btn { transition-duration: 0ms; }
+}

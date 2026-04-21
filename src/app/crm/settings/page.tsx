@@ -47,9 +47,9 @@ export default async function SettingsPage() {
       {SETTINGS_GROUPS.map((group) => (
         <div key={group.title} className="mb-8">
           <h2 className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">{group.title}</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 crm-stagger">
             {group.items.map((s) => (
-              <Link key={s.href} href={s.href} className="bg-white border border-neutral-200 rounded p-4 hover:shadow-sm transition-shadow">
+              <Link key={s.href} href={s.href} className="crm-card crm-card-interactive p-4">
                 <h3 className="font-medium text-sm">{s.label}</h3>
                 <p className="text-xs text-neutral-500 mt-1">{s.description}</p>
               </Link>
