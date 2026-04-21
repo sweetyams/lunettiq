@@ -100,17 +100,18 @@ export default function CollectionClient({
     // Metafield-based filtering
     if (filterData?.products) {
       const fd = filterData.products;
+      const getId = (p: Product) => p.id.replace(/^gid:\/\/shopify\/Product\//, '');
       if (filters.colour.length > 0) {
-        list = list.filter(p => { const pf = fd[p.id]; return pf && filters.colour.some(c => pf.colours.includes(c)); });
+        list = list.filter(p => { const pf = fd[getId(p)]; return pf && filters.colour.some(c => pf.colours.includes(c)); });
       }
       if (filters.shape.length > 0) {
-        list = list.filter(p => { const pf = fd[p.id]; return pf && filters.shape.some(s => pf.shapes.includes(s)); });
+        list = list.filter(p => { const pf = fd[getId(p)]; return pf && filters.shape.some(s => pf.shapes.includes(s)); });
       }
       if (filters.material.length > 0) {
-        list = list.filter(p => { const pf = fd[p.id]; return pf && pf.material && filters.material.includes(pf.material); });
+        list = list.filter(p => { const pf = fd[getId(p)]; return pf && pf.material && filters.material.includes(pf.material); });
       }
       if (filters.size.length > 0) {
-        list = list.filter(p => { const pf = fd[p.id]; return pf && pf.size && filters.size.includes(pf.size); });
+        list = list.filter(p => { const pf = fd[getId(p)]; return pf && pf.size && filters.size.includes(pf.size); });
       }
     }
 
