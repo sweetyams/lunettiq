@@ -28,7 +28,7 @@ interface Variant {
   imageUrl: string | null;
 }
 
-export function ProductDetailClient({ product, variants }: { product: Product; variants: Variant[] }) {
+export function ProductDetailClient({ product, variants, siblings }: { product: Product; variants: Variant[]; siblings?: any[] }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [mainImg, setMainImg] = useState(0);
@@ -113,6 +113,33 @@ export function ProductDetailClient({ product, variants }: { product: Product; v
             <div style={{ fontSize: 'var(--crm-text-lg)', fontWeight: 600, marginBottom: 'var(--crm-space-5)' }}>
               {product.priceMin === product.priceMax ? `$${product.priceMin}` : `$${product.priceMin}–$${product.priceMax}`}
             </div>
+
+            {/* Family switcher */}
+            {siblings && siblings.length > 1 && (
+              <div style={{ marginBottom: 'var(--crm-space-4)' }}>
+                <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 6 }}>Family</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {siblings.map((s: any) => {
+                    const isActive = s.shopify_product_id === product.shopifyProductId;
+                    return (
+                      <Link key={s.shopify_product_id} href={`/crm/products/${s.shopify_product_id}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 6,
+                          border: isActive ? '2px solid var(--crm-text-primary)' : '1px solid var(--crm-border)',
+                          textDecoration: 'none', color: 'inherit', background: isActive ? 'var(--crm-surface-hover)' : 'none',
+                        }}>
+                        {s.image && <img src={s.image} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} />}
+                        {!s.image && s.colour_hex && <div style={{ width: 20, height: 20, borderRadius: '50%', background: s.colour_hex, border: '1px solid var(--crm-border)' }} />}
+                        <div style={{ fontSize: 'var(--crm-text-xs)' }}>
+                          <div style={{ fontWeight: isActive ? 600 : 400 }}>{s.colour ?? s.handle}</div>
+                          <div style={{ color: 'var(--crm-text-tertiary)', fontSize: 9 }}>{s.type}</div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <button onClick={() => { if (variants.length > 1) setVariantPickerOpen(true); else { setRecVariants(variants.slice(0, 1)); setPickerOpen(true); } }} className="crm-btn crm-btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '8px 16px' }}>
               Recommend to Client
