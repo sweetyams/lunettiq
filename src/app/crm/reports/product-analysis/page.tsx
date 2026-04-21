@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 
 interface Analysis {
-  summary: { totalProducts: number; withDimensions: number; missingDimensions: number; inStock: number; outOfStock: number; avgColoursPerProduct: number };
+  summary: { totalProducts: number; totalFamilies: number; withDimensions: number; missingDimensions: number; inStock: number; outOfStock: number; avgColoursPerFamily: number };
+  familyBreakdown: Array<{ id: string; name: string; colour_count: string; optical_count: string; sun_count: string }>;
   dimensions: Record<string, { stats: { min: number; max: number; avg: number; median: number; count: number } | null; distribution: { range: string; count: number }[] }>;
   sizeBreakdown: { small: number; medium: number; large: number; unknown: number };
   categories: { shapes: { name: string; count: number }[]; colours: { name: string; count: number }[]; materials: { name: string; count: number }[]; types: { name: string; count: number }[]; vendors: { name: string; count: number }[] };
@@ -133,12 +134,33 @@ export default function ProductAnalysisPage() {
 
       {/* Summary cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
-        <StatCard label="Total Products" value={data.summary.totalProducts} />
-        <StatCard label="With Dimensions" value={data.summary.withDimensions} sub={`${data.summary.missingDimensions} missing`} />
+        <StatCard label="Products" value={data.summary.totalProducts} />
+        <StatCard label="Families" value={data.summary.totalFamilies} />
         <StatCard label="In Stock" value={data.summary.inStock} sub={`${data.summary.outOfStock} out`} />
-        <StatCard label="Avg Colours" value={data.summary.avgColoursPerProduct} sub="per product" />
+        <StatCard label="Avg Colours" value={data.summary.avgColoursPerFamily} sub="per family" />
         <StatCard label="Size Coverage" value={`${data.sizeBreakdown.small}S / ${data.sizeBreakdown.medium}M / ${data.sizeBreakdown.large}L`} sub={`${data.sizeBreakdown.unknown} unknown`} />
       </div>
+
+      {/* Family Breakdown */}
+      {data.familyBreakdown.length > 0 && (
+        <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
+          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Colours per Family</h2>
+          {data.familyBreakdown.map(f => {
+            const maxC = Number(data.familyBreakdown[0].colour_count);
+            return (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', width: 100, textAlign: 'right' }}>{f.name}</span>
+                <div style={{ flex: 1, height: 20, background: 'var(--crm-surface-hover)', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${(Number(f.colour_count) / maxC) * 100}%`, height: '100%', background: 'var(--crm-text-primary)', borderRadius: 4 }} />
+                </div>
+                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)', width: 80, textAlign: 'right' }}>
+                  {f.colour_count} colours · {f.optical_count}O {f.sun_count}S
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Gaps */}
       {data.gaps.length > 0 && (

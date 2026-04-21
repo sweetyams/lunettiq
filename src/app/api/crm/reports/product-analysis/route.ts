@@ -159,15 +159,33 @@ export const GET = handler(async () => {
   const outOfStock = parsed.filter(p => !p.inStock).length;
   if (outOfStock > parsed.length * 0.3) gaps.push(`${outOfStock} products (${Math.round(outOfStock / parsed.length * 100)}%) out of stock`);
 
+  // Family colour analysis from product_family_members
+  const familyStats = await db.execute(sql`
+    SELECT f.id, f.name,
+      count(DISTINCT m.colour) as colour_count,
+      count(*) FILTER (WHERE m.type = 'optical') as optical_count,
+      count(*) FILTER (WHERE m.type = 'sun') as sun_count
+    FROM product_families f
+    JOIN product_family_members m ON m.family_id = f.id
+    JOIN products_projection p ON p.shopify_product_id = m.product_id AND p.status = 'active'
+    GROUP BY f.id, f.name ORDER BY colour_count DESC
+  `);
+  const familyColours = familyStats.rows as Array<{ id: string; name: string; colour_count: string; optical_count: string; sun_count: string }>;
+  const avgColoursPerFamily = familyColours.length
+    ? Math.round(familyColours.reduce((s, f) => s + Number(f.colour_count), 0) / familyColours.length * 10) / 10
+    : 0;
+
   return jsonOk({
     summary: {
       totalProducts: parsed.length,
+      totalFamilies: familyColours.length,
       withDimensions: withDims.length,
       missingDimensions: parsed.length - withDims.length,
       inStock: parsed.filter(p => p.inStock).length,
       outOfStock,
-      avgColoursPerProduct: Math.round(parsed.reduce((s, p) => s + p.colourCount, 0) / parsed.length * 10) / 10,
+      avgColoursPerFamily,
     },
+    familyBreakdown: familyColours,
     dimensions: {
       frameWidth: { stats: stats(frameWidths), distribution: histogram(frameWidths, 5) },
       bridgeWidth: { stats: stats(bridgeWidths), distribution: histogram(bridgeWidths, 2) },
