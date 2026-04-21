@@ -1,57 +1,20 @@
 export const dynamic = "force-dynamic";
 import { db } from '@/lib/db';
-import { ordersProjection, productFeedback, customersProjection, productMappings } from '@/lib/db/schema';
+import { productFeedback, customersProjection, ordersProjection } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
-import { jsonOk, jsonError } from '@/lib/crm/api-response';
+import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { getProductSales } from '@/lib/crm/product-sales';
 
 export const GET = handler(async (_request, ctx) => {
   await requireCrmAuth('org:products:read');
   const productId = ctx.params.id;
 
-  // Get mapped Square names for this product
-  const mappedRows = await db.select({ squareName: productMappings.squareName, status: productMappings.status }).from(productMappings)
-    .where(sql`${productMappings.shopifyProductId} = ${productId} AND ${productMappings.status} IN ('confirmed', 'auto', 'manual', 'related')`);
-  const squareNames = mappedRows.map(r => r.squareName?.toLowerCase()?.trim()).filter(Boolean) as string[];
+  // Sales data from centralized service
+  const sales = await getProductSales(productId);
 
-  // --- Velocity: all orders, weekly chart for last 12 weeks ---
-  const allOrders = await db.select({
-    id: ordersProjection.shopifyOrderId,
-    items: ordersProjection.lineItems,
-    createdAt: ordersProjection.createdAt,
-    customerId: ordersProjection.shopifyCustomerId,
-    source: ordersProjection.source,
-    locationId: ordersProjection.locationId,
-  }).from(ordersProjection);
-
-  // Filter to orders containing this product (by product_id OR Square name)
-  const productOrders: Array<{ createdAt: string; customerId: string | null; qty: number; source: string; locationId: string | null }> = [];
-  for (const o of allOrders) {
-    const items = (o.items as any[]) ?? [];
-    const match = items.filter((li: any) =>
-      String(li.product_id) === productId ||
-      (squareNames.length > 0 && squareNames.includes((li.name ?? '').toLowerCase().trim()))
-    );
-    if (match.length) {
-      productOrders.push({ createdAt: o.createdAt as any, customerId: o.customerId, qty: match.reduce((s: number, li: any) => s + (li.quantity ?? 1), 0), source: o.source ?? 'shopify', locationId: o.locationId });
-    }
-  }
-
-  const now = Date.now();
-  const weeks = Array.from({ length: 12 }, (_, i) => {
-    const start = now - (12 - i) * 7 * 86400000;
-    const end = start + 7 * 86400000;
-    const units = productOrders.filter(o => { const t = new Date(o.createdAt).getTime(); return t >= start && t < end; }).reduce((s, o) => s + o.qty, 0);
-    return { week: i + 1, units };
-  });
-
-  const d7 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 7 * 86400000).reduce((s, o) => s + o.qty, 0);
-  const d30 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 30 * 86400000).reduce((s, o) => s + o.qty, 0);
-  const d90 = productOrders.filter(o => new Date(o.createdAt).getTime() > now - 90 * 86400000).reduce((s, o) => s + o.qty, 0);
-  const total = productOrders.reduce((s, o) => s + o.qty, 0);
-
-  // --- Sentiment from product_feedback ---
+  // Sentiment from product_feedback
   const feedback = await db.select().from(productFeedback).where(eq(productFeedback.shopifyProductId, productId));
   const love = feedback.filter(f => f.sentiment === 'love' || f.sentiment === 'like').length;
   const neutral = feedback.filter(f => f.sentiment === 'neutral').length;
@@ -59,56 +22,49 @@ export const GET = handler(async (_request, ctx) => {
   const totalFb = love + neutral + dislike;
   const totalTryOns = feedback.reduce((s, f) => s + (f.tryOnCount ?? 0), 0);
 
-  // --- Pairs-with: co-purchased products (includes Square data) ---
-  const buyerIds = Array.from(new Set(productOrders.map(o => o.customerId).filter(Boolean))) as string[];
+  // Pairs-with: co-purchased products
+  const buyerIds = new Set<string>();
+  const squareNames = await db.execute(sql`
+    SELECT lower(trim(square_name)) as name FROM product_mappings
+    WHERE shopify_product_id = ${productId} AND status IN ('confirmed','auto','manual','related') AND square_name IS NOT NULL
+  `).then(r => (r.rows as any[]).map(row => row.name).filter(Boolean));
+
+  const matchCond = squareNames.length
+    ? sql`(item->>'product_id' = ${productId} OR lower(trim(item->>'name')) IN (${sql.join(squareNames.map(n => sql`${n}`), sql`, `)}))`
+    : sql`item->>'product_id' = ${productId}`;
+
+  const buyerRows = await db.execute(sql`
+    SELECT DISTINCT o.shopify_customer_id FROM orders_projection o, jsonb_array_elements(o.line_items) as item
+    WHERE ${matchCond} AND o.shopify_customer_id IS NOT NULL
+  `);
+  for (const r of buyerRows.rows as any[]) buyerIds.add(r.shopify_customer_id);
+
   let pairsWith: Array<{ productId: string; title: string; count: number }> = [];
-  if (buyerIds.length) {
+  if (buyerIds.size > 0) {
+    const ids = Array.from(buyerIds);
     const buyerOrders = await db.select({ items: ordersProjection.lineItems }).from(ordersProjection)
-      .where(sql`${ordersProjection.shopifyCustomerId} IN (${sql.join(buyerIds.map(id => sql`${id}`), sql`, `)})`);
+      .where(sql`${ordersProjection.shopifyCustomerId} IN (${sql.join(ids.map(id => sql`${id}`), sql`, `)})`);
     const coProducts = new Map<string, { title: string; count: number }>();
     for (const o of buyerOrders) {
       for (const li of (o.items as any[]) ?? []) {
         const pid = String(li.product_id ?? '');
         const liName = (li.name ?? '').toLowerCase().trim();
-        // Skip self
         if (pid === productId || squareNames.includes(liName)) continue;
         if (!pid && !li.name) continue;
         const key = pid || liName;
-        const title = li.name?.split(' - ')[0] ?? li.title ?? key;
+        const title = li.name?.split(' - ')[0] ?? key;
         const existing = coProducts.get(key);
-        if (existing) existing.count++;
-        else coProducts.set(key, { title, count: 1 });
+        if (existing) existing.count++; else coProducts.set(key, { title, count: 1 });
       }
     }
     pairsWith = Array.from(coProducts.entries()).map(([id, v]) => ({ productId: id, ...v })).sort((a, b) => b.count - a.count).slice(0, 8);
   }
 
-  // --- Sales by channel ---
-  const salesByChannel: Record<string, { orders: number; units: number }> = {};
-  for (const o of productOrders) {
-    const ch = o.source ?? 'shopify';
-    if (!salesByChannel[ch]) salesByChannel[ch] = { orders: 0, units: 0 };
-    salesByChannel[ch].orders++;
-    salesByChannel[ch].units += o.qty;
-  }
-
-  // --- Sales by location (with resolved names) ---
-  const { getLocationNames } = await import('@/lib/crm/location-names');
-  const locNames = await getLocationNames();
-  const salesByLocation: Record<string, { orders: number; units: number }> = {};
-  for (const o of productOrders) {
-    const locId = o.locationId ?? 'online';
-    const name = locNames.get(locId) ?? locId;
-    if (!salesByLocation[name]) salesByLocation[name] = { orders: 0, units: 0 };
-    salesByLocation[name].orders++;
-    salesByLocation[name].units += o.qty;
-  }
-
-  // --- Hot clients: loved but not purchased ---
+  // Hot clients: loved but not purchased
   const lovedFb = feedback.filter(f => f.sentiment === 'love' || f.sentiment === 'like');
-  const purchaserIds = new Set(buyerIds);
+  const purchaserIds = buyerIds;
   const hotIds = lovedFb.map(f => f.shopifyCustomerId).filter(id => !purchaserIds.has(id));
-  let hotClients: Array<{ id: string; name: string; email: string | null; ltv: string; tier: string | null; lastInteraction: string | null }> = [];
+  let hotClients: Array<{ id: string; name: string; email: string | null; ltv: string; tier: string | null }> = [];
   if (hotIds.length) {
     const clients = await db.select().from(customersProjection)
       .where(sql`${customersProjection.shopifyCustomerId} IN (${sql.join(hotIds.map(id => sql`${id}`), sql`, `)})`);
@@ -118,20 +74,23 @@ export const GET = handler(async (_request, ctx) => {
       email: c.email,
       ltv: c.totalSpent ?? '0',
       tier: (c.tags ?? []).find(t => t.startsWith('member-'))?.replace('member-', '') ?? null,
-      lastInteraction: null,
     })).sort((a, b) => Number(b.ltv) - Number(a.ltv)).slice(0, 10);
   }
 
-  // Square mappings for this product
-  const squareMappings = mappedRows.map(r => ({ square_name: r.squareName, status: (r as any).status }));
+  // Square mappings for display
+  const squareMappings = await db.execute(sql`
+    SELECT square_name, status FROM product_mappings
+    WHERE shopify_product_id = ${productId} AND status IN ('confirmed','auto','manual','related')
+  `).then(r => r.rows);
 
   return jsonOk({
-    velocity: { weeks, d7, d30, d90, total },
+    velocity: sales.velocity,
     sentiment: { love, neutral, dislike, total: totalFb, tryOns: totalTryOns },
     pairsWith,
     hotClients,
-    salesByChannel,
-    salesByLocation,
+    salesByChannel: Object.fromEntries(sales.byChannel.map(c => [c.source, { orders: c.orders, units: c.units }])),
+    salesByLocation: Object.fromEntries(sales.byLocation.map(l => [l.locationId, { orders: l.orders, units: l.units }])),
     squareMappings,
+    salesSummary: { direct: sales.direct, square: sales.square, total: sales.total },
   });
 });

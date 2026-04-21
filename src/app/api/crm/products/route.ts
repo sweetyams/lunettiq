@@ -61,50 +61,9 @@ export const GET = handler(async (request) => {
     inventoryMap.set(pid, (inventoryMap.get(pid) ?? 0) + (v.inventoryQuantity ?? 0));
   }
 
-  // Sales counts (direct + Square-linked)
-  const salesMap = new Map<string, { units: number; squareUnits: number }>();
-  if (productIds.length) {
-    // Direct sales by product_id
-    const directSales = await db.execute(sql`
-      SELECT item->>'product_id' as pid, count(*) as units
-      FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-      WHERE item->>'product_id' IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
-      GROUP BY 1
-    `);
-    for (const r of directSales.rows as any[]) {
-      salesMap.set(r.pid, { units: Number(r.units), squareUnits: 0 });
-    }
-
-    // Square-linked sales
-    const sqMappings = await db.execute(sql`
-      SELECT shopify_product_id, lower(square_name) as sq_name
-      FROM product_mappings
-      WHERE shopify_product_id IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
-      AND status IN ('confirmed', 'auto', 'manual', 'related')
-      AND square_name IS NOT NULL
-    `);
-    const pidBySqName = new Map<string, string>();
-    for (const r of sqMappings.rows as any[]) {
-      if (r.sq_name && r.shopify_product_id) pidBySqName.set(r.sq_name, r.shopify_product_id);
-    }
-    if (pidBySqName.size > 0) {
-      const sqNames = Array.from(pidBySqName.keys());
-      const sqSales = await db.execute(sql`
-        SELECT lower(item->>'name') as name, count(*) as units
-        FROM orders_projection o, jsonb_array_elements(o.line_items) as item
-        WHERE lower(item->>'name') IN (${sql.join(sqNames.map(n => sql`${n}`), sql`, `)})
-        GROUP BY 1
-      `);
-      for (const r of sqSales.rows as any[]) {
-        const pid = pidBySqName.get(r.name);
-        if (pid) {
-          const existing = salesMap.get(pid) ?? { units: 0, squareUnits: 0 };
-          existing.squareUnits += Number(r.units);
-          salesMap.set(pid, existing);
-        }
-      }
-    }
-  }
+  // Sales counts (direct + Square-linked) via shared service
+  const { getBulkProductSales } = await import('@/lib/crm/product-sales');
+  const salesMap = productIds.length ? await getBulkProductSales(productIds) : new Map();
 
   const data = rows.map(r => ({
     ...r,
