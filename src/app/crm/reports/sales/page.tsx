@@ -73,11 +73,15 @@ export default function SalesDashboard() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'' | 'shopify' | 'square'>('');
   const [location, setLocation] = useState('');
   const [channel, setChannel] = useState('');
   const [locations, setLocations] = useState<Array<{ id: string; name: string }>>([]);
   const [aiResult, setAiResult] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  // Sync tab to channel filter
+  useEffect(() => { setChannel(tab); }, [tab]);
 
   useEffect(() => {
     fetch('/api/crm/settings/locations', { credentials: 'include' })
@@ -118,17 +122,12 @@ export default function SalesDashboard() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 1200 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
         <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Sales</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select value={location} onChange={e => setLocation(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 140 }}>
             <option value="">All locations</option>
             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <select value={channel} onChange={e => setChannel(e.target.value)} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 120 }}>
-            <option value="">All channels</option>
-            <option value="shopify">Online</option>
-            <option value="square">In-store</option>
           </select>
           <div style={{ width: 1, height: 20, background: 'var(--crm-border)' }} />
           <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); if (!endDate) setEndDate(new Date().toISOString().slice(0, 10)); }} className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: 130 }} />
@@ -144,6 +143,18 @@ export default function SalesDashboard() {
             }}>{d === 365 ? '1yr' : `${d}d`}</button>
           ))}
         </div>
+      </div>
+
+      {/* Channel Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 'var(--crm-space-5)', borderBottom: '2px solid var(--crm-border-light)' }}>
+        {([['', 'Combined'], ['shopify', 'Online'], ['square', 'In-Store']] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key as '' | 'shopify' | 'square')} style={{
+            padding: '8px 20px', fontSize: 'var(--crm-text-sm)', fontWeight: tab === key ? 600 : 400, border: 'none', cursor: 'pointer', background: 'none',
+            color: tab === key ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)',
+            borderBottom: tab === key ? '2px solid var(--crm-text-primary)' : '2px solid transparent',
+            marginBottom: -2, transition: 'color 150ms var(--ease-out), border-color 150ms var(--ease-out)',
+          }}>{label}</button>
+        ))}
       </div>
 
       {/* AI Analysis */}
@@ -194,16 +205,22 @@ export default function SalesDashboard() {
         )}
       </div>
 
-      {/* Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
+      {/* Summary — context-aware per tab */}
+      <div className="crm-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <StatCard label="Revenue" value={fmt(data.summary.total_revenue)} />
         <StatCard label="Orders" value={Number(data.summary.total_orders).toLocaleString()} />
         <StatCard label="AOV" value={fmt(data.summary.aov)} />
-        <StatCard label="Customers" value={Number(data.summary.unique_customers).toLocaleString()} />
+        {tab === 'square' ? (
+          <StatCard label="Avg Basket" value={fmt(data.summary.aov)} sub="per in-store visit" />
+        ) : tab === 'shopify' ? (
+          <StatCard label="Unique Buyers" value={Number(data.summary.unique_customers).toLocaleString()} sub="online customers" />
+        ) : (
+          <StatCard label="Customers" value={Number(data.summary.unique_customers).toLocaleString()} />
+        )}
       </div>
 
-      {/* Source + Location */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
+      {/* Channel breakdown — only on Combined tab */}
+      {tab === '' && (
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Channel</h2>
           {(data.channelBreakdown ?? data.revBySource).map(s => (
@@ -216,16 +233,20 @@ export default function SalesDashboard() {
             </div>
           ))}
         </div>
-        <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
-          <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Location</h2>
-          {data.revByLocation.map(l => (
-            <div key={l.location} onClick={() => setLocation(location === l.location ? '' : l.location)} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderBottom: '1px solid var(--crm-border-light)', cursor: 'pointer', background: location === l.location ? 'var(--crm-surface-hover)' : 'none', borderRadius: 4 }}>
-              <span style={{ fontSize: 'var(--crm-text-sm)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locations.find(loc => loc.id === l.location)?.name ?? l.location}</span>
-              <span style={{ fontSize: 'var(--crm-text-sm)' }}>{fmt(l.revenue)} ({l.orders} orders)</span>
-            </div>
-          ))}
-        </div>
+      )}
+
+      {/* Location — show on In-Store tab or Combined */}
+      {tab !== 'shopify' && data.revByLocation.length > 0 && (
+      <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
+        <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>By Location</h2>
+        {data.revByLocation.map(l => (
+          <div key={l.location} onClick={() => setLocation(location === l.location ? '' : l.location)} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px', borderBottom: '1px solid var(--crm-border-light)', cursor: 'pointer', background: location === l.location ? 'var(--crm-surface-hover)' : 'none', borderRadius: 4 }}>
+            <span style={{ fontSize: 'var(--crm-text-sm)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{locations.find(loc => loc.id === l.location)?.name ?? l.location}</span>
+            <span style={{ fontSize: 'var(--crm-text-sm)' }}>{fmt(l.revenue)} ({l.orders} orders)</span>
+          </div>
+        ))}
       </div>
+      )}
 
       {/* Revenue over time */}
       <div className="crm-card" style={{ padding: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>
@@ -271,7 +292,8 @@ export default function SalesDashboard() {
         </div>
       </div>
 
-      {/* Hourly + Day of Week — comparison view */}
+      {/* Hourly + Day of Week — comparison view (hide on Online tab) */}
+      {tab !== 'shopify' && (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-6)' }}>
         <div className="crm-card" style={{ padding: 'var(--crm-space-4)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
@@ -323,6 +345,7 @@ export default function SalesDashboard() {
           })()}
         </div>
       </div>
+      )}
 
       {/* Optical vs Sun + Top Families */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--crm-space-4)', marginBottom: 'var(--crm-space-4)' }}>

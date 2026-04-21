@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
 
   const products = await db.select({
     id: productsProjection.shopifyProductId,
+    slug: productsProjection.slug,
     handle: productsProjection.handle,
     title: productsProjection.title,
     vendor: productsProjection.vendor,
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const img = typeof imgs[0] === 'string' ? imgs[0] : imgs[0]?.src ?? null;
     // Return the GID format so it matches what the client stores
     const gid = rawIds.find(r => extractId(r) === p.id) ?? p.id;
-    return { id: gid, handle: p.handle, title: p.title, vendor: p.vendor, price: p.priceMin ?? '0', imageUrl: img };
+    return { id: gid, slug: p.slug ?? p.handle, title: p.title, vendor: p.vendor, price: p.priceMin ?? '0', imageUrl: img };
   });
 
   return NextResponse.json({ data });

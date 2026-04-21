@@ -7,8 +7,8 @@ import type { Product } from '@/types/shopify';
 interface Sibling {
   colour: string;
   hex: string | null;
-  optical: { productId: string; handle: string; title: string; image: string | null } | null;
-  sun: { productId: string; handle: string; title: string; image: string | null } | null;
+  optical: { productId: string; slug: string; title: string; image: string | null } | null;
+  sun: { productId: string; slug: string; title: string; image: string | null } | null;
 }
 
 interface FamilyData {
@@ -19,7 +19,7 @@ interface FamilyData {
 interface FamilySwitcherProps {
   productHandle: string;
   currentType: 'optical' | 'sun';
-  onNavigate: (product: Product) => void;
+  onNavigate: (product: Product, slug: string) => void;
 }
 
 // Module-level cache — survives component remounts, shared across instances
@@ -49,8 +49,8 @@ function fetchProduct(handle: string): Promise<Product | null> {
   return promise;
 }
 
-export function seedProductCache(product: Product) {
-  productCache.set(product.handle, product);
+export function seedProductCache(slug: string, product: Product) {
+  productCache.set(slug, product);
 }
 
 export default function FamilySwitcher({ productHandle, currentType, onNavigate }: FamilySwitcherProps) {
@@ -72,8 +72,8 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
   useEffect(() => {
     if (!data) return;
     for (const s of data.siblings) {
-      if (s.optical && s.optical.handle !== productHandle) fetchProduct(s.optical.handle);
-      if (s.sun && s.sun.handle !== productHandle) fetchProduct(s.sun.handle);
+      if (s.optical && s.optical.slug !== productHandle) fetchProduct(s.optical.slug);
+      if (s.sun && s.sun.slug !== productHandle) fetchProduct(s.sun.slug);
     }
   }, [data, productHandle]);
 
@@ -82,7 +82,7 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
     setNavigating(handle);
     const product = await fetchProduct(handle);
     if (product && handleRef.current !== handle) {
-      onNavigate(product);
+      onNavigate(product, handle);
       window.history.pushState(null, '', `/products/${handle}`);
     }
     setNavigating(null);
@@ -91,7 +91,7 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
   if (!data || data.siblings.length === 0) return null;
 
   const currentSibling = data.siblings.find(s =>
-    s.optical?.handle === productHandle || s.sun?.handle === productHandle
+    s.optical?.slug === productHandle || s.sun?.slug === productHandle
   );
 
   const hasOptical = data.siblings.some(s => s.optical);
@@ -109,14 +109,14 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
             <TypeButton
               label="Optical"
               active={currentType === 'optical'}
-              loading={navigating === currentSibling?.optical?.handle}
-              onClick={currentType === 'optical' ? undefined : () => currentSibling?.optical && handleNav(currentSibling.optical.handle)}
+              loading={navigating === currentSibling?.optical?.slug}
+              onClick={currentType === 'optical' ? undefined : () => currentSibling?.optical && handleNav(currentSibling.optical.slug)}
             />
             <TypeButton
               label="Sunglasses"
               active={currentType === 'sun'}
-              loading={navigating === currentSibling?.sun?.handle}
-              onClick={currentType === 'sun' ? undefined : () => currentSibling?.sun && handleNav(currentSibling.sun.handle)}
+              loading={navigating === currentSibling?.sun?.slug}
+              onClick={currentType === 'sun' ? undefined : () => currentSibling?.sun && handleNav(currentSibling.sun.slug)}
             />
           </div>
         </div>
@@ -127,23 +127,23 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
           <p className="text-sm text-gray-600 mb-3">
             Colour: <span className="text-black font-medium">{formatColour(currentSibling?.colour)}</span>
           </p>
-          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Colour options">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Colour options">
             {data.siblings.map(s => {
               const product = currentType === 'sun' ? s.sun : s.optical;
               if (!product) return null;
-              const isActive = product.handle === productHandle;
+              const isActive = product.slug === productHandle;
 
               return (
                 <button
                   key={s.colour}
-                  onClick={() => handleNav(product.handle)}
+                  onClick={() => handleNav(product.slug)}
                   disabled={isActive}
-                  className={`relative block overflow-hidden transition-all ${
+                  className={`relative block overflow-hidden rounded-full transition-all ${
                     isActive
                       ? 'ring-2 ring-black ring-offset-2'
                       : 'ring-1 ring-gray-200 hover:ring-gray-400'
-                  } ${navigating === product.handle ? 'opacity-60' : ''}`}
-                  style={{ width: 64, height: 80 }}
+                  } ${navigating === product.slug ? 'opacity-60' : ''}`}
+                  style={{ width: 32, height: 32 }}
                   role="radio"
                   aria-checked={isActive}
                   aria-label={formatColour(s.colour)}
@@ -154,12 +154,10 @@ export default function FamilySwitcher({ productHandle, currentType, onNavigate 
                       alt={formatColour(s.colour)}
                       fill
                       className="object-cover"
-                      sizes="64px"
+                      sizes="32px"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{ background: s.hex || '#F5F5F9' }}>
-                      <span className="text-[10px] text-gray-500 text-center px-1">{formatColour(s.colour)}</span>
-                    </div>
+                    <div className="w-full h-full" style={{ background: s.hex || '#F5F5F9' }} />
                   )}
                 </button>
               );

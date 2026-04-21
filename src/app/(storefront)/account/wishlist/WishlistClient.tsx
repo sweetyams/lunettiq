@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ProductCard from '@/components/shared/ProductCard';
 
-interface Product { id: string; handle: string; title: string; imageUrl: string | null; price: string; vendor: string | null }
+interface Product { id: string; slug: string; title: string; imageUrl: string | null; price: string; vendor: string | null }
 
 interface WishlistClientProps {
   initialProductIds: string[];
@@ -50,7 +50,7 @@ export default function WishlistClient({ initialProductIds }: WishlistClientProp
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
       {products.map(p => (
-        <ProductCard key={p.id} light={{ id: p.id, handle: p.handle, title: p.title, imageUrl: p.imageUrl, price: p.price, vendor: p.vendor }} className="w-full" />
+        <ProductCard key={p.id} light={{ id: p.id, slug: p.slug, title: p.title, imageUrl: p.imageUrl, price: p.price, vendor: p.vendor }} className="w-full" />
       ))}
       {productIds.filter(id => !products.find(p => p.id === id)).map(id => (
         <div key={id} className="aspect-square bg-gray-50 rounded-lg flex items-center justify-center">

@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
   // Query products
   const products = await db.select({
     id: productsProjection.shopifyProductId,
+    slug: productsProjection.slug,
     handle: productsProjection.handle,
     title: productsProjection.title,
     vendor: productsProjection.vendor,
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
   const formattedProducts = products.map(p => {
     const imgs = (p.images ?? []) as Array<string | { src?: string }>;
     const imageUrl = typeof imgs[0] === 'string' ? imgs[0] : imgs[0]?.src ?? null;
-    return { id: p.id, handle: p.handle, title: p.title, vendor: p.vendor, price: p.priceMin, imageUrl, tags: p.tags };
+    return { id: p.id, slug: p.slug ?? p.handle, title: p.title, vendor: p.vendor, price: p.priceMin, imageUrl, tags: p.tags };
   });
 
   // Query collections

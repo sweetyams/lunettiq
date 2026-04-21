@@ -178,6 +178,7 @@ export const ordersProjection = pgTable(
 export const productsProjection = pgTable('products_projection', {
   shopifyProductId: text('shopify_product_id').primaryKey(),
   handle: text('handle'),
+  slug: text('slug'),  // clean URL slug derived from handle (no ©, ™, etc.)
   title: text('title'),
   description: text('description'),
   productType: text('product_type'),

@@ -7,15 +7,15 @@ import ProductCard from '@/components/shared/ProductCard';
 const STORAGE_KEY = 'lunettiq_recently_viewed';
 const MAX_ITEMS = 8;
 
-interface ViewedProduct { id: string; handle: string; title: string; imageUrl: string | null; price: string }
+interface ViewedProduct { id: string; slug: string; title: string; imageUrl: string | null; price: string }
 
-export function trackProductView(product: Product) {
+export function trackProductView(product: Product, slug: string) {
   if (typeof window === 'undefined') return;
   try {
     const stored: ViewedProduct[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]');
     const filtered = stored.filter(p => p.id !== product.id);
     filtered.unshift({
-      id: product.id, handle: product.handle, title: product.title,
+      id: product.id, slug, title: product.title,
       imageUrl: product.images[0]?.url ?? null,
       price: product.priceRange.minVariantPrice.amount,
     });

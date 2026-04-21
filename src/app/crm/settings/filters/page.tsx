@@ -231,14 +231,13 @@ export default function FiltersPage() {
                 {unassigned.map(p => (
                   <tr key={p.id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {p.image && <img src={p.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
                         <div>
                           <div style={{ fontWeight: 500 }}>
                             {p.title}
                             {p.status !== 'active' && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280' }}>{p.status}</span>}
                           </div>
-                          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
                         </div>
                       </div>
                     </td>
@@ -246,7 +245,8 @@ export default function FiltersPage() {
                       <select
                         defaultValue=""
                         onChange={e => { if (e.target.value) { assignToGroup(p.id, e.target.value); e.target.value = ''; } }}
-                        style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 8px', borderRadius: 4, border: '1px solid var(--crm-border)' }}
+                        style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 8px' }}
+                        className="crm-input"
                       >
                         <option value="">Select group…</option>
                         {typeGroups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
@@ -270,12 +270,9 @@ export default function FiltersPage() {
                 {groupAssignments.map(a => (
                   <tr key={a.id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {a.image && <img src={a.image} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
-                        <div>
-                          <div style={{ fontWeight: 500 }}>{a.title}</div>
-                          <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{a.handle}</div>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {a.image && <img src={a.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                        <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{a.title}</div>
                       </div>
                     </td>
                     {!activeGroup && <td style={{ fontSize: 'var(--crm-text-xs)' }}>{a.filter_group_id}</td>}

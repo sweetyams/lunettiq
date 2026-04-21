@@ -4,11 +4,12 @@ import { useState, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Product } from '@/types/shopify';
+import { toSlug } from '@/lib/shopify/slug';
 import FavouriteIcon from './FavouriteIcon';
 
 export interface ProductCardLightProps {
   id: string;
-  handle: string;
+  slug: string;
   title: string;
   imageUrl: string | null;
   price: string | null;
@@ -29,7 +30,8 @@ function ProductCard({ product, light, className, prefetch, onClick }: ProductCa
   const [loaded, setLoaded] = useState(false);
 
   // Derive common fields from either source
-  const handle = product?.handle ?? light!.handle;
+  // light.handle is already a slug from our APIs; product.handle is raw Shopify → toSlug it
+  const handle = light ? light.slug : toSlug(product!.handle);
   const title = product?.title ?? light!.title;
   const id = product?.id ?? light!.id;
 

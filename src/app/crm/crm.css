@@ -123,11 +123,17 @@
 
 select.crm-input {
   appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+  padding-right: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 8px center;
+  background-size: 14px;
   cursor: pointer;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out), background-color 100ms var(--ease-out);
+}
+select.crm-input:hover {
+  border-color: var(--crm-border-focus);
+  background-color: var(--crm-surface-hover);
 }
 
 .crm-btn {
@@ -301,4 +307,115 @@ select.crm-input {
   .crm-table tbody tr,
   .crm-input,
   .crm-btn { transition-duration: 0ms; }
+}
+
+/* ─── Dashboard ───────────────────────────────────────── */
+.crm-hover-surface:hover { background: var(--crm-surface-hover); }
+
+/* KPI cards — fade up + subtle scale on load */
+.crm-kpi-grid > * {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: crm-kpi-in 350ms var(--ease-out) forwards;
+}
+.crm-kpi-grid > *:nth-child(1) { animation-delay: 0ms; }
+.crm-kpi-grid > *:nth-child(2) { animation-delay: 60ms; }
+.crm-kpi-grid > *:nth-child(3) { animation-delay: 120ms; }
+.crm-kpi-grid > *:nth-child(4) { animation-delay: 180ms; }
+
+@keyframes crm-kpi-in {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* KPI hover lift */
+.crm-kpi:hover {
+  box-shadow: var(--crm-shadow-md);
+  transform: translateY(-1px);
+}
+.crm-kpi {
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+
+/* Dashboard sections — stagger in after KPIs */
+.crm-dash-section {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: crm-stagger-in 400ms var(--ease-out) forwards;
+  animation-delay: 280ms;
+}
+.crm-dash-section:nth-child(2) { animation-delay: 340ms; }
+
+/* Table row hover slide indicator */
+.crm-table-animated tbody tr {
+  position: relative;
+}
+.crm-table-animated tbody tr::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--crm-accent);
+  transform: scaleY(0);
+  transition: transform 150ms var(--ease-out);
+}
+.crm-table-animated tbody tr:hover::after {
+  transform: scaleY(1);
+}
+
+/* Appointment card pulse for today */
+.crm-today-pulse {
+  animation: crm-today-glow 2s var(--ease-in-out) infinite alternate;
+}
+@keyframes crm-today-glow {
+  from { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+  to { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08); }
+}
+
+/* Quick action hover arrow nudge */
+.crm-action-link::after {
+  content: '→';
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+  margin-left: auto;
+  font-size: var(--crm-text-xs);
+  color: var(--crm-text-tertiary);
+}
+.crm-action-link:hover::after {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Delta badge pop */
+.crm-delta {
+  animation: crm-delta-pop 400ms var(--ease-out) forwards;
+  animation-delay: 500ms;
+  opacity: 0;
+  transform: scale(0.8);
+}
+@keyframes crm-delta-pop {
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Status badge shimmer on hover */
+.crm-status-badge {
+  transition: filter 200ms var(--ease-out);
+}
+.crm-status-badge:hover {
+  filter: brightness(1.1);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .crm-kpi-grid > *,
+  .crm-dash-section,
+  .crm-delta {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .crm-kpi:hover { transform: none; }
+  .crm-today-pulse { animation: none; }
+  .crm-table-animated tbody tr::after { transition: none; }
+  .crm-action-link::after { transition: none; }
 }

@@ -7,7 +7,7 @@ import ProductCard from '@/components/shared/ProductCard';
 import { track } from '@/lib/tracking';
 
 interface SearchProduct {
-  id: string; handle: string; title: string; vendor: string | null;
+  id: string; slug: string; title: string; vendor: string | null;
   price: string | null; imageUrl: string | null; tags: string[] | null;
 }
 interface SearchCollection { handle: string; title: string; }
@@ -179,7 +179,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                   {results!.products.map(p => (
                     <ProductCard
                       key={p.id}
-                      light={{ id: p.id, handle: p.handle, title: p.title, imageUrl: p.imageUrl, price: p.price, vendor: p.vendor }}
+                      light={{ id: p.id, slug: p.slug, title: p.title, imageUrl: p.imageUrl, price: p.price, vendor: p.vendor }}
                       className="w-full"
                       onClick={handleProductClick}
                     />

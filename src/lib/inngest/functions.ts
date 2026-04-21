@@ -15,8 +15,9 @@ import {
   filterGroups,
 } from '@/lib/db/schema';
 import { getProductMetafields } from '@/lib/crm/shopify-admin';
+import { toSlug } from '@/lib/shopify/slug';
 
-const TYPE_SUFFIXES = ['sun', 'optic', 'optics', 'sunglasses', 'copy'];
+const TYPE_SUFFIXES = ['sun', 'optic', 'optics', 'sunglasses'];
 
 /** Auto-assign a product to family + filters based on handle pattern */
 async function autoAssignProduct(productId: string, handle: string) {
@@ -43,7 +44,7 @@ async function autoAssignProduct(productId: string, handle: string) {
         type = tail[tail.length - 1] === 'sun' || tail[tail.length - 1] === 'sunglasses' ? 'sun' : 'optical';
         tail = tail.slice(0, -1);
       } else {
-        type = 'sun';
+        type = 'optical';
       }
       colour = tail.join('-');
     }
@@ -56,6 +57,9 @@ async function autoAssignProduct(productId: string, handle: string) {
       await db.insert(productFamilyMembers)
         .values({ familyId: family, productId, type, colour, colourHex: null, sortOrder: 0 })
         .onConflictDoNothing();
+      // Regenerate family slugs so new member gets family-derived slug
+      const { regenerateFamilySlugs } = await import('@/lib/crm/regenerate-slugs');
+      await regenerateFamilySlugs(family);
     }
   }
 
@@ -247,6 +251,20 @@ export const syncProduct = inngest.createFunction(
         target: productsProjection.shopifyProductId,
         set: productUpdateSet,
       });
+
+    // Slug: family-owned if in a family, else derived from handle
+    const [familyRow] = await db.select({ familyId: productFamilyMembers.familyId })
+      .from(productFamilyMembers)
+      .where(eq(productFamilyMembers.productId, String(p.id)))
+      .limit(1);
+    if (familyRow) {
+      const { regenerateFamilySlugs } = await import('@/lib/crm/regenerate-slugs');
+      await regenerateFamilySlugs(familyRow.familyId);
+    } else if (p.handle) {
+      await db.update(productsProjection)
+        .set({ slug: toSlug(p.handle) })
+        .where(eq(productsProjection.shopifyProductId, String(p.id)));
+    }
 
     for (const v of p.variants ?? []) {
       await db

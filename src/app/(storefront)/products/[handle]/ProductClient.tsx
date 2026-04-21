@@ -30,6 +30,7 @@ const RecentlyViewed = dynamic(() => import('@/components/pdp/RecentlyViewed'), 
 
 interface ProductClientProps {
   product: Product;
+  slug: string;
   lensOptions: LensOption[];
 }
 
@@ -61,9 +62,17 @@ export function BelowFoldPDP({
   );
 }
 
-export default function ProductClient({ product, lensOptions }: ProductClientProps) {
+export default function ProductClient({ product: initialProduct, slug: initialSlug, lensOptions }: ProductClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [product, setProduct] = useState(initialProduct);
+  const [currentSlug, setCurrentSlug] = useState(initialSlug);
+
+  // Seed cache with server-provided product
+  useEffect(() => { seedProductCache(initialSlug, initialProduct); }, [initialProduct, initialSlug]);
+
+  // Sync if server provides a new product (e.g. direct navigation)
+  useEffect(() => { setProduct(initialProduct); setCurrentSlug(initialSlug); }, [initialProduct, initialSlug]);
 
   const colourOption = product.options.find(
     (opt) => opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
@@ -71,6 +80,56 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
   const colours = colourOption?.values ?? [];
   const initialColour = searchParams.get('color') ?? colours[0] ?? null;
   const [selectedColour, setSelectedColour] = useState<string | null>(initialColour);
+
+  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+  const toggleAccordion = useCallback((id: string) => {
+    setOpenAccordion((prev) => (prev === id ? null : id));
+  }, []);
+
+  const [lensConfig, setLensConfig] = useState<LensConfiguration>({
+    lensType: null,
+    lensIndex: null,
+    coatings: [],
+    sunOptions: null,
+    prescription: null,
+    prescriptionMethod: null,
+  });
+  const [configStep, setConfigStep] = useState<ConfiguratorStep>('lensType');
+
+  const handleFamilyNavigate = useCallback((newProduct: Product, newSlug: string) => {
+    setProduct(newProduct);
+    setCurrentSlug(newSlug);
+    const newColourOpt = newProduct.options.find(
+      (opt) => opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
+    );
+    setSelectedColour(newColourOpt?.values[0] ?? null);
+    setLensConfig({ lensType: null, lensIndex: null, coatings: [], sunOptions: null, prescription: null, prescriptionMethod: null });
+    setConfigStep('lensType');
+    setOpenAccordion(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Handle browser back/forward between family products
+  useEffect(() => {
+    const onPopState = () => {
+      const match = window.location.pathname.match(/^\/products\/(.+?)(?:\?|$)/);
+      if (!match) return;
+      const slug = decodeURIComponent(match[1]);
+      if (slug === currentSlug) return;
+      fetch(`/api/storefront/product/${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.product) {
+            setProduct(d.product);
+            setCurrentSlug(d.slug ?? slug);
+            seedProductCache(d.slug ?? slug, d.product);
+          }
+        })
+        .catch(() => { window.location.reload(); });
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [currentSlug]);
 
   const isSunglasses = useMemo(
     () => product.collections?.some((c) => c.handle.toLowerCase().includes('sun')) ?? false,
@@ -95,25 +154,10 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
       setSelectedColour(colour);
       const params = new URLSearchParams(searchParams.toString());
       params.set('color', colour);
-      router.replace(`/products/${product.handle}?${params.toString()}`, { scroll: false });
+      router.replace(`/products/${currentSlug}?${params.toString()}`, { scroll: false });
     },
     [router, searchParams, product.handle]
   );
-
-  const [openAccordion, setOpenAccordion] = useState<string | null>(null);
-  const toggleAccordion = useCallback((id: string) => {
-    setOpenAccordion((prev) => (prev === id ? null : id));
-  }, []);
-
-  const [lensConfig, setLensConfig] = useState<LensConfiguration>({
-    lensType: null,
-    lensIndex: null,
-    coatings: [],
-    sunOptions: null,
-    prescription: null,
-    prescriptionMethod: null,
-  });
-  const [configStep, setConfigStep] = useState<ConfiguratorStep>('lensType');
 
   const handleConfigChange = useCallback((config: LensConfiguration, step: ConfiguratorStep) => {
     setLensConfig(config);
@@ -136,11 +180,11 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
 
   // Track recently viewed
   useEffect(() => {
-    import('@/components/pdp/RecentlyViewed').then(m => m.trackProductView(product));
+    import('@/components/pdp/RecentlyViewed').then(m => m.trackProductView(product, currentSlug));
     import('@/lib/tracking').then(({ track }) => {
       track({ event: 'view_item', data: { id: product.id, name: product.title, price: parseFloat(product.variants[0]?.price ?? '0'), currency: 'CAD' } });
     });
-  }, [product]);
+  }, [product, currentSlug]);
 
   return (
     <div className="site-container">
@@ -178,7 +222,7 @@ export default function ProductClient({ product, lensOptions }: ProductClientPro
 
             {/* Family switcher (colour + type) — primary; falls back to variant ColourSelector */}
             <div className="mt-6">
-              <FamilySwitcher productId={product.id} productHandle={product.handle} currentType={isSunglasses ? 'sun' : 'optical'} />
+              <FamilySwitcher productHandle={currentSlug} currentType={isSunglasses ? 'sun' : 'optical'} onNavigate={handleFamilyNavigate} />
             </div>
 
             {colours.length > 1 && (

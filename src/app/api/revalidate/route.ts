@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { toSlug } from '@/lib/shopify/slug';
 
 const REVALIDATION_SECRET = process.env.REVALIDATION_SECRET;
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     switch (type) {
       case 'product':
-        if (handle) paths.push(`/products/${handle}`);
+        if (handle) paths.push(`/products/${toSlug(handle)}`);
         paths.push('/'); // homepage may show product rows
         break;
       case 'collection':

@@ -10,7 +10,7 @@ interface Recommendation {
 }
 
 interface ProductPreview {
-  handle: string;
+  slug: string;
   title: string;
   imageUrl: string | null;
   priceMin: string;
@@ -53,7 +53,7 @@ export default function OpticianShelf({ recommendations, opticianName }: Props) 
       <p className="text-xs text-gray-400 mb-4">Hand-selected frames from your named optician</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {products.map(p => (
-          <Link key={p.handle} href={`/products/${p.handle}`} className="group">
+          <Link key={p.slug} href={`/products/${p.slug}`} className="group">
             {p.imageUrl && (
               <div className="aspect-square bg-gray-50 rounded-lg overflow-hidden mb-2">
                 <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />

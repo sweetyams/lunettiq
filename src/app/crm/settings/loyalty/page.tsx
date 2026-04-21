@@ -127,7 +127,7 @@ export default function LoyaltySettingsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="text-xs text-neutral-400 mb-1">Shipping Tier</div>
-                  <select value={editing.shippingTier ?? ''} onChange={e => setEditing({ ...editing, shippingTier: e.target.value || null })} className="w-full px-3 py-2 border border-neutral-200 rounded text-sm">
+                  <select value={editing.shippingTier ?? ''} onChange={e => setEditing({ ...editing, shippingTier: e.target.value || null })} className="crm-input" style={{ width: '100%' }}>
                     <option value="">None</option>
                     <option value="standard">Standard (free)</option>
                     <option value="priority">Priority</option>
@@ -137,7 +137,7 @@ export default function LoyaltySettingsPage() {
                 <Field label="Early Access (hours)" value={String(editing.earlyAccessHours)} onChange={v => setEditing({ ...editing, earlyAccessHours: Number(v) })} type="number" />
                 <div>
                   <div className="text-xs text-neutral-400 mb-1">Free Repairs</div>
-                  <select value={editing.freeRepairs ?? ''} onChange={e => setEditing({ ...editing, freeRepairs: e.target.value || null })} className="w-full px-3 py-2 border border-neutral-200 rounded text-sm">
+                  <select value={editing.freeRepairs ?? ''} onChange={e => setEditing({ ...editing, freeRepairs: e.target.value || null })} className="crm-input" style={{ width: '100%' }}>
                     <option value="">None</option>
                     <option value="1/yr">1 per year</option>
                     <option value="2/yr">2 per year</option>
@@ -146,7 +146,7 @@ export default function LoyaltySettingsPage() {
                 </div>
                 <div>
                   <div className="text-xs text-neutral-400 mb-1">Style Consultation</div>
-                  <select value={editing.styleConsultation ?? ''} onChange={e => setEditing({ ...editing, styleConsultation: e.target.value || null })} className="w-full px-3 py-2 border border-neutral-200 rounded text-sm">
+                  <select value={editing.styleConsultation ?? ''} onChange={e => setEditing({ ...editing, styleConsultation: e.target.value || null })} className="crm-input" style={{ width: '100%' }}>
                     <option value="">None</option>
                     <option value="15 min/yr">15 min/year</option>
                     <option value="30 min/yr">30 min/year</option>
@@ -156,7 +156,7 @@ export default function LoyaltySettingsPage() {
                 </div>
                 <div>
                   <div className="text-xs text-neutral-400 mb-1">Frame Rotation</div>
-                  <select value={editing.frameRotation ?? ''} onChange={e => setEditing({ ...editing, frameRotation: e.target.value || null })} className="w-full px-3 py-2 border border-neutral-200 rounded text-sm">
+                  <select value={editing.frameRotation ?? ''} onChange={e => setEditing({ ...editing, frameRotation: e.target.value || null })} className="crm-input" style={{ width: '100%' }}>
                     <option value="">None</option>
                     <option value="10% off">10% off</option>
                     <option value="25% off">25% off</option>
@@ -175,7 +175,7 @@ export default function LoyaltySettingsPage() {
                 <Field label="Referred Discount ($)" value={editing.referredDiscount ?? ''} onChange={v => setEditing({ ...editing, referredDiscount: v || null })} type="number" />
                 <div>
                   <div className="text-xs text-neutral-400 mb-1">Referred Trial Tier</div>
-                  <select value={editing.referredTrialTier ?? ''} onChange={e => setEditing({ ...editing, referredTrialTier: e.target.value || null })} className="w-full px-3 py-2 border border-neutral-200 rounded text-sm">
+                  <select value={editing.referredTrialTier ?? ''} onChange={e => setEditing({ ...editing, referredTrialTier: e.target.value || null })} className="crm-input" style={{ width: '100%' }}>
                     <option value="">None</option>
                     <option value="essential">Essential</option>
                     <option value="cult">CULT</option>

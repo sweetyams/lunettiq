@@ -14,6 +14,6 @@ export const WithProduct: Story = { args: { product: mockProduct } };
 
 export const Light: Story = {
   args: {
-    light: { id: 'gid://shopify/Product/1', handle: 'plateau-round', title: 'Plateau Round', imageUrl: 'https://placehold.co/800x1000/F5F5F9/333?text=Lunettiq', price: '295.00' },
+    light: { id: 'gid://shopify/Product/1', slug: 'plateau-round', title: 'Plateau Round', imageUrl: 'https://placehold.co/800x1000/F5F5F9/333?text=Lunettiq', price: '295.00' },
   },
 };

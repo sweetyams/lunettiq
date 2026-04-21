@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
   const rows = await db.select({
     id: productsProjection.shopifyProductId,
+    slug: productsProjection.slug,
     handle: productsProjection.handle,
     title: productsProjection.title,
     priceMin: productsProjection.priceMin,
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   const products = rows.map(r => {
     const imgs = (r.images ?? []) as Array<string | { src?: string }>;
     const imageUrl = typeof imgs[0] === 'string' ? imgs[0] : imgs[0]?.src ?? null;
-    return { id: r.id, handle: r.handle, title: r.title, priceMin: r.priceMin, imageUrl };
+    return { id: r.id, slug: r.slug ?? r.handle, title: r.title, priceMin: r.priceMin, imageUrl };
   });
 
   return NextResponse.json({ products });

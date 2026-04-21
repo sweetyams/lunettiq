@@ -7,8 +7,8 @@ const meta: Meta<typeof RecentlyViewed> = {
   decorators: [(Story) => <WishlistProvider><Story /></WishlistProvider>],
   beforeEach: () => {
     localStorage.setItem('lunettiq_recently_viewed', JSON.stringify([
-      { id: 'p1', handle: 'plateau-round', title: 'Plateau Round', imageUrl: null, price: '295.00' },
-      { id: 'p2', handle: 'dix30-aviator', title: 'Dix30 Aviator', imageUrl: null, price: '325.00' },
+      { id: 'p1', slug: 'plateau-round', title: 'Plateau Round', imageUrl: null, price: '295.00' },
+      { id: 'p2', slug: 'dix30-aviator', title: 'Dix30 Aviator', imageUrl: null, price: '325.00' },
     ]));
     return () => { localStorage.removeItem('lunettiq_recently_viewed'); };
   },

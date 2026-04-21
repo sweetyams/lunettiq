@@ -29,14 +29,22 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
     ? families.filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
     : families;
 
+  function toggle(f: Family) {
+    setExpanded(prev => { const next = new Set(prev); if (next.has(f.id)) next.delete(f.id); else next.add(f.id); return next; });
+    if (!expanded.has(f.id) && !familySales[f.id]) {
+      fetch(`/api/crm/products/families/${f.id}/sales`, { credentials: 'include' })
+        .then(r => r.json()).then(d => setFamilySales(prev => ({ ...prev, [f.id]: d.data }))).catch(() => {});
+    }
+  }
+
+  const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`;
+
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--crm-space-3)' }}>
           <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Families</h1>
-          <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>
-            {loading ? '…' : filtered.length}
-          </span>
+          <span style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)' }}>{loading ? '…' : filtered.length}</span>
         </div>
         <Link href="/crm/settings/families" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>Manage Families ↗</Link>
       </div>
@@ -46,161 +54,114 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
       </div>
 
       {loading ? <div style={{ color: 'var(--crm-text-tertiary)' }}>Loading…</div> : (
-        <div className="crm-card" style={{ overflow: 'hidden' }}>
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th>Family</th>
-                <th>Products</th>
-                <th style={{ width: 80, textAlign: 'center' }}>Colours</th>
-                <th style={{ width: 80, textAlign: 'center' }}>Optical</th>
-                <th style={{ width: 80, textAlign: 'center' }}>Sun</th>
-                <th style={{ width: 80, textAlign: 'center' }}>Square</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(f => {
-                const prods = (f.products ?? []).filter(p => p.id);
-                const seen = new Set<string>();
-                const uniqueProds = prods.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-                const isExpanded = expanded.has(f.id);
-                return (
-                  <React.Fragment key={f.id}>
-                  <tr onClick={() => {
-                    setExpanded(prev => { const next = new Set(prev); if (next.has(f.id)) next.delete(f.id); else next.add(f.id); return next; });
-                    if (!expanded.has(f.id) && !familySales[f.id]) {
-                      fetch(`/api/crm/products/families/${f.id}/sales`, { credentials: 'include' })
-                        .then(r => r.json()).then(d => setFamilySales(prev => ({ ...prev, [f.id]: d.data }))).catch(() => {});
-                    }
-                  }} style={{ cursor: 'pointer' }}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 12 }}>{isExpanded ? '▼' : '▶'}</span>
-                        <Link href={`/crm/products/families/${f.id}`} onClick={e => e.stopPropagation()} style={{ fontWeight: 600, color: 'var(--crm-text-primary)', textDecoration: 'none', fontSize: 'var(--crm-text-sm)' }}>
-                          {f.name}
-                        </Link>
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                        {uniqueProds.slice(0, 8).map(p => (
-                          <Link key={p.id} href={`/crm/products/${p.id}`} onClick={e => e.stopPropagation()} title={p.title}>
-                            {p.image ? (
-                              <img src={p.image} alt={p.title} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />
-                            ) : (
-                              <div style={{ width: 40, height: 40, borderRadius: 4, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: 'var(--crm-text-tertiary)' }}>
-                                {p.category === 'sun' ? '☀' : '◎'}
-                              </div>
-                            )}
-                          </Link>
-                        ))}
-                        {uniqueProds.length > 8 && (
-                          <div style={{ width: 40, height: 40, borderRadius: 4, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
-                            +{uniqueProds.length - 8}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'center', fontWeight: 500 }}>{f.colour_count}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      {Number(f.optical_count) > 0 && <span style={{ fontSize: 'var(--crm-text-xs)', padding: '2px 8px', borderRadius: 10, background: '#dbeafe', color: '#1e40af' }}>{f.optical_count}</span>}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {Number(f.sun_count) > 0 && <span style={{ fontSize: 'var(--crm-text-xs)', padding: '2px 8px', borderRadius: 10, background: '#fef3c7', color: '#92400e' }}>{f.sun_count}</span>}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {Number(f.square_count) > 0 ? (
-                        <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500 }}>{f.square_count}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--crm-space-3)' }}>
+          {filtered.map(f => {
+            const prods = (f.products ?? []).filter(p => p.id);
+            const seen = new Set<string>();
+            const uniqueProds = prods.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
+            const isExpanded = expanded.has(f.id);
+            const sales = familySales[f.id];
+
+            return (
+              <div key={f.id} className="crm-card" style={{ overflow: 'hidden' }}>
+                {/* Header */}
+                <div onClick={() => toggle(f)} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', padding: 'var(--crm-space-4)', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', width: 12 }}>{isExpanded ? '▼' : '▶'}</span>
+                  <Link href={`/crm/products/families/${f.id}`} onClick={e => e.stopPropagation()} style={{ fontWeight: 600, fontSize: 'var(--crm-text-base)', color: 'var(--crm-text-primary)', textDecoration: 'none' }}>
+                    {f.name}
+                  </Link>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', alignItems: 'center' }}>
+                    <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{f.colour_count} colours</span>
+                    {Number(f.optical_count) > 0 && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#dbeafe', color: '#1e40af' }}>{f.optical_count} opt</span>}
+                    {Number(f.sun_count) > 0 && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#fef3c7', color: '#92400e' }}>{f.sun_count} sun</span>}
+                    {Number(f.square_count) > 0 ? (
+                      <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: '#f5f5f5', color: 'var(--crm-text-secondary)' }}>{f.square_count} ■</span>
+                    ) : (
+                      <span style={{ fontSize: 10, color: 'var(--crm-warning)' }}>no Square</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Product thumbnails — always visible */}
+                <div style={{ display: 'flex', gap: 6, padding: '0 var(--crm-space-4) var(--crm-space-3)', flexWrap: 'wrap' }}>
+                  {uniqueProds.slice(0, 12).map(p => (
+                    <Link key={p.id} href={`/crm/products/${p.id}`} title={`${p.title}\n${p.colour ?? ''} · ${p.type ?? ''}`} style={{ position: 'relative' }}>
+                      {p.image ? (
+                        <img src={p.image} alt={p.title} style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6, background: '#f5f5f5', transition: 'transform 150ms var(--ease-out)' }} />
                       ) : (
-                        <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)' }}>—</span>
+                        <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--crm-text-tertiary)' }}>
+                          {p.category === 'sun' ? '☀' : '◎'}
+                        </div>
                       )}
-                    </td>
-                  </tr>
-                  {isExpanded && (() => {
-                    const sales = familySales[f.id];
-                    const memberMap = new Map((sales?.members ?? []).map((m: any) => [m.product_id, m.sales]));
-                    const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`;
-                    return (
-                      <>
-                        {/* Family totals */}
-                        {sales?.totals && (
-                          <tr style={{ background: 'var(--crm-surface-hover)' }}>
-                            <td colSpan={6} style={{ paddingLeft: 32 }}>
-                              <div style={{ display: 'flex', gap: 16, fontSize: 'var(--crm-text-xs)' }}>
-                                <span><strong>{sales.totals.units}</strong> units</span>
-                                <span><strong>{sales.totals.orders}</strong> orders</span>
-                                <span><strong>{fmt(Number(sales.totals.revenue))}</strong> revenue</span>
-                                {sales.byChannel?.map((c: any) => (
-                                  <span key={c.source} style={{ color: 'var(--crm-text-tertiary)' }}>{c.source === 'shopify' ? 'Online' : c.source === 'square' ? 'In-store' : c.source}: {c.units}</span>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                        {/* Per product */}
-                        {uniqueProds.map(p => {
-                          const ps = memberMap.get(p.id) as { units: number; orders: number; revenue: number } | undefined;
-                          return (
-                          <tr key={`${f.id}-${p.id}`} style={{ background: 'var(--crm-surface-hover)' }}>
-                            <td style={{ paddingLeft: 32 }}>
-                              <Link href={`/crm/products/${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
-                                {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 3, background: '#f5f5f5' }} />}
-                                <div>
-                                  <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{p.title}</div>
-                                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{p.colour}{p.type ? ` · ${p.type}` : ''}</div>
-                                </div>
-                              </Link>
-                            </td>
-                            <td>
-                              {ps && ps.units > 0 ? (
-                                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)' }}>{ps.units} sold · {fmt(ps.revenue)}</span>
-                              ) : (
-                                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>no sales</span>
-                              )}
-                            </td>
-                            <td>
-                              {p.category && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.category === 'sun' ? '#fef3c7' : '#dbeafe', color: p.category === 'sun' ? '#92400e' : '#1e40af' }}>{p.category === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
-                            </td>
-                            <td colSpan={3} style={{ textAlign: 'center' }}>
-                              {Number(p.square_links) > 0
-                                ? <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500 }}>{p.square_links} Square</span>
-                                : <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)' }}>no Square link</span>}
-                            </td>
-                          </tr>
-                          );
-                        })}
-                        {/* Family-only Square items (no Shopify product) */}
-                        {sales?.familyOnlySquare?.length > 0 && (
-                          <tr style={{ background: 'var(--crm-surface-hover)' }}>
-                            <td colSpan={6} style={{ paddingLeft: 32 }}>
-                              <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 4, marginTop: 4 }}>Square-only (no Shopify product)</div>
-                            </td>
-                          </tr>
-                        )}
-                        {(sales?.familyOnlySquare ?? []).map((sq: any, i: number) => (
-                          <tr key={`${f.id}-sq-${i}`} style={{ background: 'var(--crm-surface-hover)' }}>
-                            <td style={{ paddingLeft: 40 }}>
-                              <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)' }}>{sq.square_name}</div>
-                            </td>
-                            <td>
-                              {sq.units > 0 ? (
-                                <span style={{ fontSize: 'var(--crm-text-xs)', color: '#F59E0B' }}>{sq.units} sold · {fmt(sq.revenue)}</span>
-                              ) : (
-                                <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>no sales</span>
-                              )}
-                            </td>
-                            <td><span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E' }}>SQUARE</span></td>
-                            <td colSpan={3}></td>
-                          </tr>
+                    </Link>
+                  ))}
+                  {uniqueProds.length > 12 && (
+                    <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--crm-text-tertiary)' }}>
+                      +{uniqueProds.length - 12}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div style={{ borderTop: '1px solid var(--crm-border-light)' }}>
+                    {/* Sales totals */}
+                    {sales?.totals && (
+                      <div style={{ display: 'flex', gap: 16, padding: 'var(--crm-space-3) var(--crm-space-4)', fontSize: 'var(--crm-text-xs)', background: 'var(--crm-surface-hover)' }}>
+                        <span><strong>{sales.totals.units}</strong> units</span>
+                        <span><strong>{sales.totals.orders}</strong> orders</span>
+                        <span><strong>{fmt(Number(sales.totals.revenue))}</strong> revenue</span>
+                        {sales.byChannel?.map((c: any) => (
+                          <span key={c.source} style={{ color: 'var(--crm-text-tertiary)' }}>{c.source === 'shopify' ? 'Online' : c.source === 'square' ? 'In-store' : c.source}: {c.units}</span>
                         ))}
-                      </>
-                    );
-                  })()}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                      </div>
+                    )}
+
+                    {/* Per-product list */}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {(() => {
+                        const memberMap = new Map((sales?.members ?? []).map((m: any) => [m.productId ?? m.product_id, m.sales]));
+                        return uniqueProds.map(p => {
+                        const ps = memberMap.get(p.id) as { units: number; orders: number; revenue: number } | undefined;
+                        return (
+                          <Link key={p.id} href={`/crm/products/${p.id}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', padding: '8px var(--crm-space-4)', borderBottom: '1px solid var(--crm-border-light)', textDecoration: 'none', color: 'inherit', transition: 'background 100ms' }} className="crm-hover-surface">
+                            {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.colour ?? p.title}</div>
+                              <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{p.type ?? ''}</div>
+                            </div>
+                            {p.category && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.category === 'sun' ? '#fef3c7' : '#dbeafe', color: p.category === 'sun' ? '#92400e' : '#1e40af' }}>{p.category === 'sun' ? 'SUN' : 'OPT'}</span>}
+                            {ps && ps.units > 0 ? (
+                              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-secondary)', whiteSpace: 'nowrap' }}>{ps.units} sold · {fmt(ps.revenue)}</span>
+                            ) : (
+                              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>—</span>
+                            )}
+                            {Number(p.square_links) > 0
+                              ? <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>■</span>
+                              : <span style={{ fontSize: 10, color: 'var(--crm-warning)' }}>!■</span>}
+                          </Link>
+                        );
+                      });
+                      })()}
+                    </div>
+
+                    {/* Square-only items */}
+                    {(sales?.familyOnlySquare ?? []).length > 0 && (
+                      <div style={{ padding: 'var(--crm-space-3) var(--crm-space-4)', borderTop: '1px solid var(--crm-border-light)', background: 'var(--crm-surface-hover)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 4 }}>Square-only (no Shopify product)</div>
+                        {(sales?.familyOnlySquare ?? []).map((sq: any, i: number) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 'var(--crm-text-xs)' }}>
+                            <span style={{ color: 'var(--crm-text-secondary)' }}>{sq.square_name}</span>
+                            {sq.units > 0 ? <span style={{ color: '#F59E0B' }}>{sq.units} sold · {fmt(sq.revenue)}</span> : <span style={{ color: 'var(--crm-text-tertiary)' }}>—</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
           {filtered.length === 0 && <div style={{ padding: 'var(--crm-space-6)', textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>No families found</div>}
         </div>
       )}

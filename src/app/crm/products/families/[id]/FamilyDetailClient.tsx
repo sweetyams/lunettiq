@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-interface Member { product_id: string; type: string | null; colour: string | null; colour_hex: string | null; title: string; handle: string; image: string | null; sales: { units: number; orders: number; revenue: number }; squareLinks: number }
+interface Member { productId: string; type: string | null; colour: string | null; colour_hex: string | null; title: string; handle: string; image: string | null; sales: { units: number; orders: number; revenue: number }; squareLinks: number }
 interface SquareItem { square_name: string; units: number; orders: number; revenue: number }
 interface FamilySales { familyId: string; members: Member[]; familyOnlySquare: SquareItem[]; totals: { orders: string; units: string; revenue: string }; byChannel: Array<{ source: string; units: string; revenue: string }>; byLocation: Array<{ location_id: string; units: string; revenue: string }> }
 interface Family { id: string; name: string }
@@ -40,14 +40,26 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
   useEffect(() => { load(); }, [familyId, days]);
 
   const fmt = (n: number | string) => `$${Math.round(Number(n)).toLocaleString()}`;
-  const memberIds = new Set((sales?.members ?? []).map(m => m.product_id));
+  const memberIds = new Set((sales?.members ?? []).map(m => m.productId));
 
   async function addMember(productId: string) {
     const p = allProducts.find(pr => pr.id === productId);
-    const parts = (p?.handle ?? '').split('-');
+    // Derive type from product_category metafield first, then parse handle
+    let type: string | null = p?.category ?? null;
+    let colour: string | null = null;
+    const handle = p?.handle ?? '';
+    const clean = handle.replace(/©/g, '').replace(/-{2,}/g, '-').replace(/^-|-$/g, '');
+    const parts = clean.split('-');
     const typeIdx = parts.findIndex(pt => pt === 'opt' || pt === 'sun');
-    const type = typeIdx >= 0 ? (parts[typeIdx] === 'opt' ? 'optical' : 'sun') : (p?.category ?? null);
-    const colour = typeIdx >= 0 ? parts.slice(typeIdx + 1).join('-') : null;
+    if (typeIdx >= 0) {
+      if (!type) type = parts[typeIdx] === 'opt' ? 'optical' : 'sun';
+      colour = parts.slice(typeIdx + 1).filter(s => !/^\d+$/.test(s)).join('-') || null;
+    } else if (parts.length >= 2) {
+      // Handle like "jackson-©-moka" → after clean: "jackson-moka"
+      colour = parts.slice(1).filter(s => !/^\d+$/.test(s) && !['optics', 'sunglasses'].includes(s)).join('-') || null;
+      if (!type && (handle.includes('sunglasses') || handle.includes('-sun'))) type = 'sun';
+      if (!type) type = 'optical';
+    }
     await fetch('/api/crm/settings/families', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'add-member', familyId, productId, type, colour }),
@@ -152,9 +164,9 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
           </thead>
           <tbody>
             {members.map(m => (
-              <tr key={m.product_id}>
+              <tr key={m.productId}>
                 <td>
-                  <Link href={`/crm/products/${m.product_id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
+                  <Link href={`/crm/products/${m.productId}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: 'inherit' }}>
                     {m.image && <img src={m.image} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
                     <div>
                       <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{m.title}</div>
@@ -171,7 +183,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
                   {m.squareLinks > 0 ? <span style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500 }}>{m.squareLinks}</span> : <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)' }}>—</span>}
                 </td>
                 <td>
-                  <button onClick={() => removeMember(m.product_id)} style={{ fontSize: 9, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+                  <button onClick={() => removeMember(m.productId)} style={{ fontSize: 9, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                 </td>
               </tr>
             ))}
