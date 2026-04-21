@@ -86,7 +86,10 @@ export default function IntegrationsPage() {
     <div style={{ padding: 'var(--crm-space-6)' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Integrations</h1>
+        <div>
+          <a href="/crm/settings" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>← Settings</a>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Integrations</h1>
+        </div>
         <a href="/system/status" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>System Status ↗</a>
       </div>
 

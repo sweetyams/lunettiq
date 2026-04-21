@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useToast } from '@/components/crm/CrmShell';
 
 interface Location { id: string; name: string; shopifyLocationId: string | null; squareLocationId: string | null; address: any; active: boolean; syncedAt: string | null }
@@ -22,7 +23,10 @@ export function LocationsClient({ locations }: { locations: Location[] }) {
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 700 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Locations</h1>
+        <div>
+          <Link href="/crm/settings" className="crm-btn crm-btn-ghost" style={{ padding: 0, marginBottom: 4, display: 'inline-block' }}>← Settings</Link>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Locations</h1>
+        </div>
         <button onClick={handleSync} disabled={syncing} className="crm-btn crm-btn-primary">
           {syncing ? 'Syncing…' : 'Sync from Shopify'}
         </button>

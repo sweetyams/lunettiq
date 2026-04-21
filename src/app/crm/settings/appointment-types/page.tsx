@@ -52,6 +52,7 @@ export default function AppointmentTypesPage() {
 
   return (
     <div className="p-6 max-w-2xl">
+      <a href="/crm/settings" className="text-sm text-gray-400 hover:text-gray-600 no-underline">← Settings</a>
       <h1 className="text-2xl font-semibold mb-6">Appointment Types</h1>
 
       <div className="space-y-2 mb-6">

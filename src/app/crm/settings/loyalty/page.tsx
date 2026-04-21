@@ -34,6 +34,7 @@ export default function LoyaltySettingsPage() {
 
   return (
     <div className="p-6 max-w-4xl">
+      <a href="/crm/settings" className="text-sm text-gray-400 hover:text-gray-600 no-underline">← Settings</a>
       <h1 className="text-2xl font-semibold mb-6">Loyalty Tiers</h1>
 
       <div className="space-y-3 mb-6">

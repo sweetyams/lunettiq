@@ -5,6 +5,7 @@ export default async function TagsSettingsPage() {
 
   return (
     <div className="p-6">
+      <a href="/crm/settings" className="text-sm text-gray-400 hover:text-gray-600 no-underline">← Settings</a>
       <h1 className="text-2xl font-semibold mb-6">Tag Management</h1>
       <p className="text-sm text-neutral-500 mb-4">
         Tags are managed in Shopify and synced via webhooks. Use this page to view and organize the tag taxonomy.

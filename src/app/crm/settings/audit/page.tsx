@@ -51,9 +51,12 @@ export default async function AuditLogPage({
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <div className="flex items-center justify-between" style={{ marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, color: 'var(--crm-text-primary)' }}>
-          Audit Log
-        </h1>
+        <div>
+          <Link href="/crm/settings" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>← Settings</Link>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, color: 'var(--crm-text-primary)' }}>
+            Audit Log
+          </h1>
+        </div>
         <span className="crm-badge" style={{ background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)' }}>
           {total} entries
         </span>
