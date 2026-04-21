@@ -12,10 +12,10 @@ interface Mapping {
 interface ShopifyProduct { id: string; title: string; handle: string; variants?: Array<{ id: string; title: string | null }> }
 
 const STATUS_COLOURS: Record<string, string> = {
-  auto: '#16a34a', confirmed: '#16a34a', manual: '#2563eb', unmatched: '#dc2626', ignored: '#9ca3af',
+  auto: '#16a34a', confirmed: '#16a34a', related: '#2563eb', manual: '#8b5cf6', unmatched: '#dc2626', ignored: '#9ca3af',
 };
 const STATUS_LABELS: Record<string, string> = {
-  auto: 'Auto', confirmed: 'Confirmed', manual: 'Manual', unmatched: 'Unmatched', ignored: 'Ignored',
+  auto: 'Auto', confirmed: 'Exact', related: 'Related', manual: 'Manual', unmatched: 'Unmatched', ignored: 'Ignored',
 };
 
 export default function ProductMappingPage() {
@@ -64,6 +64,15 @@ export default function ProductMappingPage() {
     load(filter, search);
   }
 
+  async function markRelated(squareCatalogId: string) {
+    await fetch('/api/crm/product-mappings', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ squareCatalogId, status: 'related' }),
+    });
+    load(filter, search);
+  }
+
   async function confirmAll() {
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
@@ -103,7 +112,7 @@ export default function ProductMappingPage() {
       {/* Tabs + Search */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-4)' }}>
         <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--crm-border-light)' }}>
-          {['auto', 'unmatched', 'manual', 'confirmed', 'ignored', 'all'].map(t => (
+          {['auto', 'unmatched', 'confirmed', 'related', 'manual', 'ignored', 'all'].map(t => (
             <button key={t} onClick={() => setFilter(t)} style={{
               padding: '6px 14px', fontSize: 'var(--crm-text-xs)', border: 'none', cursor: 'pointer', background: 'none',
               borderBottom: filter === t ? '2px solid var(--crm-text-primary)' : '2px solid transparent',
@@ -165,8 +174,11 @@ export default function ProductMappingPage() {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      {m.shopify_product_id && m.status !== 'confirmed' && m.status !== 'ignored' && (
-                        <button onClick={() => confirm(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-success, #16a34a)', background: 'none', color: 'var(--crm-success, #16a34a)', cursor: 'pointer' }}>✓ Confirm</button>
+                      {m.shopify_product_id && m.status !== 'confirmed' && m.status !== 'ignored' && m.status !== 'related' && (
+                        <button onClick={() => confirm(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-success, #16a34a)', background: 'none', color: 'var(--crm-success, #16a34a)', cursor: 'pointer' }}>Exact</button>
+                      )}
+                      {m.shopify_product_id && m.status !== 'related' && m.status !== 'confirmed' && m.status !== 'ignored' && (
+                        <button onClick={() => markRelated(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #2563eb', background: 'none', color: '#2563eb', cursor: 'pointer' }}>Related</button>
                       )}
                       {m.status !== 'ignored' && (
                         <button onClick={() => ignore(m.square_catalog_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>Ignore</button>
