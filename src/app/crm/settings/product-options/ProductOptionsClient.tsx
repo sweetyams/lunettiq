@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import ConfiguratorPreview from './ConfiguratorPreview';
-import ConstraintMatrix from './ConstraintMatrix';
+import FlowEditor from './FlowEditor';
 
 type View = 'preview' | 'advanced';
-type Channel = 'optical' | 'sun' | 'reglaze';
 type Tab = 'groups' | 'options' | 'prices' | 'constraints' | 'steps';
 
 const TABS: { key: Tab; label: string; entity: string }[] = [
@@ -34,7 +32,6 @@ function stripReadonly(obj: Record<string, unknown>) {
 
 export default function ProductOptionsClient() {
   const [view, setView] = useState<View>('preview');
-  const [channel, setChannel] = useState<Channel>('optical');
   const [tab, setTab] = useState<Tab>('groups');
   const [data, setData] = useState<Record<string, Entity[]>>({});
   const [loading, setLoading] = useState(true);
@@ -154,39 +151,14 @@ export default function ProductOptionsClient() {
       </div>
 
       {view === 'preview' ? (
-        <>
-          {/* Channel tabs */}
-          <div style={{ display: 'flex', gap: 2, marginBottom: 'var(--crm-space-4)', borderBottom: '1px solid var(--crm-border)' }}>
-            {(['optical', 'sun', 'reglaze'] as Channel[]).map(ch => (
-              <button
-                key={ch}
-                onClick={() => setChannel(ch)}
-                style={{
-                  padding: '8px 16px', fontSize: 'var(--crm-text-sm)', cursor: 'pointer',
-                  background: 'none', border: 'none',
-                  borderBottom: `2px solid ${channel === ch ? 'var(--crm-text-primary)' : 'transparent'}`,
-                  color: channel === ch ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)',
-                  fontWeight: channel === ch ? 600 : 400, textTransform: 'capitalize',
-                }}
-              >{ch}</button>
-            ))}
-          </div>
-          <ConfiguratorPreview
-            channel={channel}
+          <FlowEditor
             steps={data.stepDefinitions ?? []}
             groups={data.groups ?? []}
             options={data.options ?? []}
             priceRules={data.priceRules ?? []}
             constraintRules={data.constraintRules ?? []}
-            onEditStep={step => openEdit(step, 'step')}
-            onEditOption={opt => openEdit(opt, 'option')}
+            onReload={load}
           />
-          <ConstraintMatrix
-            constraintRules={data.constraintRules ?? []}
-            options={data.options ?? []}
-            onSave={load}
-          />
-        </>
       ) : (
         <>
       {/* Advanced tabs + table below */}
