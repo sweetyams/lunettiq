@@ -36,10 +36,10 @@ Placement/Step
   └─ availabilityRuleSetId / visibilityRuleSetId → rule_sets
        └─ logicOperator: AND | OR
        └─ cfg_rules (one or more)
-            └─ effectType: show | hide
+            └─ effectType: always 'show'
             └─ rule_clauses (one or more, AND'd within a rule)
-                 └─ leftOperandType: selection | choice
-                 └─ leftOperandRef: groupId
+                 └─ leftOperandType: selection
+                 └─ leftOperandRef: groupId (which group to check)
                  └─ operator: is_any_of | is_none_of | selected | not_selected
                  └─ rightOperandRef: comma-separated choiceIds
 ```
@@ -48,7 +48,7 @@ Placement/Step
 
 1. Find the ruleSet for the placement/step
 2. For each rule in the set, evaluate all its clauses (AND'd together)
-3. Apply the effect: `show` → visible when clauses pass; `hide` → visible when clauses fail
+3. Clauses pass = visible, clauses fail = hidden (always "show when" logic)
 4. Combine rule results using the ruleSet's `logicOperator` (AND = all rules must pass, OR = any rule passing is enough)
 5. No ruleSet = always visible
 
@@ -58,12 +58,14 @@ Conditions can only reference groups from **earlier steps** in the same flow. Th
 
 ### Common Patterns
 
-| Want | Setup |
+| Want | Condition |
 |---|---|
-| Show only with Rx | `show` when Lens Type `is_any_of` [Single Vision, Progressive] |
-| Hide for Non-Rx | `hide` when Lens Type `is_any_of` [Non-Prescription] |
-| Show only when something selected | `show` when Lens Type `selected` |
-| Show for everything except X | `show` when Lens Type `is_none_of` [X] |
+| Show only with Rx | Lens Type `is_any_of` [Single Vision, Progressive] |
+| Show for everything except Non-Rx | Lens Type `is_none_of` [Non-Prescription] |
+| Show only when something selected | Lens Type `selected` |
+| Show when nothing selected | Lens Type `not_selected` |
+
+All conditions are "Show when …". Use `is_any_of` for allowlists, `is_none_of` for blocklists.
 
 ### Critical: Choice IDs vs Labels
 

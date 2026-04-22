@@ -94,15 +94,9 @@ function evaluateRuleSet(
   if (setRules.length === 0) return true;
 
   const results = setRules.map(rule => {
-    const effect = str(rule.effectType);
     const ruleClauses = clauses.filter(c => c.ruleId === rule.id);
     if (ruleClauses.length === 0) return true;
-
-    // All clauses within a rule are AND'd
-    const allPass = ruleClauses.every(c => evaluateClause(c, selectionsByGroup));
-
-    // "show" effect: visible when clauses pass. "hide" effect: visible when clauses fail.
-    return effect === 'hide' ? !allPass : allPass;
+    return ruleClauses.every(c => evaluateClause(c, selectionsByGroup));
   });
 
   return logic === 'OR' ? results.some(Boolean) : results.every(Boolean);

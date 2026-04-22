@@ -141,8 +141,10 @@ export default function ProductOptionsClient() {
 
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 1400 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-3)' }}>
-        <Link href="/crm/settings" className="crm-btn crm-btn-ghost" style={{ padding: 0 }}>← Settings</Link>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-4)' }}>
+        <Link href="/crm/settings" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>Settings</Link>
+        <span style={{ color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-sm)' }}>/</span>
+        <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Product Options</span>
       </div>
 
       {error && (
@@ -153,8 +155,10 @@ export default function ProductOptionsClient() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Configurator Builder</h1>
-        <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
+        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Configurator</h1>
+        <div style={{ display: 'flex', gap: 'var(--crm-space-2)', alignItems: 'center' }}>
+          <Link href="/crm/settings/product-options/channels" className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}>Channels</Link>
+          <span style={{ width: 1, height: 16, background: 'var(--crm-border)' }} />
           <button
             className={`crm-btn ${view === 'preview' ? 'crm-btn-primary' : 'crm-btn-secondary'}`}
             style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}

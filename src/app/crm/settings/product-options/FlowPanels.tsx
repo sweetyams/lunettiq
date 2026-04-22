@@ -31,10 +31,10 @@ export function StepList(p: {
 
   return (
     <div style={{ width: 230, flexShrink: 0 }}>
-      <div style={{ display: 'flex', gap: 2, marginBottom: 12 }}>
-        {p.flows.map(f => (
-          <button key={f.id} onClick={() => p.setFlowId(f.id)} className={'crm-btn ' + (p.activeFlowId === f.id ? 'crm-btn-primary' : 'crm-btn-ghost')} style={{ fontSize: 11, padding: '4px 8px', flex: 1 }}>{str(f.label)}</button>
-        ))}
+      <div style={{ marginBottom: 12 }}>
+        <select className="crm-input" style={{ width: '100%', fontSize: 12 }} value={p.activeFlowId} onChange={e => p.setFlowId(e.target.value)}>
+          {p.flows.map(f => <option key={f.id} value={f.id}>{str(f.label)}</option>)}
+        </select>
       </div>
       <div className="crm-card" style={{ padding: 0 }}>
         {p.steps.map((step, si) => {
@@ -81,6 +81,7 @@ export function StepList(p: {
 export function GroupEditor(p: {
   group: E | null; placements: E[]; choiceMap: Map<string, E>;
   priceRules: E[]; choices: E[]; stepCode?: string;
+  ruleSets?: E[]; rules?: E[];
   selPlacementId: string; setSelPlacementId: (id: string) => void;
   onReload: () => void;
 }) {
@@ -232,9 +233,10 @@ export function GroupEditor(p: {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span className="crm-badge" style={{ background: price === 'included' ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)', color: price === 'included' ? 'var(--crm-text-tertiary)' : 'var(--crm-success)' }}>{price}</span>
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }} onClick={e => { e.stopPropagation(); setEditingPlId(pl.id); setEditPlLabel(label); setEditPlCode(choice ? str(choice.code) : ''); setEditPlBadge(str(pl.badge)); setEditPlDesc(str(pl.helpTextOverride) || (choice ? str(choice.description) : '')); }}>✎</button>
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }} onClick={e => { e.stopPropagation(); duplicatePlacement(pl); }} title="Duplicate">⧉</button>
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px', color: 'var(--crm-error)' }} onClick={e => { e.stopPropagation(); removePlacement(pl.id); }}>✕</button>
+                  {(() => { const rsId = str(pl.availabilityRuleSetId); if (!rsId || !p.ruleSets || !p.rules) return null; const rs = p.ruleSets.find(r => r.id === rsId); if (!rs) return null; const n = p.rules.filter(r => r.ruleSetId === rsId && str(r.status) !== 'archived').length; return n > 0 ? <span className="crm-badge" style={{ fontSize: 9, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-tertiary)' }}>{n} rule{n !== 1 ? 's' : ''}</span> : null; })()}
+                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={e => { e.stopPropagation(); setEditingPlId(pl.id); setEditPlLabel(label); setEditPlCode(choice ? str(choice.code) : ''); setEditPlBadge(str(pl.badge)); setEditPlDesc(str(pl.helpTextOverride) || (choice ? str(choice.description) : '')); }}>✎</button>
+                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={e => { e.stopPropagation(); duplicatePlacement(pl); }} title="Duplicate">⧉</button>
+                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={e => { e.stopPropagation(); removePlacement(pl.id); }}>✕</button>
                 </div>
               </div>
               <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 4, marginLeft: 26 }}>
@@ -376,8 +378,8 @@ export function StepEditor(p: {
             <>
               <div style={{ fontSize: 16, fontWeight: 600 }}>{str(p.step.label)} <span style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--crm-text-tertiary)', fontWeight: 400 }}>{str(p.step.code)}</span></div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }} onClick={() => { setEditingStepName(true); setStepNameVal(str(p.step!.label)); setStepCodeVal(str(p.step!.code)); }}>✎ Edit</button>
-                <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px', color: 'var(--crm-error)' }} onClick={() => p.onDeleteStep(p.step!.id)}>✕ Delete</button>
+                <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => { setEditingStepName(true); setStepNameVal(str(p.step!.label)); setStepCodeVal(str(p.step!.code)); }}>✎ Edit</button>
+                <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={() => p.onDeleteStep(p.step!.id)}>✕ Delete</button>
               </div>
             </>
           )}
@@ -444,8 +446,8 @@ export function StepEditor(p: {
                     <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{groupPlacements.length} choice{groupPlacements.length !== 1 ? 's' : ''}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 5px' }} onClick={() => { setEditingGroupId(group.id); setEditGroupLabel(str(group.label)); setEditGroupCode(str(group.code)); }}>✎</button>
-                    {stepGroups.length > 1 && <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 5px', color: 'var(--crm-error)' }} onClick={() => deleteGroup(group.id)}>✕</button>}
+                    <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => { setEditingGroupId(group.id); setEditGroupLabel(str(group.label)); setEditGroupCode(str(group.code)); }}>✎</button>
+                    {stepGroups.length > 1 && <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={() => deleteGroup(group.id)}>✕</button>}
                   </div>
                 </div>
               )}
@@ -455,6 +457,7 @@ export function StepEditor(p: {
               <GroupEditor
                 group={group} placements={groupPlacements} choiceMap={p.choiceMap}
                 priceRules={p.priceRules} choices={p.choices} stepCode={str(p.step!.code)}
+                ruleSets={p.ruleSets} rules={p.rules}
                 selPlacementId={p.selPlacementId} setSelPlacementId={p.setSelPlacementId}
                 onReload={p.onReload}
               />
@@ -554,7 +557,7 @@ export function Inspector(p: {
             <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
               <input className="crm-input" style={{ width: 70, fontSize: 11 }} type="number" step="0.01" value={priceAmt} onChange={e => setPriceAmt(e.target.value)} />
               <select className="crm-input" style={{ width: 70, fontSize: 11 }} value={priceType} onChange={e => setPriceType(e.target.value)}><option value="delta">+delta</option><option value="override">fixed</option></select>
-              <button className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '2px 6px' }} onClick={savePrice}>Save</button>
+              <button className="crm-btn crm-btn-primary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={savePrice}>Save</button>
             </div>
           )}
           <div>Visible: <strong style={{ color: pl.isVisible !== false ? 'var(--crm-success)' : 'var(--crm-error)' }}>{pl.isVisible !== false ? 'Yes' : 'No'}</strong></div>
@@ -633,7 +636,7 @@ function EditableCondition({ rule, clauses, groups, steps, choices, choiceMap, p
   const groupChoices = groupPlacements.map(p => choiceMap.get(str(p.choiceId))).filter((c): c is E => !!c);
 
   async function save() {
-    await cfgUpdate('rule', rule.id, { effectType: effect });
+    await cfgUpdate('rule', rule.id, { effectType: 'show' });
     if (clause) {
       const needsRight = ['is', 'is_not', 'is_any_of', 'is_none_of'].includes(operator);
       await cfgUpdate('clause', clause.id, {
@@ -648,9 +651,7 @@ function EditableCondition({ rule, clauses, groups, steps, choices, choiceMap, p
   if (editing) {
     return (
       <div style={{ padding: '8px 10px', marginBottom: 6, borderRadius: 6, border: '1px solid var(--crm-border)', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <select className="crm-input" style={{ fontSize: 11 }} value={effect} onChange={e => setEffect(e.target.value)}>
-          <option value="show">Show when</option><option value="hide">Hide when</option>
-        </select>
+        <div style={{ fontWeight: 500, marginBottom: 2 }}>Show when:</div>
         <select className="crm-input" style={{ fontSize: 11 }} value={groupId} onChange={e => { setGroupId(e.target.value); setSelIds(new Set()); }}>
           <option value="">Select a group…</option>
           {groups.filter(g => str(g.status) !== 'archived').map(g => {
@@ -662,7 +663,7 @@ function EditableCondition({ rule, clauses, groups, steps, choices, choiceMap, p
           <option value="is_any_of">is any of</option><option value="is_none_of">is none of</option>
           <option value="selected">has any selection</option><option value="not_selected">has no selection</option>
         </select>
-        {['is_any_of', 'is_none_of'].includes(operator) && (
+        {['is', 'is_not', 'is_any_of', 'is_none_of'].includes(operator) && (
           <div style={{ maxHeight: 100, overflow: 'auto', border: '1px solid var(--crm-border-light)', borderRadius: 4, padding: 4 }}>
             {groupChoices.map(c => (
               <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 4px', cursor: 'pointer', fontSize: 11 }}>
@@ -683,13 +684,13 @@ function EditableCondition({ rule, clauses, groups, steps, choices, choiceMap, p
   return (
     <div style={{ padding: '6px 8px', marginBottom: 4, borderRadius: 4, background: 'var(--crm-surface-hover)', fontSize: 11, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
-        <span style={{ fontWeight: 500, textTransform: 'capitalize' }}>{str(rule.effectType)} when: </span>
+        <span style={{ fontWeight: 500 }}>Show when: </span>
         {rc.map(cl => <ClauseDisplay key={cl.id} clause={cl} groups={groups} choices={choices} choiceMap={choiceMap} placements={placements} />)}
         {rc.length === 0 && <span style={{ color: 'var(--crm-text-tertiary)', fontStyle: 'italic' }}>No clauses</span>}
       </div>
       <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-        <button className="crm-btn crm-btn-ghost" style={{ fontSize: 9, padding: '1px 4px' }} onClick={() => startEdit()}>✎</button>
-        <button className="crm-btn crm-btn-ghost" style={{ fontSize: 9, padding: '1px 4px', color: 'var(--crm-error)' }} onClick={onDelete}>✕</button>
+        <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => startEdit()}>✎</button>
+        <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={onDelete}>✕</button>
       </div>
     </div>
   );
@@ -763,7 +764,7 @@ function AddConditionForm({ placement, ruleSet, groups, steps, choices, choiceMa
         await cfgUpdate('placement', placement.id, { availabilityRuleSetId: rsId });
       }
       // Create rule
-      const rule = await cfgCreate('rule', { ruleSetId: rsId, effectType: effect, priority: 100 });
+      const rule = await cfgCreate('rule', { ruleSetId: rsId, effectType: 'show', priority: 100 });
       // Create clause
       const needsRight = ['is', 'is_not', 'is_any_of', 'is_none_of'].includes(operator);
       await cfgCreate('clause', {
@@ -781,12 +782,7 @@ function AddConditionForm({ placement, ruleSet, groups, steps, choices, choiceMa
 
   return (
     <div style={{ padding: '8px 0', fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <select className="crm-input" style={{ fontSize: 11, flex: 1 }} value={effect} onChange={e => setEffect(e.target.value)}>
-          <option value="show">Show when</option>
-          <option value="hide">Hide when</option>
-        </select>
-      </div>
+      <div style={{ fontWeight: 500, marginBottom: 2 }}>Show when:</div>
       <select className="crm-input" style={{ fontSize: 11 }} value={groupId} onChange={e => { setGroupId(e.target.value); setSelectedChoiceIds(new Set()); }}>
         <option value="">Select a group…</option>
         {groups.filter(g => str(g.status) !== 'archived').map(g => {
@@ -850,7 +846,7 @@ function AddStepConditionForm({ step, ruleSet, priorGroups, priorSteps, choices,
         rsId = rs.id;
         await cfgUpdate('step', step.id, { visibilityRuleSetId: rsId });
       }
-      const rule = await cfgCreate('rule', { ruleSetId: rsId, effectType: effect, priority: 100 });
+      const rule = await cfgCreate('rule', { ruleSetId: rsId, effectType: 'show', priority: 100 });
       const needsRight = ['is', 'is_not', 'is_any_of', 'is_none_of'].includes(operator);
       await cfgCreate('clause', {
         ruleId: rule.id, leftOperandType: 'selection', leftOperandRef: groupId, operator,
@@ -864,10 +860,7 @@ function AddStepConditionForm({ step, ruleSet, priorGroups, priorSteps, choices,
 
   return (
     <div style={{ fontSize: 11, display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-      <select className="crm-input" style={{ fontSize: 11 }} value={effect} onChange={e => setEffect(e.target.value)}>
-        <option value="show">Show step when</option>
-        <option value="hide">Hide step when</option>
-      </select>
+      <div style={{ fontWeight: 500, marginBottom: 2 }}>Show when:</div>
       <select className="crm-input" style={{ fontSize: 11 }} value={groupId} onChange={e => { setGroupId(e.target.value); setSelectedChoiceIds(new Set()); }}>
         <option value="">Select a group…</option>
         {priorGroups.map(g => {
@@ -883,7 +876,7 @@ function AddStepConditionForm({ step, ruleSet, priorGroups, priorSteps, choices,
             <option value="selected">has any selection</option>
             <option value="not_selected">has no selection</option>
           </select>
-          {['is_any_of', 'is_none_of'].includes(operator) && (
+          {['is', 'is_not', 'is_any_of', 'is_none_of'].includes(operator) && (
             <div style={{ maxHeight: 100, overflow: 'auto', border: '1px solid var(--crm-border-light)', borderRadius: 4, padding: 4 }}>
               {groupChoices.map(c => (
                 <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 4px', cursor: 'pointer', fontSize: 11 }}>
