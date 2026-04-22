@@ -1050,3 +1050,171 @@ export const configurationSnapshots = pgTable('configuration_snapshots', {
   index('idx_config_snapshots_order').on(t.shopifyOrderId),
   index('idx_config_snapshots_draft').on(t.shopifyDraftOrderId),
 ]);
+
+// ── Configurator Builder ────────────────────────────────
+
+export const flowStatusEnum = pgEnum('flow_status', ['draft', 'published', 'archived']);
+export const requiredModeEnum = pgEnum('required_mode', ['always', 'conditional', 'never']);
+export const groupDisplayEnum = pgEnum('group_display', ['list', 'cards', 'swatches', 'table']);
+export const choiceStatusEnum = pgEnum('choice_status', ['active', 'inactive', 'archived']);
+export const ruleOwnerTypeEnum = pgEnum('rule_owner_type', ['flow', 'step', 'group_choice', 'price_rule', 'validation_rule']);
+export const ruleLogicEnum = pgEnum('rule_logic', ['AND', 'OR']);
+export const ruleEffectEnum = pgEnum('rule_effect', ['show', 'hide', 'enable', 'disable', 'require', 'unrequire', 'default_select', 'block_combination']);
+export const clauseOperandTypeEnum = pgEnum('clause_operand_type', ['flow', 'step', 'group', 'choice', 'selection', 'attribute', 'literal', 'set']);
+export const clauseOperatorEnum = pgEnum('clause_operator', ['is', 'is_not', 'is_any_of', 'is_none_of', 'selected', 'not_selected', 'greater_than', 'less_than', 'contains']);
+export const cfgPriceRuleTypeEnum = pgEnum('cfg_price_rule_type', ['delta', 'override', 'formula', 'bundle']);
+export const cfgPriceOwnerTypeEnum = pgEnum('cfg_price_owner_type', ['group_choice', 'group', 'step', 'flow']);
+export const flowVersionStatusEnum = pgEnum('flow_version_status', ['draft', 'published', 'rolled_back']);
+export const validationRuleTypeEnum = pgEnum('validation_rule_type', ['invalid_combination', 'missing_required_choice', 'min_not_met', 'max_exceeded', 'unreachable_step', 'empty_step']);
+export const validationSeverityEnum = pgEnum('validation_severity', ['warning', 'error']);
+
+export const configuratorFlows = pgTable('configurator_flows', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  channelType: text('channel_type').notNull(),
+  status: flowStatusEnum('status').default('draft'),
+  baseTemplateId: uuid('base_template_id'),
+  createdBy: text('created_by'),
+  updatedBy: text('updated_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const flowSteps = pgTable('flow_steps', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  flowId: uuid('flow_id').notNull().references(() => configuratorFlows.id),
+  code: text('code').notNull(),
+  label: text('label').notNull(),
+  description: text('description'),
+  orderIndex: integer('order_index').notNull().default(0),
+  helpText: text('help_text'),
+  isSummaryStep: boolean('is_summary_step').default(false),
+  requiredMode: requiredModeEnum('required_mode').default('always'),
+  visibilityRuleSetId: uuid('visibility_rule_set_id'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_flow_steps_flow').on(t.flowId),
+  index('idx_flow_steps_order').on(t.flowId, t.orderIndex),
+]);
+
+export const stepChoiceGroups = pgTable('step_choice_groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  stepId: uuid('step_id').notNull().references(() => flowSteps.id),
+  code: text('code').notNull(),
+  label: text('label').notNull(),
+  selectionMode: selectionModeEnum('selection_mode').notNull().default('single'),
+  minSelect: integer('min_select'),
+  maxSelect: integer('max_select'),
+  isRequired: boolean('is_required').default(true),
+  sortOrder: integer('sort_order').default(0),
+  displayStyle: groupDisplayEnum('display_style'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_step_choice_groups_step').on(t.stepId),
+]);
+
+export const cfgChoices = pgTable('cfg_choices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  internalName: text('internal_name'),
+  baseType: text('base_type'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const groupChoices = pgTable('group_choices', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull().references(() => stepChoiceGroups.id),
+  choiceId: uuid('choice_id').notNull().references(() => cfgChoices.id),
+  sortOrder: integer('sort_order').default(0),
+  labelOverride: text('label_override'),
+  helpTextOverride: text('help_text_override'),
+  defaultSelected: boolean('default_selected').default(false),
+  isVisible: boolean('is_visible').default(true),
+  availabilityRuleSetId: uuid('availability_rule_set_id'),
+  priceRuleSetId: uuid('price_rule_set_id'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_group_choices_group').on(t.groupId),
+  index('idx_group_choices_choice').on(t.choiceId),
+]);
+
+export const ruleSets = pgTable('rule_sets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ownerType: ruleOwnerTypeEnum('owner_type').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  logicOperator: ruleLogicEnum('logic_operator').default('AND'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_rule_sets_owner').on(t.ownerType, t.ownerId),
+]);
+
+export const cfgRules = pgTable('cfg_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ruleSetId: uuid('rule_set_id').notNull().references(() => ruleSets.id),
+  effectType: ruleEffectEnum('effect_type').notNull(),
+  priority: integer('priority').default(100),
+  explanationText: text('explanation_text'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_cfg_rules_set').on(t.ruleSetId),
+]);
+
+export const ruleClauses = pgTable('rule_clauses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ruleId: uuid('rule_id').notNull().references(() => cfgRules.id),
+  leftOperandType: clauseOperandTypeEnum('left_operand_type').notNull(),
+  leftOperandRef: text('left_operand_ref').notNull(),
+  operator: clauseOperatorEnum('operator').notNull(),
+  rightOperandType: clauseOperandTypeEnum('right_operand_type').notNull(),
+  rightOperandRef: text('right_operand_ref').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_rule_clauses_rule').on(t.ruleId),
+]);
+
+export const cfgPriceRules = pgTable('cfg_price_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ownerType: cfgPriceOwnerTypeEnum('owner_type').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  ruleType: cfgPriceRuleTypeEnum('rule_type').notNull().default('delta'),
+  amount: decimal('amount', { precision: 12, scale: 2 }),
+  currency: text('currency').default('CAD'),
+  conditionRuleSetId: uuid('condition_rule_set_id'),
+  priority: integer('priority').default(100),
+  label: text('label'),
+  explanationText: text('explanation_text'),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_cfg_price_rules_owner').on(t.ownerType, t.ownerId),
+]);
+
+export const flowVersions = pgTable('flow_versions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  flowId: uuid('flow_id').notNull().references(() => configuratorFlows.id),
+  versionNumber: integer('version_number').notNull(),
+  status: flowVersionStatusEnum('status').default('draft'),
+  snapshotBlob: jsonb('snapshot_blob'),
+  changelog: text('changelog'),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_flow_versions_flow').on(t.flowId),
+]);
