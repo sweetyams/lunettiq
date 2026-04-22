@@ -5,7 +5,7 @@ type Handler = (req: NextRequest, ctx: { params: Record<string, string> }) => Pr
 export function handler(fn: Handler): (req: NextRequest, ctx: { params: Promise<Record<string, string>> | Record<string, string> }) => Promise<NextResponse> {
   return async (req, ctx) => {
     try {
-      const params = await Promise.resolve(ctx.params);
+      const params = await Promise.resolve(ctx?.params ?? {});
       return await fn(req, { params });
     } catch (err: unknown) {
       if (err instanceof NextResponse) return err;
