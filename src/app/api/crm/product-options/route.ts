@@ -6,7 +6,7 @@ import {
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 
 const READONLY = ['createdAt', 'updatedAt', 'created_at', 'updated_at'];
 function stripReadonly(obj: Record<string, unknown>) {
@@ -50,8 +50,20 @@ export const POST = handler(async (request) => {
   if (entity === 'constraint') { const [row] = await db.insert(constraintRules).values(data).returning(); return jsonOk(row); }
   if (entity === 'step') { const [row] = await db.insert(stepDefinitions).values(data).returning(); return jsonOk(row); }
 
-  return jsonError('Unknown entity. Use: group, option, price, constraint, step', 400);
-});
+  if (entity === 'exclusion-group') {
+    // Create pairwise excludes for all members
+    const { name, members } = data as { name: string; members: string[] };
+    if (!name || !members || members.length < 2) return jsonError('Need name + ≥2 members', 400);
+    const rows = [];
+    for (let i = 0; i < members.length; i++) {
+      const targets = members.filter((_, j) => j !== i);
+      rows.push({ code: `xg_${name}_${members[i]}`, ruleType: 'excludes' as const, sourceOptionCode: members[i], targetOptionCodes: targets, active: true });
+    }
+    const inserted = await db.insert(constraintRules).values(rows).onConflictDoNothing().returning();
+    return jsonOk(inserted);
+  }
+
+  return jsonError('Unknown entity. Use: group, option, price, constraint, step, exclusion-group', 400);
 
 // PATCH — update entity by id
 export const PATCH = handler(async (request) => {
@@ -75,7 +87,17 @@ export const PATCH = handler(async (request) => {
 export const DELETE = handler(async (request) => {
   await requireCrmAuth('org:settings:business_config');
   const body = await request.json();
-  const { entity, id } = body;
+  const { entity } = body;
+
+  if (entity === 'exclusion-group') {
+    const { name, members } = body as { name: string; members: string[]; entity: string };
+    if (!name || !members?.length) return jsonError('Need name + members', 400);
+    const codes = members.map((m: string) => `xg_${name}_${m}`);
+    await db.delete(constraintRules).where(inArray(constraintRules.code, codes));
+    return jsonOk({ deleted: codes });
+  }
+
+  const { id } = body;
   if (!id) return jsonError('id required', 400);
 
   if (entity === 'group') { await db.delete(optionGroups).where(eq(optionGroups.id, id)); return jsonOk({ deleted: id }); }
