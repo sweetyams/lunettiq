@@ -20,6 +20,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const channelSteps = useMemo(() =>
     steps.filter(s => s.channel === channel && s.active !== false)
@@ -142,6 +143,22 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
     onReload();
   }
 
+  async function reorder(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return;
+    const reordered = [...groupOptions];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    // Batch update sort orders
+    await Promise.all(reordered.map((opt, i) =>
+      fetch('/api/crm/product-options', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'option', id: opt.id, sortOrder: i * 10 }),
+      })
+    ));
+    onReload();
+  }
+
   return (
     <div style={{ display: 'flex', gap: 'var(--crm-space-4)', minHeight: 500 }}>
       {/* ── LEFT: Flow Health Map ── */}
@@ -210,6 +227,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
               <table className="crm-table" style={{ width: '100%' }}>
                 <thead>
                   <tr>
+                    <th style={{ width: 28 }} />
                     <th>Option</th>
                     <th style={{ width: 80 }}>Price</th>
                     <th>Availability</th>
@@ -225,6 +243,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
 
                     if (isEditing) return (
                       <tr key={opt.id} style={{ background: 'var(--crm-surface-hover)' }}>
+                        <td />
                         <td colSpan={4}>
                           <div style={{ display: 'flex', gap: 8, padding: '4px 0', flexWrap: 'wrap', alignItems: 'end' }}>
                             <label style={{ flex: 1, minWidth: 120 }}>
@@ -234,10 +253,6 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                             <label style={{ width: 120 }}>
                               <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Code</span>
                               <input className="crm-input" style={{ width: '100%' }} value={str(editForm.code)} onChange={e => setEditForm(p => ({ ...p, code: e.target.value }))} />
-                            </label>
-                            <label style={{ width: 50 }}>
-                              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Order</span>
-                              <input className="crm-input" style={{ width: '100%' }} type="number" value={num(editForm.sortOrder)} onChange={e => setEditForm(p => ({ ...p, sortOrder: Number(e.target.value) }))} />
                             </label>
                             <label style={{ fontSize: 'var(--crm-text-xs)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', paddingBottom: 4 }}>
                               <input type="checkbox" checked={!!editForm.active} onChange={e => setEditForm(p => ({ ...p, active: e.target.checked }))} /> Active
@@ -249,9 +264,19 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                       </tr>
                     );
 
+                    const idx = groupOptions.indexOf(opt);
                     return (
-                      <tr key={opt.id} style={{ cursor: 'pointer' }} onClick={() => startEdit(opt)}>
-                        <td style={{ fontWeight: 500, fontSize: 'var(--crm-text-sm)' }}>{str(opt.label)}</td>
+                      <tr key={opt.id}
+                        draggable
+                        onDragStart={() => setDragIdx(idx)}
+                        onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderTop = '2px solid var(--crm-text-primary)'; }}
+                        onDragLeave={e => { e.currentTarget.style.borderTop = ''; }}
+                        onDrop={e => { e.currentTarget.style.borderTop = ''; if (dragIdx !== null) reorder(dragIdx, idx); setDragIdx(null); }}
+                        onDragEnd={() => setDragIdx(null)}
+                        style={{ cursor: 'grab', opacity: dragIdx === idx ? 0.4 : 1 }}
+                      >
+                        <td style={{ cursor: 'grab', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)', textAlign: 'center', userSelect: 'none' }}>⠿</td>
+                        <td style={{ fontWeight: 500, fontSize: 'var(--crm-text-sm)' }} onClick={() => startEdit(opt)}>{str(opt.label)}</td>
                         <td>
                           <span className="crm-badge" style={{
                             background: !getPrice(optCode) ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)',
