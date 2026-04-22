@@ -64,6 +64,7 @@ export const POST = handler(async (request) => {
   }
 
   return jsonError('Unknown entity. Use: group, option, price, constraint, step, exclusion-group', 400);
+});
 
 // PATCH — update entity by id
 export const PATCH = handler(async (request) => {
