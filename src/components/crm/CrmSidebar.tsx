@@ -19,6 +19,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/crm/clients', label: 'Clients', icon: <UsersIcon />, tour: 'sidebar-clients' },
       { href: '/crm/orders', label: 'Orders', icon: <ShoppingBagIcon /> },
+      { href: '/crm/draft-orders', label: 'Draft Orders', icon: <ShoppingBagIcon /> },
       { href: '/crm/appointments', label: 'Appointments', icon: <CalendarIcon />, tour: 'sidebar-appointments' },
       { href: '/crm/segments', label: 'Segments', icon: <FilterIcon />, tour: 'sidebar-segments' },
       { href: '/crm/loyalty', label: 'Loyalty', icon: <DiamondIcon />, tour: 'sidebar-loyalty' },

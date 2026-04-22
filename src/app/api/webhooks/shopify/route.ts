@@ -25,6 +25,9 @@ const TOPIC_EVENT_MAP: Record<string, string> = {
   'products/delete': 'shopify/product.deleted',
   'collections/create': 'shopify/collection.updated',
   'collections/update': 'shopify/collection.updated',
+  'draft_orders/create': 'shopify/draft_order.updated',
+  'draft_orders/update': 'shopify/draft_order.updated',
+  'draft_orders/delete': 'shopify/draft_order.deleted',
 };
 
 export async function POST(request: NextRequest) {

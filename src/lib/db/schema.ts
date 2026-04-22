@@ -908,3 +908,145 @@ export const creditCodes = pgTable('credit_codes', {
   index('idx_credit_codes_customer').on(t.shopifyCustomerId),
   index('idx_credit_codes_status').on(t.status),
 ]);
+
+// ─── Draft Orders Projection ─────────────────────────────
+
+export const draftOrdersProjection = pgTable(
+  'draft_orders_projection',
+  {
+    shopifyDraftOrderId: text('shopify_draft_order_id').primaryKey(),
+    shopifyCustomerId: text('shopify_customer_id'),
+    name: text('name'), // e.g. "#D1"
+    email: text('email'),
+    status: text('status'), // 'open' | 'invoice_sent' | 'completed'
+    totalPrice: decimal('total_price', { precision: 12, scale: 2 }),
+    subtotalPrice: decimal('subtotal_price', { precision: 12, scale: 2 }),
+    currency: text('currency'),
+    lineItems: jsonb('line_items'),
+    shippingAddress: jsonb('shipping_address'),
+    invoiceUrl: text('invoice_url'),
+    orderIdOnComplete: text('order_id_on_complete'),
+    tags: text('tags').array(),
+    note: text('note'),
+    createdAt: timestamp('created_at'),
+    shopifyUpdatedAt: timestamp('shopify_updated_at'),
+    syncedAt: timestamp('synced_at').defaultNow(),
+  },
+  (t) => [
+    index('idx_draft_orders_customer').on(t.shopifyCustomerId),
+    index('idx_draft_orders_status').on(t.status),
+  ]
+);
+
+// ─── Product Options Engine ──────────────────────────────
+
+export const optionLayerEnum = pgEnum('option_layer', [
+  'channel', 'lens_path', 'material', 'finish_state', 'treatment', 'shipping',
+]);
+
+export const selectionModeEnum = pgEnum('selection_mode', ['single', 'multi', 'none']);
+
+export const channelEnum = pgEnum('channel', ['optical', 'sun', 'reglaze']);
+
+export const pricingTypeEnum = pgEnum('pricing_type', ['absolute', 'delta']);
+
+export const constraintRuleTypeEnum = pgEnum('constraint_rule_type', [
+  'requires', 'excludes', 'allowed_only_with', 'hidden_until', 'default_if', 'defer_if_no_rx',
+]);
+
+export const rxStateEnum = pgEnum('rx_state', [
+  'none', 'pending', 'provided', 'validated', 'flagged',
+]);
+
+export const optionGroups = pgTable('option_groups', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  layer: optionLayerEnum('layer').notNull(),
+  selectionMode: selectionModeEnum('selection_mode').notNull().default('single'),
+  required: boolean('required').default(false),
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const options = pgTable('options', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  groupId: uuid('group_id').notNull().references(() => optionGroups.id),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  channels: jsonb('channels').$type<string[]>().default(['optical', 'sun']),
+  customerVisible: boolean('customer_visible').default(true),
+  active: boolean('active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_options_group').on(t.groupId),
+  index('idx_options_code').on(t.code),
+]);
+
+export const priceRules = pgTable('price_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  amountCad: decimal('amount_cad', { precision: 12, scale: 2 }).notNull(),
+  pricingType: pricingTypeEnum('pricing_type').notNull().default('delta'),
+  channels: jsonb('channels').$type<string[]>().default(['optical', 'sun']),
+  optionCodes: jsonb('option_codes').$type<string[]>().notNull(),
+  conditions: jsonb('conditions').$type<Record<string, unknown>>(),
+  active: boolean('active').default(true),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_price_rules_code').on(t.code),
+]);
+
+export const constraintRules = pgTable('constraint_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  ruleType: constraintRuleTypeEnum('rule_type').notNull(),
+  sourceOptionCode: text('source_option_code').notNull(),
+  targetOptionCodes: jsonb('target_option_codes').$type<string[]>().notNull(),
+  context: jsonb('context').$type<Record<string, unknown>>(),
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_constraint_rules_source').on(t.sourceOptionCode),
+]);
+
+export const stepDefinitions = pgTable('step_definitions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channel: channelEnum('channel').notNull(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  sortOrder: integer('sort_order').default(0),
+  optionGroupCodes: jsonb('option_group_codes').$type<string[]>().notNull(),
+  active: boolean('active').default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const configurationSnapshots = pgTable('configuration_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  channel: channelEnum('channel').notNull(),
+  shopifyProductId: text('shopify_product_id'),
+  shopifyVariantId: text('shopify_variant_id'),
+  shopifyOrderId: text('shopify_order_id'),
+  shopifyDraftOrderId: text('shopify_draft_order_id'),
+  selectedLensPath: text('selected_lens_path'),
+  selectedMaterial: text('selected_material'),
+  selectedFinishState: text('selected_finish_state'),
+  selectedTreatments: jsonb('selected_treatments').$type<string[]>().default([]),
+  rxState: rxStateEnum('rx_state').default('none'),
+  pricingLines: jsonb('pricing_lines').$type<Array<{ code: string; label: string; amountCad: number }>>().notNull(),
+  totalCad: decimal('total_cad', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_config_snapshots_order').on(t.shopifyOrderId),
+  index('idx_config_snapshots_draft').on(t.shopifyDraftOrderId),
+]);

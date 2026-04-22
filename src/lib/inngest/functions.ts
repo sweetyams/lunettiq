@@ -13,6 +13,7 @@ import {
   productFamilyMembers,
   productFilters,
   filterGroups,
+  draftOrdersProjection,
 } from '@/lib/db/schema';
 import { getProductMetafields } from '@/lib/crm/shopify-admin';
 import { toSlug } from '@/lib/shopify/slug';
@@ -1245,6 +1246,106 @@ export const activateMembership = inngest.createFunction(
   }
 );
 
+// ─── Draft Order Cleanup (abandoned carts) ───────────────
+
+export const cleanupDraftOrders = inngest.createFunction(
+  { id: 'cleanup-draft-orders', name: 'Cleanup stale draft orders', retries: 1, triggers: [{ cron: '0 */6 * * *' }] },
+  async () => {
+    const { graphqlAdmin } = await import('@/lib/shopify/admin-graphql');
+
+    // Find open draft orders older than 48 hours
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+
+    const query = `
+      query StaleDrafts($query: String!) {
+        draftOrders(first: 50, query: $query) {
+          nodes { id }
+        }
+      }
+    `;
+
+    const result = await graphqlAdmin<{
+      draftOrders: { nodes: { id: string }[] };
+    }>(query, { query: `status:open created_at:<${cutoff}` });
+
+    if (!result.ok || !result.data.draftOrders.nodes.length) return { deleted: 0 };
+
+    const deleteMutation = `
+      mutation DeleteDraft($input: DraftOrderDeleteInput!) {
+        draftOrderDelete(input: $input) {
+          userErrors { message }
+        }
+      }
+    `;
+
+    let count = 0;
+    for (const draft of result.data.draftOrders.nodes) {
+      const del = await graphqlAdmin(deleteMutation, { input: { id: draft.id } });
+      if (del.ok) count++;
+    }
+    return { deleted: count };
+  }
+);
+
+// ─── Draft Order Sync ────────────────────────────────────
+
+export const syncDraftOrder = inngest.createFunction(
+  { id: 'sync-draft-order', retries: 3, triggers: [{ event: 'shopify/draft_order.updated' }] },
+  async ({ event }) => {
+    const d = event.data;
+    await db
+      .insert(draftOrdersProjection)
+      .values({
+        shopifyDraftOrderId: String(d.id),
+        shopifyCustomerId: d.customer?.id ? String(d.customer.id) : null,
+        name: d.name,
+        email: d.email,
+        status: d.status,
+        totalPrice: d.total_price,
+        subtotalPrice: d.subtotal_price,
+        currency: d.currency,
+        lineItems: d.line_items,
+        shippingAddress: d.shipping_address,
+        invoiceUrl: d.invoice_url,
+        orderIdOnComplete: d.order_id ? String(d.order_id) : null,
+        tags: d.tags?.split(', ').filter(Boolean) ?? [],
+        note: d.note,
+        createdAt: d.created_at ? new Date(d.created_at) : undefined,
+        shopifyUpdatedAt: d.updated_at ? new Date(d.updated_at) : undefined,
+        syncedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: draftOrdersProjection.shopifyDraftOrderId,
+        set: {
+          shopifyCustomerId: d.customer?.id ? String(d.customer.id) : null,
+          name: d.name,
+          email: d.email,
+          status: d.status,
+          totalPrice: d.total_price,
+          subtotalPrice: d.subtotal_price,
+          lineItems: d.line_items,
+          shippingAddress: d.shipping_address,
+          invoiceUrl: d.invoice_url,
+          orderIdOnComplete: d.order_id ? String(d.order_id) : null,
+          tags: d.tags?.split(', ').filter(Boolean) ?? [],
+          note: d.note,
+          shopifyUpdatedAt: d.updated_at ? new Date(d.updated_at) : undefined,
+          syncedAt: new Date(),
+        },
+      });
+    return { synced: String(d.id) };
+  }
+);
+
+export const deleteDraftOrder = inngest.createFunction(
+  { id: 'delete-draft-order', retries: 2, triggers: [{ event: 'shopify/draft_order.deleted' }] },
+  async ({ event }) => {
+    const id = String(event.data.id);
+    await db.delete(draftOrdersProjection).where(eq(draftOrdersProjection.shopifyDraftOrderId, id));
+    return { deleted: id };
+  }
+);
+
 // ─── Export all functions ────────────────────────────────
 
-export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership];
+export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership, cleanupDraftOrders, syncDraftOrder, deleteDraftOrder];

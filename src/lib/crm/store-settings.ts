@@ -21,6 +21,14 @@ const DEFAULTS: Record<string, string> = {
   membership_sku_vault_annual: 'MEMBERSHIP-VAULT-ANNUAL',
   loyalty_tag_prefix: 'member-',
   loyalty_tiers: 'essential,cult,vault',
+  shipping_free_threshold: '0',
+  shipping_rates: JSON.stringify([
+    { zone: 'CA', label: 'Canada Standard', price: 15, currency: 'CAD' },
+    { zone: 'CA', label: 'Canada Express', price: 25, currency: 'CAD' },
+    { zone: 'US', label: 'USA Standard', price: 25, currency: 'CAD' },
+    { zone: 'US', label: 'USA Express', price: 40, currency: 'CAD' },
+    { zone: 'INTL', label: 'International', price: 50, currency: 'CAD' },
+  ]),
 };
 
 let _cache: Map<string, string> | null = null;
