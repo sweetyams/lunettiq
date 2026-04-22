@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-007: Implicit Exclusion via Group Selection Mode
+
+**Date:** 2026-04-21 · **Status:** Accepted
+
+**Context:** Current constraint_rules table has 23 rows, most encoding mutual exclusions that are already implied by single-select groups. Manual pairwise rules are hard to maintain and error-prone. Matrix UI helps visualize but doesn't fix the root cause.
+
+**Decision:** Selection mode on groups (`single`, `multi`) implies default behavior. Single-select = siblings mutually exclusive automatically. Rules table only stores exceptions and cross-group logic (`requires`, `excludes`, `allowed_if`, `hidden_if`, `price_modifier_if`). Admin UI organized as: flow editor (channel → steps → groups) + option catalogue + targeted rule builder. Matrix becomes read-only QA view.
+
+**Consequences:** Most existing constraint_rules rows become unnecessary — replaced by group selection mode. Rule count drops from ~23 to ~5-8 cross-group exceptions. Configurator engine must check group selection mode before evaluating rules. Admin UI needs full rebuild around flow-first editing.
+
+---
+
 ### ADR-006: No Shopify Plus — Draft Order Checkout
 
 **Date:** 2026-04-21 · **Status:** Accepted
