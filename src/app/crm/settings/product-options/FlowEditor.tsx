@@ -21,6 +21,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
   const [editForm, setEditForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [ruleEditCode, setRuleEditCode] = useState<string | null>(null);
 
   const channelSteps = useMemo(() =>
     steps.filter(s => s.channel === channel && s.active !== false)
@@ -128,16 +129,38 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
 
   function startEdit(opt: Entity) {
     setEditingId(opt.id);
-    setEditForm({ label: str(opt.label), code: str(opt.code), sortOrder: num(opt.sortOrder), active: opt.active !== false });
+    const price = getPrice(str(opt.code));
+    setEditForm({ label: str(opt.label), code: str(opt.code), active: opt.active !== false, priceAmount: price ? String(price.amount) : '', priceType: price?.type ?? 'delta' });
   }
 
   async function saveEdit(opt: Entity) {
     setSaving(true);
+    const optCode = str(opt.code);
+    // Save option fields
     await fetch('/api/crm/product-options', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ entity: 'option', id: opt.id, ...editForm }),
+      body: JSON.stringify({ entity: 'option', id: opt.id, label: editForm.label, code: editForm.code, active: editForm.active }),
     });
+    // Upsert price rule
+    const amt = str(editForm.priceAmount).trim();
+    const existingPrice = priceRules.find(p =>
+      p.active !== false && Array.isArray(p.optionCodes) && (p.optionCodes as string[]).includes(optCode));
+    if (amt && Number(amt) !== 0) {
+      if (existingPrice) {
+        await fetch('/api/crm/product-options', {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: 'price', id: existingPrice.id, amountCad: amt, pricingType: editForm.priceType }),
+        });
+      } else {
+        await fetch('/api/crm/product-options', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entity: 'price', code: `price_${str(editForm.code)}`, label: str(editForm.label), amountCad: amt, pricingType: editForm.priceType, optionCodes: [str(editForm.code)], channels: ['optical', 'sun', 'reglaze'], active: true }),
+        });
+      }
+    }
     setSaving(false);
     setEditingId(null);
     onReload();
@@ -254,6 +277,17 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                               <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Code</span>
                               <input className="crm-input" style={{ width: '100%' }} value={str(editForm.code)} onChange={e => setEditForm(p => ({ ...p, code: e.target.value }))} />
                             </label>
+                            <label style={{ width: 80 }}>
+                              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Price $</span>
+                              <input className="crm-input" style={{ width: '100%' }} type="number" step="0.01" value={str(editForm.priceAmount)} onChange={e => setEditForm(p => ({ ...p, priceAmount: e.target.value }))} placeholder="0" />
+                            </label>
+                            <label style={{ width: 80 }}>
+                              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Type</span>
+                              <select className="crm-input" style={{ width: '100%' }} value={str(editForm.priceType)} onChange={e => setEditForm(p => ({ ...p, priceType: e.target.value }))}>
+                                <option value="delta">+delta</option>
+                                <option value="absolute">absolute</option>
+                              </select>
+                            </label>
                             <label style={{ fontSize: 'var(--crm-text-xs)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', paddingBottom: 4 }}>
                               <input type="checkbox" checked={!!editForm.active} onChange={e => setEditForm(p => ({ ...p, active: e.target.checked }))} /> Active
                             </label>
@@ -284,8 +318,19 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                           }}>{formatPrice(optCode)}</span>
                         </td>
                         <td style={{ fontSize: 'var(--crm-text-xs)', color: avail === 'Always available' ? 'var(--crm-text-tertiary)' : 'var(--crm-text-secondary)' }}>{avail}</td>
-                        <td style={{ fontSize: 'var(--crm-text-xs)', color: exc ? 'var(--crm-warning)' : 'var(--crm-text-tertiary)' }}>{exc || '—'}</td>
+                        <td style={{ fontSize: 'var(--crm-text-xs)', color: exc ? 'var(--crm-warning)' : 'var(--crm-text-tertiary)', cursor: 'pointer' }}
+                          onClick={e => { e.stopPropagation(); setRuleEditCode(ruleEditCode === optCode ? null : optCode); setEditingId(null); }}>
+                          {exc || '—'} {getCustomRules(optCode).length > 0 ? '✎' : ''}
+                        </td>
                       </tr>
+                      {ruleEditCode === optCode && (
+                        <tr key={`rules-${opt.id}`}>
+                          <td />
+                          <td colSpan={4} style={{ background: 'var(--crm-surface-hover)', padding: '10px 12px' }}>
+                            <RuleEditor optCode={optCode} optLabel={str(opt.label)} rules={getCustomRules(optCode)} allOptions={options} optionLabelMap={optionLabelMap} onReload={() => { onReload(); setRuleEditCode(null); }} />
+                          </td>
+                        </tr>
+                      )}
                     );
                   })}
                 </tbody>
@@ -296,6 +341,111 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
           <div className="crm-card" style={{ padding: 'var(--crm-space-12)', textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>No steps for {channel}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── Inline Rule Editor ──────────────────────────────── */
+
+function RuleEditor({ optCode, optLabel, rules, allOptions, optionLabelMap, onReload }: {
+  optCode: string; optLabel: string; rules: Entity[]; allOptions: Entity[];
+  optionLabelMap: Map<string, string>; onReload: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [ruleType, setRuleType] = useState('requires');
+  const [targets, setTargets] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const TYPES = [
+    { value: 'requires', label: 'Available when…' },
+    { value: 'excludes', label: 'Not available with…' },
+    { value: 'allowed_only_with', label: 'Only available with…' },
+    { value: 'hidden_until', label: 'Hidden until…' },
+  ];
+
+  const filtered = allOptions.filter(o =>
+    o.active !== false && str(o.code) !== optCode &&
+    (!search || str(o.label).toLowerCase().includes(search.toLowerCase()))
+  );
+
+  async function addRule() {
+    if (!targets.length) return;
+    setSaving(true);
+    await fetch('/api/crm/product-options', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity: 'constraint', code: `rule_${optCode}_${ruleType}_${Date.now()}`, ruleType, sourceOptionCode: optCode, targetOptionCodes: targets, active: true }),
+    });
+    setSaving(false);
+    setAdding(false);
+    setTargets([]);
+    setSearch('');
+    onReload();
+  }
+
+  async function deleteRule(id: string) {
+    await fetch('/api/crm/product-options', {
+      method: 'DELETE', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity: 'constraint', id }),
+    });
+    onReload();
+  }
+
+  function toggleTarget(code: string) {
+    setTargets(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+  }
+
+  const RULE_LABELS: Record<string, string> = { requires: 'Available when', excludes: 'Not available with', allowed_only_with: 'Only with', hidden_until: 'Hidden until', default_if: 'Default if', defer_if_no_rx: 'Deferred' };
+
+  return (
+    <div>
+      <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, marginBottom: 8, color: 'var(--crm-text-secondary)' }}>
+        Rules for {optLabel}
+      </div>
+
+      {rules.length === 0 && !adding && (
+        <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 8 }}>No custom rules</div>
+      )}
+
+      {rules.map(r => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--crm-border-light)' }}>
+          <span style={{ fontSize: 'var(--crm-text-xs)' }}>
+            <strong style={{ color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)' }}>{RULE_LABELS[str(r.ruleType)] ?? str(r.ruleType)}</strong>{' '}
+            {((r.targetOptionCodes as string[]) ?? []).map(t => optionLabelMap.get(t) ?? t).join(', ')}
+          </span>
+          <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '1px 6px', color: 'var(--crm-error)' }} onClick={() => deleteRule(r.id)}>✕</button>
+        </div>
+      ))}
+
+      {adding ? (
+        <div style={{ marginTop: 8 }}>
+          <select className="crm-input" style={{ width: '100%', marginBottom: 6 }} value={ruleType} onChange={e => setRuleType(e.target.value)}>
+            {TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <input className="crm-input" style={{ width: '100%', marginBottom: 4 }} placeholder="Search options…" value={search} onChange={e => setSearch(e.target.value)} />
+          <div style={{ maxHeight: 140, overflow: 'auto', marginBottom: 8 }}>
+            {filtered.map(o => {
+              const code = str(o.code);
+              const sel = targets.includes(code);
+              return (
+                <button key={code} type="button" onClick={() => toggleTarget(code)} style={{
+                  display: 'block', width: '100%', textAlign: 'left', padding: '3px 8px', border: 'none', cursor: 'pointer',
+                  background: sel ? 'var(--crm-warning-light)' : 'transparent', color: sel ? 'var(--crm-warning)' : 'var(--crm-text-primary)',
+                  fontSize: 'var(--crm-text-xs)', fontWeight: sel ? 600 : 400, borderRadius: 3,
+                }}>{sel ? '✓ ' : ''}{str(o.label)}</button>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="crm-btn crm-btn-primary" style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px' }} disabled={saving || !targets.length} onClick={addRule}>{saving ? 'Saving…' : 'Add'}</button>
+            <button className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px' }} onClick={() => { setAdding(false); setTargets([]); setSearch(''); }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)', marginTop: 8, padding: '3px 10px' }} onClick={() => setAdding(true)}>+ Add rule</button>
+      )}
     </div>
   );
 }
