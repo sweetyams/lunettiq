@@ -75,14 +75,17 @@ Test files (`*.test.ts`, `*.test.tsx`, `tests/`) are excluded from `tsconfig.jso
 
 ### Missing environment variables
 Vercel builds need these env vars set in the Vercel dashboard:
-- `DATABASE_URL` or `POSTGRES_URL` (auto-set if using Vercel Postgres)
-- `BLOB_READ_WRITE_TOKEN` (auto-set if using Vercel Blob)
-- `AUTH_SECRET` / `NEXTAUTH_SECRET`
+- `DATABASE_URL` — Neon Postgres connection string
 - `NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN`
-- `NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN`
-- `KV_URL`, `KV_REST_API_URL`, `KV_REST_API_TOKEN` (auto-set if using Vercel KV)
+- `SHOPIFY_STOREFRONT_ACCESS_TOKEN`
+- `SHOPIFY_ADMIN_API_ACCESS_TOKEN`
+- `SHOPIFY_WEBHOOK_SECRET`
+- `SHOPIFY_CUSTOMER_ACCOUNT_API_CLIENT_ID` / `SHOPIFY_CUSTOMER_ACCOUNT_API_CLIENT_SECRET`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY`
+- `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY`
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`
 
-The build script runs `tsx scripts/migrate.ts` before `next build`. If `DATABASE_URL` is not set on Vercel, the migration will fail. Ensure Vercel Postgres is connected.
+The build script runs `tsx scripts/migrate.ts` before `next build`. If `DATABASE_URL` is not set on Vercel, the migration will fail.
 
 ### ESLint rule not found errors
 If you see `Definition for rule 'X' was not found`, it means an `eslint-disable` comment references a plugin that isn't installed. Remove the directive or install the plugin.
@@ -112,7 +115,7 @@ npm run deploy
 
 After a successful deploy:
 1. Check the Vercel deployment URL loads correctly
-2. Verify `/admin/login` is accessible
+2. Verify `/crm` is accessible (requires Clerk auth)
 3. Spot-check one storefront page and one API route
 4. Check Vercel Functions tab for any runtime errors
 
@@ -122,7 +125,7 @@ After a successful deploy:
 |---|---|---|
 | Node.js | 20 | `.nvmrc` |
 | Build command | `tsx scripts/migrate.ts && next build` | `package.json` → `build` |
-| TypeScript errors | Fail build | `next.config.js` → `typescript.ignoreBuildErrors: false` |
-| ESLint errors | Fail build | `next.config.js` → `eslint.ignoreDuringBuilds: false` |
+| TypeScript errors | Fail build | `next.config.mjs` → `typescript.ignoreBuildErrors: false` |
+| ESLint errors | Fail build | `next.config.mjs` → `eslint.ignoreDuringBuilds: false` |
 | Test files | Excluded from build checks | `tsconfig.json` + `.eslintrc.json` excludes |
 | Framework | Next.js 14.2 (App Router) | `package.json` |
