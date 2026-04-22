@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ConfiguratorPreview from './ConfiguratorPreview';
-import ExclusionGroups from './ExclusionGroups';
+import ConstraintMatrix from './ConstraintMatrix';
 
 type View = 'preview' | 'advanced';
 type Channel = 'optical' | 'sun' | 'reglaze';
@@ -181,7 +181,7 @@ export default function ProductOptionsClient() {
             onEditStep={step => openEdit(step, 'step')}
             onEditOption={opt => openEdit(opt, 'option')}
           />
-          <ExclusionGroups
+          <ConstraintMatrix
             constraintRules={data.constraintRules ?? []}
             options={data.options ?? []}
             onSave={load}
