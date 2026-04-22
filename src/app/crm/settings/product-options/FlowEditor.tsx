@@ -87,6 +87,17 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                   if (!g) return null;
                   const isSelected = effectiveSelected?.groupCode === gc && effectiveSelected?.channel === channel;
                   const optCount = options.filter(o => o.groupId === g.id && o.active !== false && hasChannel(o.channels, channel)).length;
+                  const groupOptCodes = new Set(options.filter(o => o.groupId === g.id).map(o => str(o.code)));
+                  const customRuleCount = getCrossGroupRules('__count__', groupOptCodes, constraintRules.filter(r => r.active !== false && groupOptCodes.has(str(r.sourceOptionCode)))).length;
+                  // Recount properly: rules where source is in this group
+                  const realRuleCount = constraintRules.filter(r => {
+                    if (r.active === false || !groupOptCodes.has(str(r.sourceOptionCode))) return false;
+                    if (str(r.ruleType) === 'excludes') {
+                      const targets = (r.targetOptionCodes as string[]) ?? [];
+                      if (targets.every(t => groupOptCodes.has(t))) return false;
+                    }
+                    return true;
+                  }).length;
                   return (
                     <button
                       key={gc}
@@ -103,7 +114,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                     >
                       <span>{String(g.label)}</span>
                       <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
-                        {String(g.selectionMode)} · {optCount}
+                        {String(g.selectionMode)} · {optCount}{realRuleCount > 0 ? ` · ${realRuleCount} rules` : ''}
                       </span>
                     </button>
                   );
@@ -170,11 +181,10 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
     onReload();
   }
 
+  const groupOptionCodes = useMemo(() => new Set(groupOptions.map(o => str(o.code))), [groupOptions]);
+
   function getRules(optCode: string) {
-    return constraintRules.filter(r =>
-      r.active !== false && (r.sourceOptionCode === optCode ||
-        (Array.isArray(r.targetOptionCodes) && (r.targetOptionCodes as string[]).includes(optCode)))
-    );
+    return getCrossGroupRules(optCode, groupOptionCodes, constraintRules);
   }
 
   function getPrice(optCode: string) {
@@ -205,9 +215,16 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
           </div>
         </div>
         <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>
-          {str(group.selectionMode) === 'single'
-            ? 'Selecting one option deselects all others. No exclusion rules needed within this group.'
-            : 'Multiple options can be selected. Use rules below to define exceptions.'}
+          <div style={{ marginBottom: 4 }}>
+            <strong style={{ color: 'var(--crm-text-secondary)' }}>Auto behavior:</strong>{' '}
+            {str(group.selectionMode) === 'single'
+              ? 'Selecting one option deselects all others. Sibling exclusions are automatic.'
+              : 'Multiple options can be selected simultaneously.'}
+          </div>
+          <div>
+            <strong style={{ color: 'var(--crm-text-secondary)' }}>Custom rules:</strong>{' '}
+            Only cross-group exceptions shown below (requires, conditional visibility, price overrides).
+          </div>
         </div>
       </div>
 
@@ -277,8 +294,8 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
                     {rules.length === 0 ? (
                       <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>—</span>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        {groupRulesByType(rules, String(opt.code), allOptions)}
+                      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                        {ruleChips(rules, String(opt.code))}
                       </div>
                     )}
                   </td>
@@ -458,6 +475,41 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
 }
 
 /* ── Helpers ─────────────────────────────────────────── */
+
+/** Get only cross-group rules for an option (filter out sibling excludes) */
+function getCrossGroupRules(optCode: string, groupOptionCodes: Set<string>, constraintRules: Entity[]) {
+  return constraintRules.filter(r => {
+    if (r.active === false) return false;
+    const isSrc = r.sourceOptionCode === optCode;
+    const isTgt = Array.isArray(r.targetOptionCodes) && (r.targetOptionCodes as string[]).includes(optCode);
+    if (!isSrc && !isTgt) return false;
+    // Filter out sibling excludes (both source and all targets in same group)
+    if (str(r.ruleType) === 'excludes') {
+      const targets = (r.targetOptionCodes as string[]) ?? [];
+      const allSiblings = groupOptionCodes.has(str(r.sourceOptionCode)) && targets.every(t => groupOptionCodes.has(t));
+      if (allSiblings) return false;
+    }
+    return true;
+  });
+}
+
+function ruleChips(rules: Entity[], optCode: string) {
+  const counts = new Map<string, number>();
+  for (const r of rules) {
+    const t = str(r.ruleType);
+    counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  const LABELS: Record<string, string> = { requires: 'Requires', excludes: 'Excludes', allowed_only_with: 'Needs', hidden_until: 'Hidden', default_if: 'Default', defer_if_no_rx: 'Deferred' };
+  return [...counts.entries()].map(([type, count]) => (
+    <span key={type} className="crm-badge" style={{
+      fontSize: 10,
+      background: type === 'excludes' ? 'var(--crm-error-light)' : 'var(--crm-warning-light)',
+      color: type === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)',
+    }}>
+      {LABELS[type] ?? type} {count}
+    </span>
+  ));
+}
 
 function groupRulesByType(rules: Entity[], optCode: string, allOptions: Entity[]) {
   const byType = new Map<string, string[]>();

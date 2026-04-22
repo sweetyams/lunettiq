@@ -101,4 +101,17 @@ Step 4: Thinning (single-select, conditional)
 - Rules:
   - 1.74 `allowed_if` rx_sphere > ±4.00 or rx_cylinder > ±2.00
 
-Step 5: Summary (no selection, review only)
+### Req 9: Distinguish Implicit vs Custom Rules
+Sibling excludes within single-select groups are implicit — never show them. Only display cross-group and conditional rules. Group header explains auto behavior. Custom rules section only shows exceptions.
+
+### Req 10: Human-Readable Rule Summaries
+Table shows compact chips: `Requires 2 · Excludes 1`. Not full rule text. Click opens rule drawer for detail. Rule drawer uses plain language: "Works with: Blue Light", "Requires: Prescription", "Not available with: Non-Rx".
+
+### Req 11: Rule Impact Preview
+Click an option → show what it enables, disables, hides in other steps. "Selecting Non-Prescription Clear → Enables: Blue Light (no Rx), Disables: Blue Light, Hides: Prescription Tint".
+
+### Req 12: Conflict / Dead-End Warnings
+Warn when: option unreachable, required step has no valid options after certain selections, conflicting dependencies. Show as banner or inline warning badges.
+
+### Req 13: Inherited vs Custom Rule Badges
+Show `Inherited` / `Channel override` / `Custom` badges on rules. Editing a shared rule warns about cross-channel impact.
