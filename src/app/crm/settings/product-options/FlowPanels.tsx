@@ -248,6 +248,13 @@ export function Inspector({ choice, channel, gCodes, constraintRules, priceRules
     onReload();
   }
 
+  async function removeTarget(rule: Entity, targetCode: string) {
+    const remaining = ((rule.targetOptionCodes as string[]) || []).filter(t => t !== targetCode);
+    if (remaining.length === 0) { delRule(rule.id); return; }
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'constraint', id: rule.id, targetOptionCodes: remaining }) });
+    onReload();
+  }
+
   return (
     <div style={{ width: 260, flexShrink: 0 }}>
       <div className="crm-card" style={{ padding: '14px 16px' }}>
@@ -263,12 +270,19 @@ export function Inspector({ choice, channel, gCodes, constraintRules, priceRules
           <div style={{ fontSize: 11, color: 'var(--crm-text-tertiary)', marginBottom: 8, fontStyle: 'italic' }}>No conditions. This choice is always shown when the step appears.</div>
         )}
         {rules.map(r => (
-          <div key={r.id} style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 11 }}>
-            <div>
-              <span style={{ color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)', fontWeight: 600 }}>{RULE_LABELS[str(r.ruleType)] || str(r.ruleType)}</span>{' '}
-              {((r.targetOptionCodes as string[]) || []).map(t => lblMap.get(t) || t).join(', ')}
+          <div key={r.id} style={{ padding: '6px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 11 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)', fontWeight: 600 }}>{RULE_LABELS[str(r.ruleType)] || str(r.ruleType)}</span>
+              <button onClick={() => delRule(r.id)} style={{ background: 'none', border: 'none', color: 'var(--crm-text-tertiary)', cursor: 'pointer', fontSize: 10, padding: '0 4px' }} title="Delete entire condition">✕</button>
             </div>
-            <button onClick={() => delRule(r.id)} style={{ background: 'none', border: 'none', color: 'var(--crm-error)', cursor: 'pointer', fontSize: 10, padding: '0 4px' }}>✕</button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {((r.targetOptionCodes as string[]) || []).map(t => (
+                <span key={t} className="crm-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: str(r.ruleType) === 'excludes' ? 'var(--crm-error-light)' : 'var(--crm-warning-light)', color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)' }}>
+                  {lblMap.get(t) || t}
+                  <button onClick={() => removeTarget(r, t)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }} title="Remove">✕</button>
+                </span>
+              ))}
+            </div>
           </div>
         ))}
 
