@@ -221,6 +221,7 @@ export function Inspector({ choice, channel, gCodes, constraintRules, priceRules
   const [targets, setTargets] = useState([] as string[]);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [expandingRule, setExpandingRule] = useState('');
 
   if (!choice) return (
     <div style={{ width: 260, flexShrink: 0 }}>
@@ -255,6 +256,13 @@ export function Inspector({ choice, channel, gCodes, constraintRules, priceRules
     onReload();
   }
 
+  async function addTargetsToRule(rule: Entity, newTargets: string[]) {
+    const existing = (rule.targetOptionCodes as string[]) || [];
+    const merged = [...new Set([...existing, ...newTargets])];
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'constraint', id: rule.id, targetOptionCodes: merged }) });
+    setExpandingRule(''); setTargets([]); setSearch(''); onReload();
+  }
+
   return (
     <div style={{ width: 260, flexShrink: 0 }}>
       <div className="crm-card" style={{ padding: '14px 16px' }}>
@@ -282,7 +290,23 @@ export function Inspector({ choice, channel, gCodes, constraintRules, priceRules
                   <button onClick={() => removeTarget(r, t)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }} title="Remove">✕</button>
                 </span>
               ))}
+              <button onClick={() => { setExpandingRule(expandingRule === r.id ? '' : r.id); setTargets([]); setSearch(''); }} className="crm-badge" style={{ cursor: 'pointer', border: 'none', background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)', fontSize: 10 }}>+ Add</button>
             </div>
+            {expandingRule === r.id && (
+              <div style={{ marginTop: 6 }}>
+                <input className="crm-input" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} placeholder="Search choices…" value={search} onChange={e => setSearch(e.target.value)} />
+                <div style={{ maxHeight: 120, overflow: 'auto', marginBottom: 6 }}>
+                  {filtered.filter(o => !((r.targetOptionCodes as string[]) || []).includes(str(o.code))).map(o => {
+                    const c = str(o.code); const s = targets.includes(c);
+                    return <button key={c} type="button" onClick={() => setTargets(p => s ? p.filter(x => x !== c) : [...p, c])} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '3px 8px', border: 'none', cursor: 'pointer', background: s ? 'var(--crm-warning-light)' : 'transparent', color: s ? 'var(--crm-warning)' : 'var(--crm-text-primary)', fontSize: 11, fontWeight: s ? 600 : 400, borderRadius: 3 }}>{s ? '✓ ' : ''}{str(o.label)}</button>;
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="crm-btn crm-btn-primary" style={{ fontSize: 11, padding: '3px 10px' }} disabled={!targets.length} onClick={() => addTargetsToRule(r, targets)}>Add</button>
+                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={() => { setExpandingRule(''); setTargets([]); setSearch(''); }}>Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 
