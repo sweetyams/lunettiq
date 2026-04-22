@@ -156,8 +156,10 @@ export default function CartDrawer() {
   const {
     cart,
     isLoading,
+    isCheckingOut,
     updateLineItem,
     removeLineItem,
+    checkout,
   } = useCart();
   const { isOpen, closeCart } = useCartDrawer();
 
@@ -206,11 +208,7 @@ export default function CartDrawer() {
     [removeLineItem]
   );
 
-  const handleCheckout = useCallback(() => {
-    if (cart?.checkoutUrl) {
-      window.location.href = cart.checkoutUrl;
-    }
-  }, [cart]);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // Credit codes from account — refresh on cart open
   const [activeGiftCards, setActiveGiftCards] = useState<Array<{ code: string; amount: string; fullCode?: string | null }>>([]);
@@ -252,6 +250,60 @@ export default function CartDrawer() {
   const subtotal = cart ? parseFloat(cart.cost.subtotalAmount.amount) : 0;
   const currency = cart?.cost.subtotalAmount.currencyCode ?? 'CAD';
   const isEmpty = lines.length === 0;
+
+  // Discount code
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string; title: string; type: string; value: number } | null>(null);
+
+  async function validateDiscount() {
+    if (!discountCode.trim()) return;
+    setDiscountLoading(true);
+    setDiscountError(null);
+    try {
+      const res = await fetch('/api/checkout/validate-discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCode.trim(), subtotal }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setAppliedDiscount(data.discount);
+        setDiscountCode('');
+      } else {
+        setDiscountError(data.reason || 'Invalid code');
+      }
+    } catch {
+      setDiscountError('Could not validate code');
+    } finally {
+      setDiscountLoading(false);
+    }
+  }
+
+  function removeDiscount() {
+    setAppliedDiscount(null);
+    setDiscountError(null);
+  }
+
+  // Compute discount amount for display
+  const discountAmount = appliedDiscount
+    ? appliedDiscount.type === 'percentage'
+      ? subtotal * (appliedDiscount.value / 100)
+      : appliedDiscount.type === 'fixed_amount'
+        ? appliedDiscount.value
+        : 0
+    : 0;
+
+  const handleCheckout = useCallback(async () => {
+    setCheckoutError(null);
+    try {
+      const invoiceUrl = await checkout(appliedDiscount ?? undefined);
+      window.location.href = invoiceUrl;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Checkout failed');
+    }
+  }, [checkout, appliedDiscount]);
 
   // Animated subtotal
   const [displaySubtotal, setDisplaySubtotal] = useState(subtotal);
@@ -380,14 +432,55 @@ export default function CartDrawer() {
                   ${displaySubtotal.toFixed(2)} {currency}
                 </span>
               </div>
+              {/* Discount code */}
+              {appliedDiscount ? (
+                <div className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                  <div>
+                    <span className="text-xs font-medium">{appliedDiscount.code}</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      {appliedDiscount.type === 'percentage' ? `-${appliedDiscount.value}%` : `-$${appliedDiscount.value.toFixed(2)}`}
+                    </span>
+                  </div>
+                  <button onClick={removeDiscount} className="text-xs text-gray-400 hover:text-red-500">Remove</button>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex gap-2">
+                    <input
+                      value={discountCode}
+                      onChange={e => setDiscountCode(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && validateDiscount()}
+                      placeholder="Discount code"
+                      className="flex-1 px-3 py-2 border border-gray-200 rounded text-sm"
+                    />
+                    <button
+                      onClick={validateDiscount}
+                      disabled={discountLoading || !discountCode.trim()}
+                      className="px-3 py-2 border border-gray-200 rounded text-sm font-medium hover:bg-gray-50 disabled:opacity-40"
+                    >
+                      {discountLoading ? '…' : 'Apply'}
+                    </button>
+                  </div>
+                  {discountError && <p className="text-xs text-red-500 mt-1">{discountError}</p>}
+                </div>
+              )}
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between text-sm text-green-700">
+                  <span>Discount</span>
+                  <span>-${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleCheckout}
-                disabled={isLoading}
+                disabled={isLoading || isCheckingOut}
                 className="w-full py-3 bg-black text-white text-sm font-medium hover:bg-gray-800 transition-colors disabled:opacity-50"
               >
-                Proceed to Checkout
+                {isCheckingOut ? 'Preparing checkout…' : 'Proceed to Checkout'}
               </button>
+              {checkoutError && (
+                <p className="text-xs text-red-600 text-center" role="alert">{checkoutError}</p>
+              )}
               <button
                 type="button"
                 onClick={closeCart}

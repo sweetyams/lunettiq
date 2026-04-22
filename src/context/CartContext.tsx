@@ -84,9 +84,11 @@ async function fetchCart(cartId: string): Promise<ShopifyCart | null> {
 interface CartContextValue {
   cart: ShopifyCart | null;
   isLoading: boolean;
+  isCheckingOut: boolean;
   addToCart: (variantId: string, quantity: number, attributes?: CartLineAttribute[]) => Promise<void>;
   updateLineItem: (lineId: string, quantity: number) => Promise<void>;
   removeLineItem: (lineId: string) => Promise<void>;
+  checkout: (discount?: { code: string; title: string; type: string; value: number }) => Promise<string>;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -104,6 +106,7 @@ export function useCart(): CartContextValue {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<ShopifyCart | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const initialised = useRef(false);
 
   useEffect(() => {
@@ -198,8 +201,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cart]
   );
 
+  const checkout = useCallback(async (discount?: { code: string; title: string; type: string; value: number }): Promise<string> => {
+    if (!cart || cart.lines.length === 0) throw new Error('Cart is empty');
+    setIsCheckingOut(true);
+    try {
+      const res = await fetch('/api/checkout/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartId: cart.id, discount }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Checkout failed');
+      }
+      const { invoiceUrl } = await res.json();
+      return invoiceUrl;
+    } finally {
+      setIsCheckingOut(false);
+    }
+  }, [cart]);
+
   return (
-    <CartContext.Provider value={{ cart, isLoading, addToCart, updateLineItem, removeLineItem }}>
+    <CartContext.Provider value={{ cart, isLoading, isCheckingOut, addToCart, updateLineItem, removeLineItem, checkout }}>
       {children}
     </CartContext.Provider>
   );
