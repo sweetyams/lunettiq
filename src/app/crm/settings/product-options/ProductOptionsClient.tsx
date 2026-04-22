@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import FlowEditor from './FlowEditor';
+import type { FlowData, FlowSelection } from './FlowEditor';
+import LiveConfiguratorPreview from './LiveConfiguratorPreview';
+import { cfgFetch } from './flow-helpers';
 
 type View = 'preview' | 'advanced';
 type Tab = 'groups' | 'options' | 'prices' | 'constraints' | 'steps';
@@ -39,6 +42,21 @@ export default function ProductOptionsClient() {
   const [editing, setEditing] = useState<Entity | null>(null);
   const [editEntity, setEditEntity] = useState<string>('group');
   const [saving, setSaving] = useState(false);
+
+  // Flow data (shared between FlowEditor + LiveConfiguratorPreview)
+  const [flowData, setFlowData] = useState<FlowData | null>(null);
+  const [flowLoading, setFlowLoading] = useState(true);
+  const [flowError, setFlowError] = useState('');
+  const [flowSelection, setFlowSelection] = useState<FlowSelection>({ flowId: '', stepId: '', groupId: '' });
+  const [showPreview, setShowPreview] = useState(true);
+
+  const loadFlowData = useCallback(async () => {
+    setFlowLoading(true); setFlowError('');
+    try { setFlowData(await cfgFetch()); } catch (e: any) { setFlowError(e.message); }
+    setFlowLoading(false);
+  }, []);
+
+  useEffect(() => { loadFlowData(); }, [loadFlowData]);
 
   const currentTab = TABS.find(t => t.key === tab)!;
   const items = data[DATA_KEYS[tab]] ?? [];
@@ -122,7 +140,7 @@ export default function ProductOptionsClient() {
   }
 
   return (
-    <div style={{ padding: 'var(--crm-space-6)', maxWidth: 1100 }}>
+    <div style={{ padding: 'var(--crm-space-6)', maxWidth: 1400 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', marginBottom: 'var(--crm-space-3)' }}>
         <Link href="/crm/settings" className="crm-btn crm-btn-ghost" style={{ padding: 0 }}>← Settings</Link>
       </div>
@@ -151,7 +169,30 @@ export default function ProductOptionsClient() {
       </div>
 
       {view === 'preview' ? (
-          <FlowEditor />
+        <>
+          <FlowEditor
+            data={flowData}
+            loading={flowLoading}
+            error={flowError}
+            onReload={loadFlowData}
+            onSelectionChange={setFlowSelection}
+          />
+          {/* Live preview toggle + panel */}
+          {flowData && !flowLoading && (
+            <div style={{ marginTop: 'var(--crm-space-5)' }}>
+              <button
+                className="crm-btn crm-btn-ghost"
+                style={{ fontSize: 'var(--crm-text-xs)', marginBottom: 'var(--crm-space-3)' }}
+                onClick={() => setShowPreview(p => !p)}
+              >
+                {showPreview ? '▾ Hide' : '▸ Show'} Customer Preview
+              </button>
+              {showPreview && (
+                <LiveConfiguratorPreview data={flowData} selection={flowSelection} />
+              )}
+            </div>
+          )}
+        </>
       ) : (
         <>
       {/* Advanced tabs + table below */}

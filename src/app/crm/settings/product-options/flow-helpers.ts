@@ -54,3 +54,19 @@ export function formatPlacementPrice(placementId: string, priceRules: E[]) {
   if (!p || p.amount === 0) return 'included';
   return p.type === 'override' ? '$' + p.amount : '+$' + p.amount;
 }
+
+// Resolve description (helpTextOverride or choice description)
+export function placementDescription(placement: E, choiceMap: Map<string, E>) {
+  if (placement.helpTextOverride) return str(placement.helpTextOverride);
+  const choice = choiceMap.get(str(placement.choiceId));
+  return choice ? str(choice.description) : '';
+}
+
+// Derive dot-notation path for a placement: step.code.choice.code
+export function derivePath(placement: E, groupMap: Map<string, E>, stepMap: Map<string, E>, choiceMap: Map<string, E>) {
+  const group = groupMap.get(str(placement.groupId));
+  const step = group ? stepMap.get(str(group.stepId)) : null;
+  const choice = choiceMap.get(str(placement.choiceId));
+  const parts = [step ? str(step.code) : '', choice ? str(choice.code) : ''].filter(Boolean);
+  return parts.join('.');
+}

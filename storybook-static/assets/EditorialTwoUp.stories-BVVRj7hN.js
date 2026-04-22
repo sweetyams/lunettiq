@@ -1,8 +1,0 @@
-import{n as e,s as t}from"./chunk-CzyJ72yW.js";import{_ as n}from"./iframe-BOb_YaGJ.js";import{t as r}from"./link-CFnhLlkG.js";import{n as i,t as a}from"./image-QU13H8ke.js";import{r as o,t as s}from"./storyData-JooGbszH.js";function c({panels:e}){if(e.length<2)return null;let[t,n]=e;return(0,l.jsx)(`section`,{className:`site-container grid grid-cols-1 md:grid-cols-2 gap-4 py-8`,children:[t,n].map(e=>{let t=(0,l.jsxs)(`div`,{className:`relative aspect-[4/5] overflow-hidden`,children:[e.image&&(0,l.jsx)(i,{src:e.image,alt:e.title,fill:!0,className:`object-cover`,sizes:`(max-width: 768px) 100vw, 50vw`}),(0,l.jsx)(`div`,{className:`absolute inset-0 bg-black/10`}),(0,l.jsx)(`div`,{className:`absolute bottom-6 left-6`,children:(0,l.jsx)(`h3`,{className:`text-white text-lg md:text-xl tracking-wide`,children:e.title})})]});return e.linkUrl?(0,l.jsx)(u.default,{href:e.linkUrl,className:`block`,children:t},e.title):(0,l.jsx)(`div`,{children:t},e.title)})})}var l,u,d=e((()=>{l=n(),a(),u=t(r()),c.__docgenInfo={description:``,methods:[],displayName:`EditorialTwoUp`,props:{panels:{required:!0,tsType:{name:`Array`,elements:[{name:`EditorialPanel`}],raw:`EditorialPanel[]`},description:``}}}})),f,p,m;e((()=>{d(),s(),f={component:c},p={args:{panels:[o,{...o,title:`Crafted in Japan`}]}},p.parameters={...p.parameters,docs:{...p.parameters?.docs,source:{originalSource:`{
-  args: {
-    panels: [mockEditorialPanel, {
-      ...mockEditorialPanel,
-      title: 'Crafted in Japan'
-    }]
-  }
-}`,...p.parameters?.docs?.source}}},m=[`Default`]}))();export{p as Default,m as __namedExportsOrder,f as default};

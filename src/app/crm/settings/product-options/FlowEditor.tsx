@@ -1,24 +1,54 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { E, str, num, cfgFetch } from './flow-helpers';
-import { StepList, GroupEditor, Inspector } from './FlowPanels';
+import { StepList, StepEditor, Inspector } from './FlowPanels';
 
-export default function FlowEditor() {
-  const [data, setData] = useState<Awaited<ReturnType<typeof cfgFetch>> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export type FlowData = Awaited<ReturnType<typeof cfgFetch>>;
+
+export interface FlowSelection {
+  flowId: string;
+  stepId: string;
+  groupId: string;
+}
+
+interface FlowEditorProps {
+  /** When provided, parent owns data; editor skips internal fetch */
+  data?: FlowData | null;
+  loading?: boolean;
+  error?: string;
+  onReload?: () => void;
+  /** Fires whenever the active flow/step/group changes */
+  onSelectionChange?: (sel: FlowSelection) => void;
+}
+
+export default function FlowEditor({ data: externalData, loading: externalLoading, error: externalError, onReload: externalReload, onSelectionChange }: FlowEditorProps) {
+  // Internal state used only when no external data is provided (standalone mode)
+  const [internalData, setInternalData] = useState<FlowData | null>(null);
+  const [internalLoading, setInternalLoading] = useState(true);
+  const [internalError, setInternalError] = useState('');
+
+  const standalone = externalData === undefined;
+  const data = standalone ? internalData : externalData;
+  const loading = standalone ? internalLoading : !!externalLoading;
+  const error = standalone ? internalError : externalError ?? '';
+
+  const load = useCallback(async () => {
+    if (!standalone) { externalReload?.(); return; }
+    setInternalLoading(true); setInternalError('');
+    try { setInternalData(await cfgFetch()); } catch (e: any) { setInternalError(e.message); }
+    setInternalLoading(false);
+  }, [standalone, externalReload]);
+
+  useEffect(() => { if (standalone) load(); }, [standalone, load]);
+
+  const onReload = standalone ? load : (externalReload ?? load);
+
+  // Selection state
   const [flowId, setFlowId] = useState('');
   const [stepId, setStepId] = useState('');
   const [groupId, setGroupId] = useState('');
   const [placementId, setPlacementId] = useState('');
-
-  async function load() {
-    setLoading(true); setError('');
-    try { setData(await cfgFetch()); } catch (e: any) { setError(e.message); }
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
 
   const flows = data?.flows ?? [];
   const activeFlow = flows.find(f => f.id === flowId) ?? flows[0] ?? null;
@@ -29,12 +59,11 @@ export default function FlowEditor() {
     [data?.steps, fid]);
 
   const choiceMap = useMemo(() => {
-    const m = new Map();
+    const m = new Map<string, E>();
     (data?.choices ?? []).forEach(c => m.set(c.id, c));
-    return m as Map<string, E>;
+    return m;
   }, [data?.choices]);
 
-  // Auto-select first step/group
   const activeStep = fSteps.find(s => s.id === stepId) ?? fSteps[0] ?? null;
   const sid = activeStep?.id ?? '';
   const fGroups = useMemo(() =>
@@ -48,9 +77,14 @@ export default function FlowEditor() {
 
   const activePlacement = placements.find(p => p.id === placementId) ?? null;
 
+  // Notify parent of selection changes
+  useEffect(() => {
+    onSelectionChange?.({ flowId: fid, stepId: sid, groupId: gid });
+  }, [fid, sid, gid, onSelectionChange]);
+
   if (loading) return <div className="crm-card" style={{ padding: 48, textAlign: 'center', color: 'var(--crm-text-tertiary)' }}>Loading configurator…</div>;
   if (error) return <div style={{ padding: '8px 12px', background: 'var(--crm-error-light)', color: 'var(--crm-error)', borderRadius: 6, fontSize: 13 }}>{error}</div>;
-  if (!activeFlow) return <EmptyState onReload={load} />;
+  if (!activeFlow) return <EmptyState onReload={onReload} />;
 
   return (
     <div style={{ display: 'flex', gap: 16, minHeight: 500 }}>
@@ -59,19 +93,33 @@ export default function FlowEditor() {
         steps={fSteps} groups={data?.groups ?? []} placements={data?.placements ?? []}
         activeStepId={sid} setStepId={id => { setStepId(id); setGroupId(''); setPlacementId(''); }}
         activeGroupId={gid} setGroupId={id => { setGroupId(id); setPlacementId(''); }}
-        onReload={load}
+        onReload={onReload}
       />
-      <GroupEditor
-        group={activeGroup} placements={placements} choiceMap={choiceMap}
-        priceRules={data?.priceRules ?? []} choices={data?.choices ?? []}
+      <StepEditor
+        step={activeStep} steps={fSteps} groups={data?.groups ?? []} allPlacements={data?.placements ?? []}
+        choiceMap={choiceMap} priceRules={data?.priceRules ?? []} choices={data?.choices ?? []}
+        ruleSets={data?.ruleSets ?? []} rules={data?.rules ?? []} clauses={data?.clauses ?? []}
         selPlacementId={placementId} setSelPlacementId={setPlacementId}
-        onReload={load}
+        onReload={onReload}
+        onDeleteStep={async (id) => {
+          if (!confirm('Delete this step and all its groups/choices?')) return;
+          const { cfgDelete } = await import('./flow-helpers');
+          const groups = (data?.groups ?? []).filter(g => g.stepId === id);
+          for (const g of groups) {
+            for (const pl of (data?.placements ?? []).filter(p => p.groupId === g.id)) await cfgDelete('placement', pl.id);
+            await cfgDelete('group', g.id);
+          }
+          await cfgDelete('step', id);
+          setStepId(''); onReload();
+        }}
       />
       <Inspector
         placement={activePlacement} choiceMap={choiceMap}
         priceRules={data?.priceRules ?? []} ruleSets={data?.ruleSets ?? []}
         rules={data?.rules ?? []} clauses={data?.clauses ?? []}
-        choices={data?.choices ?? []} onReload={load}
+        choices={data?.choices ?? []} groups={data?.groups ?? []}
+        steps={fSteps} placements={data?.placements ?? []}
+        onReload={onReload}
       />
     </div>
   );

@@ -1,8 +1,0 @@
-import{n as e,s as t}from"./chunk-CzyJ72yW.js";import{_ as n}from"./iframe-BOb_YaGJ.js";import{t as r}from"./link-CFnhLlkG.js";import{n as i,t as a}from"./image-QU13H8ke.js";function o({image:e,title:t=`Visit Our Stores`}){return(0,s.jsxs)(c.default,{href:`/pages/stores`,className:`block relative w-full h-[500px] md:h-[700px] overflow-hidden group`,children:[e?(0,s.jsx)(i,{src:e,alt:t,fill:!0,className:`object-cover transition-transform duration-500 group-hover:scale-105`,sizes:`100vw`}):(0,s.jsx)(`div`,{className:`absolute inset-0 bg-gray-200`}),(0,s.jsx)(`div`,{className:`absolute inset-0 bg-black/20`}),(0,s.jsx)(`div`,{className:`absolute inset-0 flex items-center justify-center`,children:(0,s.jsx)(`span`,{className:`text-white text-2xl md:text-4xl font-light tracking-wide`,children:t})})]})}var s,c,l=e((()=>{s=n(),a(),c=t(r()),o.__docgenInfo={description:``,methods:[],displayName:`StoreTeaser`,props:{image:{required:!1,tsType:{name:`string`},description:``},title:{required:!1,tsType:{name:`string`},description:``,defaultValue:{value:`'Visit Our Stores'`,computed:!1}}}}})),u,d,f,p;e((()=>{l(),u={component:o},d={args:{image:`https://placehold.co/1200x700/F5F5F9/333?text=Store`,title:`Visit Our Stores`}},f={args:{}},d.parameters={...d.parameters,docs:{...d.parameters?.docs,source:{originalSource:`{
-  args: {
-    image: 'https://placehold.co/1200x700/F5F5F9/333?text=Store',
-    title: 'Visit Our Stores'
-  }
-}`,...d.parameters?.docs?.source}}},f.parameters={...f.parameters,docs:{...f.parameters?.docs,source:{originalSource:`{
-  args: {}
-}`,...f.parameters?.docs?.source}}},p=[`WithImage`,`NoImage`]}))();export{f as NoImage,d as WithImage,p as __namedExportsOrder,u as default};
