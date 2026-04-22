@@ -8,11 +8,19 @@ import {
 
 /* ── Left: Step List ── */
 
-export function StepList({ channel, setChannel, cSteps, gMap, activeCode, setSelGroup, options, constraintRules }: {
+export function StepList({ channel, setChannel, cSteps, gMap, activeCode, setSelGroup, options, constraintRules, onReload }: {
   channel: string; setChannel: (c: string) => void; cSteps: Entity[];
   gMap: Map<string, Entity>; activeCode: string; setSelGroup: (c: string) => void;
-  options: Entity[]; constraintRules: Entity[];
+  options: Entity[]; constraintRules: Entity[]; onReload: () => void;
 }) {
+  const [editingStep, setEditingStep] = useState('');
+  const [stepLabel, setStepLabel] = useState('');
+
+  async function saveStepLabel(stepId: string) {
+    if (!stepLabel.trim()) { setEditingStep(''); return; }
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'step', id: stepId, label: stepLabel.trim() }) });
+    setEditingStep(''); onReload();
+  }
   return (
     <div style={{ width: 230, flexShrink: 0 }}>
       <div style={{ display: 'flex', gap: 2, marginBottom: 12 }}>
@@ -27,7 +35,15 @@ export function StepList({ channel, setChannel, cSteps, gMap, activeCode, setSel
             <div key={step.id}>
               <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 600, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)', borderBottom: '1px solid var(--crm-border-light)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ width: 18, height: 18, borderRadius: '50%', fontSize: 10, background: 'var(--crm-text-primary)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{si + 1}</span>
-                {str(step.label)}
+                {editingStep === step.id ? (
+                  <input className="crm-input" autoFocus style={{ fontSize: 11, padding: '2px 6px', flex: 1 }} value={stepLabel}
+                    onChange={e => setStepLabel(e.target.value)}
+                    onBlur={() => saveStepLabel(step.id)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveStepLabel(step.id); if (e.key === 'Escape') setEditingStep(''); }}
+                  />
+                ) : (
+                  <span onDoubleClick={() => { setEditingStep(step.id); setStepLabel(str(step.label)); }} style={{ cursor: 'text' }} title="Double-click to rename">{str(step.label)}</span>
+                )}
               </div>
               {codes.map(gc => {
                 const g = gMap.get(gc);
@@ -60,6 +76,30 @@ export function GroupEditor({ group, channel, gOpts, gCodes, priceRules, constra
   selChoice: string; setSelChoice: (c: string) => void; onReload: () => void;
 }) {
   const [dragIdx, setDragIdx] = useState(-1);
+  const [editId, setEditId] = useState('');
+  const [ef, setEf] = useState({} as Record<string, unknown>);
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(o: Entity, e: React.MouseEvent) {
+    e.stopPropagation();
+    const p = priceRules.find(r => r.active !== false && hasChannel(r.channels, channel) && Array.isArray(r.optionCodes) && (r.optionCodes as string[]).includes(str(o.code)));
+    setEditId(o.id);
+    setEf({ label: str(o.label), code: str(o.code), active: o.active !== false, priceAmt: p ? str(p.amountCad) : '', priceType: p ? str(p.pricingType) : 'delta', priceId: p?.id || '' });
+  }
+
+  async function saveEdit(o: Entity) {
+    setSaving(true);
+    const h = { 'Content-Type': 'application/json' };
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: h, body: JSON.stringify({ entity: 'option', id: o.id, label: ef.label, code: ef.code, active: ef.active }) });
+    const amt = String(ef.priceAmt || '').trim();
+    if (amt && Number(amt) !== 0) {
+      const body = ef.priceId
+        ? { entity: 'price', id: ef.priceId, amountCad: amt, pricingType: ef.priceType }
+        : { entity: 'price', code: 'price_' + str(ef.code), label: str(ef.label), amountCad: amt, pricingType: ef.priceType, optionCodes: [str(ef.code)], channels: ['optical', 'sun', 'reglaze'], active: true };
+      await fetch('/api/crm/product-options', { method: ef.priceId ? 'PATCH' : 'POST', credentials: 'include', headers: h, body: JSON.stringify(body) });
+    }
+    setSaving(false); setEditId(''); onReload();
+  }
 
   async function reorder(from: number, to: number) {
     if (from === to) return;
@@ -72,16 +112,32 @@ export function GroupEditor({ group, channel, gOpts, gCodes, priceRules, constra
 
   if (!group) return <div style={{ flex: 1 }} />;
 
+  async function toggleMode() {
+    const v = str(group.selectionMode) === 'single' ? 'multi' : 'single';
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'group', id: group.id, selectionMode: v }) });
+    onReload();
+  }
+  async function toggleRequired() {
+    await fetch('/api/crm/product-options', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entity: 'group', id: group.id, required: !group.required }) });
+    onReload();
+  }
+
   const mode = str(group.selectionMode) === 'single' ? 'Choose one' : 'Choose any';
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div className="crm-card" style={{ padding: '12px 16px', marginBottom: 12 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 4px' }}>{friendlyGroupLabel(group)}</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 6px' }}>{friendlyGroupLabel(group)}</h2>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+          <button className="crm-btn crm-btn-secondary" style={{ fontSize: 11, padding: '3px 10px' }} onClick={toggleMode}>
+            {mode === 'Choose one' ? '◉ Choose one' : '☑ Choose any'}
+          </button>
+          <button className="crm-btn crm-btn-secondary" style={{ fontSize: 11, padding: '3px 10px' }} onClick={toggleRequired}>
+            {group.required ? '✓ Customer must choose' : '○ Optional'}
+          </button>
+        </div>
         <div style={{ fontSize: 11, color: 'var(--crm-text-tertiary)' }}>
-          Customers {mode === 'Choose one' ? 'choose one option' : 'can select multiple options'} in this step.
-          {group.required ? ' This step is required.' : ' This step is optional.'}
-          {mode === 'Choose one' && <span style={{ display: 'block', marginTop: 4, fontStyle: 'italic' }}>Selecting one choice automatically deselects the others.</span>}
+          {mode === 'Choose one' ? 'Selecting one choice automatically deselects the others.' : 'Customers can select multiple options in this step.'}
         </div>
       </div>
 
@@ -96,7 +152,7 @@ export function GroupEditor({ group, channel, gOpts, gCodes, priceRules, constra
           return (
             <div
               key={opt.id}
-              draggable
+              draggable={editId !== opt.id}
               onDragStart={() => setDragIdx(idx)}
               onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow = '0 -2px 0 var(--crm-text-primary)'; }}
               onDragLeave={e => { e.currentTarget.style.boxShadow = ''; }}
@@ -110,19 +166,41 @@ export function GroupEditor({ group, channel, gOpts, gCodes, priceRules, constra
                 transition: 'border-color 120ms',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ cursor: 'grab', color: 'var(--crm-text-tertiary)', fontSize: 11, userSelect: 'none' }}>⠿</span>
-                  <span style={{ fontWeight: 500, fontSize: 13 }}>{str(opt.label)}</span>
+              {editId === opt.id ? (
+                <div onClick={e => e.stopPropagation()} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <label style={{ flex: 1, minWidth: 100 }}><span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>Label</span><input className="crm-input" style={{ width: '100%' }} value={str(ef.label)} onChange={e => setEf(p => ({ ...p, label: e.target.value }))} /></label>
+                    <label style={{ width: 110 }}><span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>Internal name</span><input className="crm-input" style={{ width: '100%' }} value={str(ef.code)} onChange={e => setEf(p => ({ ...p, code: e.target.value }))} /></label>
+                    <label style={{ width: 70 }}><span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>Price $</span><input className="crm-input" style={{ width: '100%' }} type="number" step="0.01" value={str(ef.priceAmt)} onChange={e => setEf(p => ({ ...p, priceAmt: e.target.value }))} /></label>
+                    <label style={{ width: 75 }}><span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>Type</span><select className="crm-input" style={{ width: '100%' }} value={str(ef.priceType)} onChange={e => setEf(p => ({ ...p, priceType: e.target.value }))}><option value="delta">+delta</option><option value="absolute">fixed</option></select></label>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}><input type="checkbox" checked={!!ef.active} onChange={e => setEf(p => ({ ...p, active: e.target.checked }))} /> Visible to customers</label>
+                    <div style={{ flex: 1 }} />
+                    <button className="crm-btn crm-btn-primary" style={{ fontSize: 11, padding: '3px 10px' }} disabled={saving} onClick={() => saveEdit(opt)}>{saving ? 'Saving…' : 'Save'}</button>
+                    <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '3px 10px' }} onClick={e => { e.stopPropagation(); setEditId(''); }}>Cancel</button>
+                  </div>
                 </div>
-                <span className="crm-badge" style={{
-                  background: price === 'included' ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)',
-                  color: price === 'included' ? 'var(--crm-text-tertiary)' : 'var(--crm-success)',
-                }}>{price}</span>
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 4, marginLeft: 26 }}>
-                {shown} · {conds} · Visible to customers
-              </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ cursor: 'grab', color: 'var(--crm-text-tertiary)', fontSize: 11, userSelect: 'none' }}>⠿</span>
+                      <span style={{ fontWeight: 500, fontSize: 13 }}>{str(opt.label)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="crm-badge" style={{
+                        background: price === 'included' ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)',
+                        color: price === 'included' ? 'var(--crm-text-tertiary)' : 'var(--crm-success)',
+                      }}>{price}</span>
+                      <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 6px' }} onClick={e => startEdit(opt, e)}>Edit</button>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 4, marginLeft: 26 }}>
+                    {shown} · {conds} · {opt.active !== false ? 'Visible to customers' : 'Hidden'}
+                  </div>
+                </>
+              )}
             </div>
           );
         })}

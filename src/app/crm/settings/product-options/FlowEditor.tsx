@@ -49,7 +49,7 @@ export default function FlowEditor(props: Props) {
         channel={channel} setChannel={c => { setChannel(c); setSelGroup(''); setSelChoice(''); }}
         cSteps={cSteps} gMap={gMap} activeCode={activeCode}
         setSelGroup={c => { setSelGroup(c); setSelChoice(''); }}
-        options={options} constraintRules={constraintRules}
+        options={options} constraintRules={constraintRules} onReload={onReload}
       />
       <GroupEditor
         group={activeGroup} channel={channel} gOpts={gOpts} gCodes={gCodes}
