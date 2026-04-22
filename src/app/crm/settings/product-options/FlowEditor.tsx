@@ -29,13 +29,13 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
     [steps, channel]);
 
   const groupMap = useMemo(() => {
-    const m = new Map<string, Entity>();
+    const m = new Map();
     for (const g of groups) m.set(str(g.code), g);
     return m;
   }, [groups]);
 
   const optionLabelMap = useMemo(() => {
-    const m = new Map<string, string>();
+    const m = new Map();
     for (const o of options) m.set(str(o.code), str(o.label));
     return m;
   }, [options]);
