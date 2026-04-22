@@ -151,14 +151,7 @@ export default function ProductOptionsClient() {
       </div>
 
       {view === 'preview' ? (
-          <FlowEditor
-            steps={data.stepDefinitions ?? []}
-            groups={data.groups ?? []}
-            options={data.options ?? []}
-            priceRules={data.priceRules ?? []}
-            constraintRules={data.constraintRules ?? []}
-            onReload={load}
-          />
+          <FlowEditor />
       ) : (
         <>
       {/* Advanced tabs + table below */}
