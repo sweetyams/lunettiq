@@ -327,7 +327,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                         <tr key={`rules-${opt.id}`}>
                           <td />
                           <td colSpan={4} style={{ background: 'var(--crm-surface-hover)', padding: '10px 12px' }}>
-                            <RuleEditor optCode={optCode} optLabel={str(opt.label)} rules={getCustomRules(optCode)} allOptions={options} optionLabelMap={optionLabelMap} onReload={() => { onReload(); setRuleEditCode(null); }} />
+                            <RuleEditor optCode={optCode} optLabel={str(opt.label)} rules={getCustomRules(optCode)} allOptions={options} optionLabelMap={Object.fromEntries(optionLabelMap)} onReload={() => { onReload(); setRuleEditCode(null); }} />
                           </td>
                         </tr>
                       )}
@@ -349,7 +349,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
 
 function RuleEditor({ optCode, optLabel, rules, allOptions, optionLabelMap, onReload }: {
   optCode: string; optLabel: string; rules: Entity[]; allOptions: Entity[];
-  optionLabelMap: Map<string, string>; onReload: () => void;
+  optionLabelMap: Record<string, string>; onReload: () => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [ruleType, setRuleType] = useState('requires');
@@ -413,7 +413,7 @@ function RuleEditor({ optCode, optLabel, rules, allOptions, optionLabelMap, onRe
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid var(--crm-border-light)' }}>
           <span style={{ fontSize: 'var(--crm-text-xs)' }}>
             <strong style={{ color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)' }}>{RULE_LABELS[str(r.ruleType)] ?? str(r.ruleType)}</strong>{' '}
-            {((r.targetOptionCodes as string[]) ?? []).map(t => optionLabelMap.get(t) ?? t).join(', ')}
+            {((r.targetOptionCodes as string[]) ?? []).map(t => optionLabelMap[t] ?? t).join(', ')}
           </span>
           <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '1px 6px', color: 'var(--crm-error)' }} onClick={() => deleteRule(r.id)}>✕</button>
         </div>
