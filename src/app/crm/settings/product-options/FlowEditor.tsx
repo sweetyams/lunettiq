@@ -31,7 +31,17 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
     return m;
   }, [groups]);
 
-  const selectedGroup = selected ? groupMap.get(selected.groupCode) ?? null : null;
+  // Auto-select first group when channel changes or on initial load
+  const firstGroupCode = useMemo(() => {
+    for (const step of channelSteps) {
+      const codes = (step.optionGroupCodes as string[]) ?? [];
+      if (codes.length > 0) return codes[0];
+    }
+    return null;
+  }, [channelSteps]);
+
+  const effectiveSelected = selected?.channel === channel ? selected : (firstGroupCode ? { type: 'group' as const, groupCode: firstGroupCode, channel } : null);
+  const selectedGroup = effectiveSelected ? groupMap.get(effectiveSelected.groupCode) ?? null : null;
   const groupOptions = selectedGroup
     ? options.filter(o => o.groupId === selectedGroup.id && o.active !== false && hasChannel(o.channels, channel))
         .sort((a, b) => num(a.sortOrder) - num(b.sortOrder))
@@ -75,7 +85,7 @@ export default function FlowEditor({ steps, groups, options, priceRules, constra
                 {groupCodes.map(gc => {
                   const g = groupMap.get(gc);
                   if (!g) return null;
-                  const isSelected = selected?.groupCode === gc && selected?.channel === channel;
+                  const isSelected = effectiveSelected?.groupCode === gc && effectiveSelected?.channel === channel;
                   const optCount = options.filter(o => o.groupId === g.id && o.active !== false && hasChannel(o.channels, channel)).length;
                   return (
                     <button
@@ -139,6 +149,26 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
   onReload: () => void;
 }) {
   const [ruleDrawer, setRuleDrawer] = useState<Entity | null>(null);
+  const [editingOpt, setEditingOpt] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, unknown>>({});
+  const [saving, setSaving] = useState(false);
+
+  function startEdit(opt: Entity) {
+    setEditingOpt(opt.id);
+    setEditForm({ label: str(opt.label), code: str(opt.code), sortOrder: num(opt.sortOrder), active: opt.active !== false });
+  }
+
+  async function saveOption(opt: Entity) {
+    setSaving(true);
+    await fetch('/api/crm/product-options', {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity: 'option', id: opt.id, ...editForm }),
+    });
+    setSaving(false);
+    setEditingOpt(null);
+    onReload();
+  }
 
   function getRules(optCode: string) {
     return constraintRules.filter(r =>
@@ -197,8 +227,42 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
             {groupOptions.map((opt, i) => {
               const rules = getRules(String(opt.code));
               const price = getPrice(String(opt.code));
-              return (
-                <tr key={opt.id}>
+              const isEditing = editingOpt === opt.id;
+              return isEditing ? (
+                <tr key={opt.id} style={{ background: 'var(--crm-surface-hover)' }}>
+                  <td style={{ color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>{i + 1}</td>
+                  <td colSpan={3}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '4px 0' }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <label style={{ flex: 1 }}>
+                          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Label</span>
+                          <input className="crm-input" style={{ width: '100%' }} value={str(editForm.label)} onChange={e => setEditForm(p => ({ ...p, label: e.target.value }))} />
+                        </label>
+                        <label style={{ width: 140 }}>
+                          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Code</span>
+                          <input className="crm-input" style={{ width: '100%' }} value={str(editForm.code)} onChange={e => setEditForm(p => ({ ...p, code: e.target.value }))} />
+                        </label>
+                        <label style={{ width: 60 }}>
+                          <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Order</span>
+                          <input className="crm-input" style={{ width: '100%' }} type="number" value={num(editForm.sortOrder)} onChange={e => setEditForm(p => ({ ...p, sortOrder: Number(e.target.value) }))} />
+                        </label>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ fontSize: 'var(--crm-text-xs)', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!editForm.active} onChange={e => setEditForm(p => ({ ...p, active: e.target.checked }))} /> Active
+                        </label>
+                        <div style={{ flex: 1 }} />
+                        <button className="crm-btn crm-btn-primary" style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px' }} disabled={saving} onClick={() => saveOption(opt)}>
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px' }} onClick={() => setEditingOpt(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  </td>
+                  <td />
+                </tr>
+              ) : (
+                <tr key={opt.id} onClick={() => startEdit(opt)} style={{ cursor: 'pointer' }}>
                   <td style={{ color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>{i + 1}</td>
                   <td>
                     <div style={{ fontWeight: 500, fontSize: 'var(--crm-text-sm)' }}>{str(opt.label)}</div>
@@ -222,7 +286,7 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
                     <button
                       className="crm-btn crm-btn-ghost"
                       style={{ fontSize: 'var(--crm-text-xs)', padding: '2px 8px' }}
-                      onClick={() => setRuleDrawer(opt)}
+                      onClick={e => { e.stopPropagation(); setRuleDrawer(opt); }}
                     >Rules</button>
                   </td>
                 </tr>
