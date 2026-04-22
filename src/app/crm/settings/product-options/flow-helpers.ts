@@ -1,71 +1,73 @@
-// Helper types and functions for FlowEditor
 export interface Entity { id: string; [k: string]: unknown }
 
 export function str(v: unknown) { return String(v ?? ''); }
 export function num(v: unknown) { return Number(v ?? 0); }
-export function hasChannel(channels: unknown, ch: string) { return !Array.isArray(channels) || channels.includes(ch); }
+export function hasChannel(ch: unknown, c: string) { return !Array.isArray(ch) || ch.includes(c); }
 
-export function getCustomRules(optCode: string, groupOptionCodes: Set<string>, constraintRules: Entity[]) {
-  return constraintRules.filter(r => {
+// Friendly labels for DB values
+export const GROUP_LABELS: Record<string, string> = {
+  lens_path: 'Lens Type', finish_state: 'Lens Finish', material: 'Material',
+  treatment: 'Enhancements', shipping: 'Shipping', channel: 'Channel',
+};
+
+export const RULE_LABELS: Record<string, string> = {
+  requires: 'Shown when', excludes: 'Not available with',
+  allowed_only_with: 'Only shown with', hidden_until: 'Hidden until',
+  default_if: 'Default when', defer_if_no_rx: 'Deferred without Rx',
+};
+
+export function friendlyGroupLabel(group: Entity) {
+  return GROUP_LABELS[str(group.layer)] || str(group.label);
+}
+
+export function getCustomRules(optCode: string, siblingCodes: Set<string>, rules: Entity[]) {
+  return rules.filter(r => {
     if (r.active === false || r.sourceOptionCode !== optCode) return false;
     if (str(r.ruleType) === 'excludes') {
       const targets = (r.targetOptionCodes as string[]) || [];
-      if (groupOptionCodes.has(str(r.sourceOptionCode)) && targets.every(t => groupOptionCodes.has(t))) return false;
+      if (siblingCodes.has(str(r.sourceOptionCode)) && targets.every(t => siblingCodes.has(t))) return false;
     }
     return true;
   });
 }
 
-export function countCustomRules(groupId: string, options: Entity[], constraintRules: Entity[]) {
+export function countCustomRules(groupId: string, options: Entity[], rules: Entity[]) {
   const codes = new Set(options.filter(o => o.groupId === groupId).map(o => str(o.code)));
-  return constraintRules.filter(r => {
+  return rules.filter(r => {
     if (r.active === false || !codes.has(str(r.sourceOptionCode))) return false;
     if (str(r.ruleType) === 'excludes') {
-      const targets = (r.targetOptionCodes as string[]) || [];
-      if (targets.every(t => codes.has(t))) return false;
+      const t = (r.targetOptionCodes as string[]) || [];
+      if (t.every(x => codes.has(x))) return false;
     }
     return true;
   }).length;
 }
 
-export function getPrice(optCode: string, priceRules: Entity[], channel: string) {
-  const rule = priceRules.find(p =>
+export function getPrice(code: string, priceRules: Entity[], channel: string) {
+  const r = priceRules.find(p =>
     p.active !== false && hasChannel(p.channels, channel) &&
-    Array.isArray(p.optionCodes) && (p.optionCodes as string[]).includes(optCode));
-  if (!rule) return null;
-  return { amount: num(rule.amountCad), type: str(rule.pricingType), id: rule.id };
+    Array.isArray(p.optionCodes) && (p.optionCodes as string[]).includes(code));
+  if (!r) return null;
+  return { amount: num(r.amountCad), type: str(r.pricingType), id: r.id };
 }
 
-export function formatPrice(optCode: string, priceRules: Entity[], channel: string) {
-  const p = getPrice(optCode, priceRules, channel);
+export function formatPrice(code: string, priceRules: Entity[], channel: string) {
+  const p = getPrice(code, priceRules, channel);
   if (!p) return 'included';
-  return p.type === 'absolute' ? `$${p.amount}` : `+$${p.amount}`;
+  return p.type === 'absolute' ? '$' + p.amount : '+$' + p.amount;
 }
 
-export function availability(optCode: string, constraintRules: Entity[], labelMap: Map<string, string>) {
-  const rules = constraintRules.filter(r =>
-    r.active !== false && r.sourceOptionCode === optCode &&
-    ['requires', 'allowed_only_with'].includes(str(r.ruleType)));
-  if (rules.length === 0) return 'Always available';
+export function conditionSummary(code: string, siblingCodes: Set<string>, rules: Entity[], lblMap: Map<string, string>) {
+  const custom = getCustomRules(code, siblingCodes, rules);
+  if (custom.length === 0) return 'No conditions';
+  return custom.length + ' condition' + (custom.length > 1 ? 's' : '');
+}
+
+export function shownWhen(code: string, rules: Entity[], lblMap: Map<string, string>) {
+  const avail = rules.filter(r => r.active !== false && r.sourceOptionCode === code && ['requires', 'allowed_only_with'].includes(str(r.ruleType)));
+  if (avail.length === 0) return 'Always shown';
   const targets: string[] = [];
-  for (const r of rules) {
-    for (const t of (r.targetOptionCodes as string[]) || []) {
-      targets.push(labelMap.get(t) || t);
-    }
-  }
+  for (const r of avail) for (const t of (r.targetOptionCodes as string[]) || []) targets.push(lblMap.get(t) || t);
   if (targets.length === 1) return 'Only with ' + targets[0];
-  return 'Available for ' + targets.length + ' options';
-}
-
-export function exceptions(optCode: string, groupOptionCodes: Set<string>, constraintRules: Entity[], labelMap: Map<string, string>) {
-  const rules = getCustomRules(optCode, groupOptionCodes, constraintRules)
-    .filter(r => !['requires', 'allowed_only_with'].includes(str(r.ruleType)));
-  if (rules.length === 0) return '';
-  return rules.map(r => {
-    const targets = ((r.targetOptionCodes as string[]) || []).map(t => labelMap.get(t) || t);
-    const type = str(r.ruleType);
-    if (type === 'excludes') return 'Not with ' + targets.join(', ');
-    if (type === 'hidden_until') return 'Hidden until ' + targets.join(', ');
-    return type + ': ' + targets.join(', ');
-  }).join(' · ');
+  return 'Shown for ' + targets.length + ' choices';
 }

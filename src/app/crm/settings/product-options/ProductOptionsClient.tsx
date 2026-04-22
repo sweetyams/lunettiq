@@ -135,18 +135,18 @@ export default function ProductOptionsClient() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Product Options</h1>
+        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Configurator Builder</h1>
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
           <button
             className={`crm-btn ${view === 'preview' ? 'crm-btn-primary' : 'crm-btn-secondary'}`}
             style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}
             onClick={() => setView('preview')}
-          >Configurator</button>
+          >Builder</button>
           <button
             className={`crm-btn ${view === 'advanced' ? 'crm-btn-primary' : 'crm-btn-secondary'}`}
             style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}
             onClick={() => setView('advanced')}
-          >Advanced</button>
+          >Logic &amp; Diagnostics</button>
         </div>
       </div>
 
