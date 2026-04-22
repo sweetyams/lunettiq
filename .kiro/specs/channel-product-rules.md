@@ -145,3 +145,28 @@ await redis.del(`cfg:channel:${productId}`);
 - Per-variant channel assignment (e.g. different configurator per colour)
 - Channel priority ordering (for now, first match wins by flow creation order)
 - Bulk rule import/export
+
+## PDP Integration — Configurator Modal
+
+### Replaces
+
+The existing hardcoded configurator steps (`src/components/pdp/configurator/LensTypeStep.tsx`, `LensIndexStep.tsx`, `CoatingsStep.tsx`, `PrescriptionStep.tsx`, `ConfigSummary.tsx`, `RunningPriceTotal.tsx`) are replaced by a dynamic configurator modal driven by the flow builder data.
+
+### Behaviour
+
+- PDP page shows a "Configure Lenses" button (or similar CTA)
+- Clicking opens a **modal overlay (50% width, right-aligned)** with the configurator
+- Modal renders the resolved flow's steps/groups/choices dynamically
+- Uses the same rule engine as the builder preview for conditions
+- Running total shown in modal header
+- On completion, adds configured line items to cart with `step.code.choice.code` attributes
+- Modal can be closed and re-opened (state preserved)
+
+### Data Flow
+
+```
+PDP loads → resolveChannelsForProduct(productId) → get flow
+         → fetch flow steps/groups/choices/rules via API
+         → render dynamic configurator modal
+         → on complete → add to cart with configuration attributes
+```
