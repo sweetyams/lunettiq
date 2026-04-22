@@ -202,7 +202,6 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
                   <td style={{ color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>{i + 1}</td>
                   <td>
                     <div style={{ fontWeight: 500, fontSize: 'var(--crm-text-sm)' }}>{str(opt.label)}</div>
-                    <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{str(opt.code)}</div>
                   </td>
                   <td>
                     <span className="crm-badge" style={{
@@ -214,16 +213,8 @@ function GroupDetail({ group, channel, options: groupOptions, priceRules, constr
                     {rules.length === 0 ? (
                       <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>—</span>
                     ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                        {rules.map(r => (
-                          <span key={r.id} className="crm-badge" style={{
-                            fontSize: 10,
-                            background: str(r.ruleType) === 'excludes' ? 'var(--crm-error-light)' : 'var(--crm-warning-light)',
-                            color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)',
-                          }}>
-                            {str(r.ruleType)} {r.sourceOptionCode === opt.code ? '→' : '←'} {r.sourceOptionCode === opt.code ? arr(r.targetOptionCodes) : str(r.sourceOptionCode)}
-                          </span>
-                        ))}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        {groupRulesByType(rules, String(opt.code), allOptions)}
                       </div>
                     )}
                   </td>
@@ -267,12 +258,18 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
   onClose: () => void; onReload: () => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const [newRule, setNewRule] = useState({ ruleType: 'requires', targets: '' });
+  const [newRule, setNewRule] = useState({ ruleType: 'requires', targets: [] as string[] });
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredOptions = allOptions.filter(o =>
+    o.active !== false && str(o.code) !== str(option.code) &&
+    (!search || str(o.label).toLowerCase().includes(search.toLowerCase()))
+  );
 
   async function addRule() {
+    if (newRule.targets.length === 0) return;
     setSaving(true);
-    const targets = newRule.targets.split(',').map(s => s.trim()).filter(Boolean);
     await fetch('/api/crm/product-options', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -281,14 +278,22 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
         code: `rule_${str(option.code)}_${newRule.ruleType}_${Date.now()}`,
         ruleType: newRule.ruleType,
         sourceOptionCode: str(option.code),
-        targetOptionCodes: targets,
+        targetOptionCodes: newRule.targets,
         active: true,
       }),
     });
     setSaving(false);
     setAdding(false);
-    setNewRule({ ruleType: 'requires', targets: '' });
+    setNewRule({ ruleType: 'requires', targets: [] });
+    setSearch('');
     onReload();
+  }
+
+  function toggleTarget(code: string) {
+    setNewRule(p => ({
+      ...p,
+      targets: p.targets.includes(code) ? p.targets.filter(c => c !== code) : [...p.targets, code],
+    }));
   }
 
   async function deleteRule(id: string) {
@@ -331,7 +336,7 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
                 color: str(r.ruleType) === 'excludes' ? 'var(--crm-error)' : 'var(--crm-warning)',
                 marginRight: 6,
               }}>{str(r.ruleType)}</span>
-              <span style={{ fontSize: 'var(--crm-text-sm)' }}>{arr(r.targetOptionCodes)}</span>
+              <span style={{ fontSize: 'var(--crm-text-sm)' }}>{labelsFor(r.targetOptionCodes, allOptions)}</span>
             </div>
             <button className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-error)', padding: '2px 6px' }} onClick={() => deleteRule(r.id)}>✕</button>
           </div>
@@ -349,15 +354,33 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
                 <option value="hidden_until">hidden_until</option>
               </select>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 'var(--crm-space-3)' }}>
-              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Target option codes (comma-separated)</span>
-              <input className="crm-input" value={newRule.targets} onChange={e => setNewRule(p => ({ ...p, targets: e.target.value }))} placeholder="e.g. single_vision, progressive_premium" />
-            </label>
+            <div style={{ marginBottom: 'var(--crm-space-2)' }}>
+              <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>Target options ({newRule.targets.length} selected)</span>
+              <input className="crm-input" style={{ width: '100%', marginTop: 2 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search options…" />
+            </div>
+            <div style={{ maxHeight: 180, overflow: 'auto', marginBottom: 'var(--crm-space-3)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {filteredOptions.map(o => {
+                const code = str(o.code);
+                const selected = newRule.targets.includes(code);
+                return (
+                  <button key={code} type="button" onClick={() => toggleTarget(code)} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px',
+                    background: selected ? 'var(--crm-warning-light)' : 'transparent',
+                    border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 'var(--crm-text-sm)',
+                    textAlign: 'left', color: selected ? 'var(--crm-warning)' : 'var(--crm-text-primary)',
+                    fontWeight: selected ? 600 : 400,
+                  }}>
+                    <span style={{ width: 16 }}>{selected ? '✓' : ''}</span>
+                    {str(o.label)}
+                  </button>
+                );
+              })}
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="crm-btn crm-btn-primary" style={{ fontSize: 'var(--crm-text-xs)' }} disabled={saving || !newRule.targets.trim()} onClick={addRule}>
+              <button className="crm-btn crm-btn-primary" style={{ fontSize: 'var(--crm-text-xs)' }} disabled={saving || newRule.targets.length === 0} onClick={addRule}>
                 {saving ? 'Saving…' : 'Add rule'}
               </button>
-              <button className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }} onClick={() => setAdding(false)}>Cancel</button>
+              <button className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }} onClick={() => { setAdding(false); setNewRule({ ruleType: 'requires', targets: [] }); setSearch(''); }}>Cancel</button>
             </div>
           </div>
         ) : (
@@ -372,9 +395,40 @@ function RuleDrawer({ option, rules, allOptions, onClose, onReload }: {
 
 /* ── Helpers ─────────────────────────────────────────── */
 
+function groupRulesByType(rules: Entity[], optCode: string, allOptions: Entity[]) {
+  const byType = new Map<string, string[]>();
+  for (const r of rules) {
+    const type = str(r.ruleType);
+    if (!byType.has(type)) byType.set(type, []);
+    if (r.sourceOptionCode === optCode) {
+      for (const t of (r.targetOptionCodes as string[]) ?? []) byType.get(type)!.push(labelFor(t, allOptions));
+    } else {
+      byType.get(type)!.push(labelFor(str(r.sourceOptionCode), allOptions));
+    }
+  }
+  return [...byType.entries()].map(([type, labels]) => {
+    const unique = [...new Set(labels)];
+    const isExclude = type === 'excludes';
+    return (
+      <div key={type} style={{ fontSize: 'var(--crm-text-xs)', display: 'flex', gap: 4, alignItems: 'baseline' }}>
+        <span style={{ fontWeight: 600, color: isExclude ? 'var(--crm-error)' : 'var(--crm-warning)', whiteSpace: 'nowrap' }}>{type}</span>
+        <span style={{ color: 'var(--crm-text-secondary)' }}>{unique.join(', ')}</span>
+      </div>
+    );
+  });
+}
+
 function str(v: unknown) { return String(v ?? ''); }
 function num(v: unknown) { return Number(v ?? 0); }
 function arr(v: unknown) { return Array.isArray(v) ? v.join(', ') : str(v); }
 function hasChannel(channels: unknown, ch: string) {
   return !Array.isArray(channels) || channels.includes(ch);
+}
+function labelFor(code: string, allOptions: Entity[]): string {
+  const o = allOptions.find(x => x.code === code);
+  return o ? String(o.label) : code;
+}
+function labelsFor(codes: unknown, allOptions: Entity[]): string {
+  if (!Array.isArray(codes)) return str(codes);
+  return codes.map(c => labelFor(c, allOptions)).join(', ');
 }
