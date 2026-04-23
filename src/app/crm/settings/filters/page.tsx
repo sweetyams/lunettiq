@@ -240,24 +240,13 @@ export default function FiltersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Product</th>
                   <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280', width: 180 }}>Assign to</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Product</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUnassigned.map(p => (
                   <tr key={p.id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '6px 10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: 12 }}>
-                            {p.title}
-                            {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
                     <td style={{ padding: '6px 10px' }}>
                       <select
                         defaultValue=""
@@ -268,6 +257,17 @@ export default function FiltersPage() {
                         <option value="">Select group…</option>
                         {typeGroups.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                       </select>
+                    </td>
+                    <td style={{ padding: '6px 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: 12 }}>
+                            {p.title}
+                            {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
+                          </div>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ))}

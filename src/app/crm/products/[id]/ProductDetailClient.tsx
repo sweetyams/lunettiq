@@ -252,6 +252,9 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
             </table>
           </div>
 
+          {/* Inventory */}
+          <InventorySection productId={product.shopifyProductId} />
+
           {/* Metafields */}
           <MetafieldsCard metafields={product.metafields as Record<string, Record<string, string>> | null} />
 
@@ -790,4 +793,117 @@ function formatValue(v: string): string {
 
 function formatKey(key: string): string {
   return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ── Inventory Section ────────────────────────────────────
+
+function InventorySection({ productId }: { productId: string }) {
+  const [levels, setLevels] = useState<Array<{ id: string; locationId: string; locationName: string; familyId: string | null; colour: string | null; onHand: number; committed: number; securityStock: number; available: number; discontinued: boolean }>>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [adjusting, setAdjusting] = useState<string | null>(null);
+  const [adjField, setAdjField] = useState<'on_hand' | 'committed' | 'security_stock'>('on_hand');
+  const [adjDelta, setAdjDelta] = useState('');
+  const [adjReason, setAdjReason] = useState<string>('manual');
+  const [adjNote, setAdjNote] = useState('');
+
+  function load() {
+    setLoading(true);
+    fetch(`/api/crm/inventory?productId=${productId}`, { credentials: 'include' })
+      .then(r => r.json()).then(d => setLevels(d.data ?? []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }
+
+  useEffect(() => { if (open && !levels.length) load(); }, [open]);
+
+  async function submitAdjust(level: typeof levels[0]) {
+    const delta = parseInt(adjDelta);
+    if (!delta || isNaN(delta)) return;
+    await fetch('/api/crm/inventory', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'adjust', familyId: level.familyId, colour: level.colour, locationId: level.locationId, field: adjField, delta, reason: adjReason, note: adjNote || undefined }),
+    });
+    setAdjusting(null); setAdjDelta(''); setAdjNote(''); load();
+  }
+
+  const totalAvailable = levels.reduce((s, l) => s + l.available, 0);
+
+  return (
+    <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', overflow: 'hidden' }}>
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--crm-space-4)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+          <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Inventory</span>
+          {levels.length > 0 && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: totalAvailable > 0 ? '#d1fae5' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600 }}>{totalAvailable} available</span>}
+        </div>
+        {open && <button onClick={e => { e.stopPropagation(); load(); }} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>↻ Refresh</button>}
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 var(--crm-space-4) var(--crm-space-4)' }}>
+          {loading ? <div style={{ fontSize: 12, color: 'var(--crm-text-tertiary)', padding: 8 }}>Loading…</div> : levels.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--crm-text-tertiary)', padding: 8 }}>No inventory data. Run a sync from Settings → System.</div>
+          ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb' }}>
+                    <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Location</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>On Hand</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Committed</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Security</th>
+                    <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Available</th>
+                    <th style={{ padding: '6px 10px', width: 60 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {levels.map(l => (
+                    <tr key={l.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '6px 10px', fontWeight: 500 }}>{l.locationName}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>{l.onHand}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', color: l.committed > 0 ? '#d97706' : '#9ca3af' }}>{l.committed}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', color: '#9ca3af' }}>{l.securityStock}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: l.available > 0 ? '#065f46' : '#dc2626' }}>{l.available}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                        <button onClick={() => { setAdjusting(adjusting === l.id ? null : l.id); setAdjDelta(''); setAdjNote(''); }} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer' }}>±</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {adjusting && (() => {
+                const level = levels.find(l => l.id === adjusting);
+                if (!level) return null;
+                return (
+                  <div style={{ padding: '10px 10px', borderTop: '1px solid #e5e7eb', background: '#fafafa' }}>
+                    <div style={{ fontSize: 10, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Adjust {level.locationName}</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select className="crm-input" style={{ fontSize: 11, width: 100 }} value={adjField} onChange={e => setAdjField(e.target.value as any)}>
+                        <option value="on_hand">On Hand</option>
+                        <option value="committed">Committed</option>
+                        <option value="security_stock">Security</option>
+                      </select>
+                      <input className="crm-input" style={{ fontSize: 11, width: 60 }} type="number" value={adjDelta} onChange={e => setAdjDelta(e.target.value)} placeholder="+/-" />
+                      <select className="crm-input" style={{ fontSize: 11, width: 90 }} value={adjReason} onChange={e => setAdjReason(e.target.value)}>
+                        <option value="manual">Manual</option>
+                        <option value="recount">Recount</option>
+                        <option value="damage">Damage</option>
+                        <option value="loss">Loss</option>
+                        <option value="received">Received</option>
+                        <option value="return">Return</option>
+                      </select>
+                      <input className="crm-input" style={{ fontSize: 11, flex: 1, minWidth: 80 }} value={adjNote} onChange={e => setAdjNote(e.target.value)} placeholder="Note (optional)" />
+                      <button onClick={() => submitAdjust(level)} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '4px 10px' }}>Apply</button>
+                      <button onClick={() => setAdjusting(null)} style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

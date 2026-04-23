@@ -8,9 +8,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSelect: (product: { id: string; title: string; variantTitle?: string }) => void;
+  skipVariantSelection?: boolean;
 }
 
-export function ProductSearchModal({ open, onClose, onSelect }: Props) {
+export function ProductSearchModal({ open, onClose, onSelect, skipVariantSelection }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Product[]>([]);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
@@ -84,7 +85,7 @@ export function ProductSearchModal({ open, onClose, onSelect }: Props) {
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 'var(--crm-space-3)' }}>
                   {results.map(p => (
-                    <button key={p.shopifyProductId} onClick={() => p.variants && p.variants.length > 1 ? setSelected(p) : onSelect({ id: p.shopifyProductId, title: p.title ?? '' })}
+                    <button key={p.shopifyProductId} onClick={() => !skipVariantSelection && p.variants && p.variants.length > 1 ? setSelected(p) : onSelect({ id: p.shopifyProductId, title: p.title ?? '' })}
                       style={{ display: 'flex', flexDirection: 'column', background: 'var(--crm-surface)', border: '1px solid var(--crm-border-light)', borderRadius: 'var(--crm-radius-md)', overflow: 'hidden', cursor: 'pointer', fontFamily: 'var(--crm-font)', textAlign: 'left', padding: 0 }}>
                       <div style={{ width: '100%', aspectRatio: '1', background: 'var(--crm-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {p.imageUrl ? <img src={p.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-xs)' }}>No image</span>}

@@ -1276,3 +1276,50 @@ export const lensColourOptions = pgTable('lens_colour_options', {
 }, (t) => [
   index('idx_lens_colour_options_set').on(t.setId),
 ]);
+
+// ── Inventory ────────────────────────────────────────────
+
+export const inventoryAdjustmentReasonEnum = pgEnum('inventory_adjustment_reason', [
+  'sale', 'return', 'recount', 'damage', 'loss', 'transfer', 'received', 'manual', 'sync',
+]);
+
+export const inventoryLevels = pgTable('inventory_levels', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  familyId: text('family_id'),
+  colour: text('colour'),
+  variantId: text('variant_id'),
+  locationId: text('location_id').notNull().references(() => locations.id),
+  onHand: integer('on_hand').default(0),
+  committed: integer('committed').default(0),
+  securityStock: integer('security_stock').default(0),
+  available: integer('available').default(0),
+  lowStockThreshold: integer('low_stock_threshold'),
+  discontinued: boolean('discontinued').default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: true }),
+}, (t) => [
+  index('idx_inventory_family_colour_loc').on(t.familyId, t.colour, t.locationId),
+  index('idx_inventory_variant_loc').on(t.variantId, t.locationId),
+]);
+
+export const inventoryAdjustments = pgTable('inventory_adjustments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  familyId: text('family_id'),
+  colour: text('colour'),
+  variantId: text('variant_id'),
+  locationId: text('location_id').notNull(),
+  quantityChange: integer('quantity_change').notNull(),
+  field: text('field').notNull().default('on_hand'),
+  reason: inventoryAdjustmentReasonEnum('reason').notNull(),
+  referenceId: text('reference_id'),
+  referenceType: text('reference_type'),
+  staffId: text('staff_id'),
+  note: text('note'),
+  previousValue: integer('previous_value'),
+  newValue: integer('new_value'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_inv_adj_family').on(t.familyId, t.colour),
+  index('idx_inv_adj_variant').on(t.variantId),
+  index('idx_inv_adj_created').on(t.createdAt),
+]);

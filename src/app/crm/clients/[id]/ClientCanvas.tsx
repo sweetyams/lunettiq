@@ -278,7 +278,7 @@ export function ClientCanvas({ client, orders, derived, feedback, sessions, link
       </div>
 
       <LogInteractionModal customerId={client.shopifyCustomerId} open={interactionOpen} onClose={() => setInteractionOpen(false)} onSaved={() => setTimelineKey(k => k + 1)} />
-      <ProductSearchModal open={recModalOpen} onClose={() => setRecModalOpen(false)} onSelect={async (product) => {
+      <ProductSearchModal open={recModalOpen} onClose={() => setRecModalOpen(false)} skipVariantSelection onSelect={async (product) => {
         const res = await fetch(`/api/crm/clients/${client.shopifyCustomerId}/recommend`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: product.id, productTitle: product.title }) });
         if (res.ok) { toast(`Recommended ${product.title}`); setTimelineKey(k => k + 1); setSuggestionsKey(k => k + 1); } else toast('Failed', 'error');
         setRecModalOpen(false);
