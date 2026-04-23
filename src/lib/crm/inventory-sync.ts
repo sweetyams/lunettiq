@@ -21,23 +21,42 @@ const INVENTORY_QUERY = `query($locationId: ID!, $cursor: String) {
 
 function stripGid(gid: string) { return gid.replace(/^gid:\/\/shopify\/\w+\//, ''); }
 
-export async function syncFromShopify(): Promise<{ synced: number; locations: number }> {
+export async function syncFromShopify(): Promise<{ synced: number; locations: number; errors: string[] }> {
   const locs = await db.select().from(locations).where(sql`shopify_location_id IS NOT NULL`);
   let totalSynced = 0;
+  const errors: string[] = [];
+  const startTime = Date.now();
+  const TIMEOUT_MS = 100_000; // 100s safety margin (Vercel limit is 120s)
+
+  console.log('[inventory-sync] Starting Shopify sync, locations:', locs.map(l => ({ id: l.id, name: l.name, shopifyId: l.shopifyLocationId })));
 
   for (const loc of locs) {
     if (!loc.shopifyLocationId) continue;
+    if (Date.now() - startTime > TIMEOUT_MS) { errors.push(`Timeout after ${Math.round((Date.now() - startTime) / 1000)}s — stopped at location ${loc.name}`); break; }
+
     const locationGid = `gid://shopify/Location/${loc.shopifyLocationId}`;
     let cursor: string | null = null;
+    let pages = 0;
+    console.log('[inventory-sync] Fetching location:', loc.name, locationGid);
 
     while (true) {
-      const result = await graphqlAdmin<any>(INVENTORY_QUERY, { locationId: locationGid, cursor });
-      const data = result?.location?.inventoryLevels;
-      if (!data?.nodes?.length) break;
+      if (Date.now() - startTime > TIMEOUT_MS) { errors.push(`Timeout during ${loc.name} page ${pages}`); break; }
+      pages++;
+
+      let result;
+      try {
+        result = await graphqlAdmin<any>(INVENTORY_QUERY, { locationId: locationGid, cursor });
+      } catch (e) { errors.push(`${loc.name}: fetch error — ${(e as Error).message}`); break; }
+
+      console.log('[inventory-sync]', loc.name, 'page', pages, 'ok:', result.ok, 'error:', result.error ?? 'none', 'nodes:', result.data?.location?.inventoryLevels?.nodes?.length ?? 0);
+
+      if (!result.ok) { errors.push(`${loc.name}: ${result.error}`); break; }
+      const data = result.data?.location?.inventoryLevels;
+      if (!data?.nodes?.length) { if (pages === 1) errors.push(`${loc.name}: 0 inventory levels returned — check read_inventory scope`); break; }
 
       for (const node of data.nodes) {
         const variantGid = node.item?.variant?.id;
-        if (!variantGid) continue;
+        if (!variantGid) { console.log('[inventory-sync] Skipping node with no variant:', JSON.stringify(node).slice(0, 200)); continue; }
         const variantId = stripGid(variantGid);
 
         const quantities: Record<string, number> = {};
@@ -87,7 +106,7 @@ export async function syncFromShopify(): Promise<{ synced: number; locations: nu
     }
   }
 
-  return { synced: totalSynced, locations: locs.length };
+  return { synced: totalSynced, locations: locs.length, errors };
 }
 
 /** Pull inventory from Square for all locations with squareLocationId */
