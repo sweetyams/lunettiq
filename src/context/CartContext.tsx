@@ -86,6 +86,7 @@ interface CartContextValue {
   isLoading: boolean;
   isCheckingOut: boolean;
   addToCart: (variantId: string, quantity: number, attributes?: CartLineAttribute[]) => Promise<void>;
+  addLinesToCart: (lines: { variantId: string; quantity: number; attributes?: CartLineAttribute[] }[]) => Promise<void>;
   updateLineItem: (lineId: string, quantity: number) => Promise<void>;
   removeLineItem: (lineId: string) => Promise<void>;
   checkout: (discount?: { code: string; title: string; type: string; value: number }) => Promise<string>;
@@ -142,6 +143,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const cartId = await ensureCart();
         const lines = [{ merchandiseId: variantId, quantity, attributes }];
+        try {
+          const updated = await cartApi({ action: 'addLines', cartId, lines });
+          setCart(updated);
+          setCartIdCookie(updated.id);
+        } catch {
+          clearCartIdCookie();
+          const newCart = await cartApi({ action: 'create', input: { lines } });
+          setCart(newCart);
+          setCartIdCookie(newCart.id);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [ensureCart]
+  );
+
+  const addLinesToCart = useCallback(
+    async (items: { variantId: string; quantity: number; attributes?: CartLineAttribute[] }[]) => {
+      if (!items.length) return;
+      setIsLoading(true);
+      try {
+        const cartId = await ensureCart();
+        const lines = items.map(i => ({ merchandiseId: i.variantId, quantity: i.quantity, attributes: i.attributes }));
         try {
           const updated = await cartApi({ action: 'addLines', cartId, lines });
           setCart(updated);
@@ -222,7 +247,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cart]);
 
   return (
-    <CartContext.Provider value={{ cart, isLoading, isCheckingOut, addToCart, updateLineItem, removeLineItem, checkout }}>
+    <CartContext.Provider value={{ cart, isLoading, isCheckingOut, addToCart, addLinesToCart, updateLineItem, removeLineItem, checkout }}>
       {children}
     </CartContext.Provider>
   );

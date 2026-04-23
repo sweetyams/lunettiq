@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { E, str, num, cfgCreate, cfgUpdate, cfgDelete, placementLabel, formatPlacementPrice, placementPrice } from './flow-helpers';
+import { ProductSearchModal } from '@/components/crm/ProductSearchModal';
 
 /* ── Left: Step List ── */
 export function StepList(p: {
@@ -84,15 +85,20 @@ export function GroupEditor(p: {
   ruleSets?: E[]; rules?: E[];
   selPlacementId: string; setSelPlacementId: (id: string) => void;
   onReload: () => void;
+  lensColourSets?: { id: string; code: string; label: string }[];
 }) {
   const [dragIdx, setDragIdx] = useState(-1);
   const [addingChoice, setAddingChoice] = useState(false);
+  const [addMode, setAddMode] = useState<'pick' | 'choice' | 'colour' | null>(null);
   const [search, setSearch] = useState('');
   const [editingPlId, setEditingPlId] = useState('');
   const [editPlLabel, setEditPlLabel] = useState('');
   const [editPlCode, setEditPlCode] = useState('');
   const [editPlBadge, setEditPlBadge] = useState('');
   const [editPlDesc, setEditPlDesc] = useState('');
+  const [editChoiceType, setEditChoiceType] = useState('standard');
+  const [editColourSetId, setEditColourSetId] = useState('');
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   if (!p.group) return <div style={{ flex: 1 }} />;
 
@@ -148,6 +154,36 @@ export function GroupEditor(p: {
     setAddingChoice(false); setSearch(''); p.onReload();
   }
 
+  async function handleProductSelect(product: { shopifyProductId: string; title: string; imageUrl?: string | null }) {
+    // Reuse existing choice for this product, or create new
+    const existing = p.choices.find(c => str(c.shopifyProductId) === product.shopifyProductId);
+    let choiceId: string;
+    if (existing) {
+      choiceId = existing.id;
+    } else {
+      const code = 'prod_' + product.shopifyProductId + '_' + Date.now();
+      const choice = await cfgCreate('choice', { code, label: product.title, shopifyProductId: product.shopifyProductId, imageUrl: product.imageUrl ?? null, choiceType: 'product' });
+      choiceId = choice.id;
+    }
+    await cfgCreate('placement', { groupId: p.group!.id, choiceId, sortOrder: (p.placements.length + 1) * 10 });
+    setProductPickerOpen(false); p.onReload();
+  }
+
+  async function handleColourSetSelect(setId: string, setLabel: string) {
+    const code = 'colour_' + setLabel.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const choice = await cfgCreate('choice', { code, label: setLabel, choiceType: 'colour', lensColourSetId: setId });
+    await cfgCreate('placement', { groupId: p.group!.id, choiceId: choice.id, sortOrder: (p.placements.length + 1) * 10 });
+    setAddMode(null); p.onReload();
+  }
+
+  async function handleAddContent() {
+    const label = 'Content Block';
+    const code = 'content_' + Date.now();
+    const choice = await cfgCreate('choice', { code, label, choiceType: 'content' });
+    await cfgCreate('placement', { groupId: p.group!.id, choiceId: choice.id, sortOrder: (p.placements.length + 1) * 10 });
+    p.onReload();
+  }
+
   async function savePlacementEdit(pl: E) {
     const choiceId = str(pl.choiceId);
     const origChoice = p.choiceMap.get(choiceId);
@@ -176,6 +212,13 @@ export function GroupEditor(p: {
     const newDesc = editPlDesc.trim() || null;
     if (newDesc !== (pl.helpTextOverride ?? null)) {
       await cfgUpdate('placement', pl.id, { helpTextOverride: newDesc });
+    }
+    // Update choice type + colour set
+    if (origChoice) {
+      const updates: Record<string, unknown> = {};
+      if (editChoiceType !== (str(origChoice.choiceType) || 'standard')) updates.choiceType = editChoiceType;
+      if (editColourSetId !== (str(origChoice.lensColourSetId) || '')) updates.lensColourSetId = editColourSetId || null;
+      if (Object.keys(updates).length) await cfgUpdate('choice', choiceId, updates);
     }
     setEditingPlId(''); p.onReload();
   }
@@ -209,6 +252,15 @@ export function GroupEditor(p: {
                 <input className="crm-input" style={{ width: '100%', fontSize: 12, marginBottom: 6 }} value={editPlBadge} onChange={e => setEditPlBadge(e.target.value)} placeholder="Leave empty for none" onKeyDown={e => { if (e.key === 'Enter') savePlacementEdit(pl); if (e.key === 'Escape') setEditingPlId(''); }} />
                 <label style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', display: 'block', marginBottom: 2 }}>Description</label>
                 <input className="crm-input" style={{ width: '100%', fontSize: 12, marginBottom: 6 }} value={editPlDesc} onChange={e => setEditPlDesc(e.target.value)} placeholder="Short description for customers" onKeyDown={e => { if (e.key === 'Enter') savePlacementEdit(pl); if (e.key === 'Escape') setEditingPlId(''); }} />
+                {editChoiceType === 'colour' && (
+                  <>
+                    <label style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', display: 'block', marginBottom: 2 }}>Colour Set</label>
+                    <select className="crm-input" style={{ width: '100%', fontSize: 12, marginBottom: 6 }} value={editColourSetId} onChange={e => setEditColourSetId(e.target.value)}>
+                      <option value="">— Select colour set —</option>
+                      {(p.lensColourSets ?? []).map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    </select>
+                  </>
+                )}
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => savePlacementEdit(pl)}>Save</button>
                   <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '2px 8px' }} onClick={() => setEditingPlId('')}>Cancel</button>
@@ -217,6 +269,15 @@ export function GroupEditor(p: {
             );
           }
 
+          const cType = choice ? str(choice.choiceType) || 'standard' : 'standard';
+          const actions = (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+              <span className="crm-badge" style={{ background: price === 'included' ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)', color: price === 'included' ? 'var(--crm-text-tertiary)' : 'var(--crm-success)' }}>{price}</span>
+              <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={e => { e.stopPropagation(); setEditingPlId(pl.id); setEditPlLabel(label); setEditPlCode(choice ? str(choice.code) : ''); setEditPlBadge(str(pl.badge)); setEditPlDesc(str(pl.helpTextOverride) || (choice ? str(choice.description) : '')); setEditChoiceType(cType); setEditColourSetId(choice ? str(choice.lensColourSetId) || '' : ''); }}>✎</button>
+              <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={e => { e.stopPropagation(); removePlacement(pl.id); }}>✕</button>
+            </div>
+          );
+
           return (
             <div key={pl.id} draggable onDragStart={() => setDragIdx(idx)}
               onDragOver={e => { e.preventDefault(); e.currentTarget.style.boxShadow = '0 -2px 0 var(--crm-text-primary)'; }}
@@ -224,56 +285,113 @@ export function GroupEditor(p: {
               onDrop={e => { e.currentTarget.style.boxShadow = ''; if (dragIdx >= 0) reorder(dragIdx, idx); setDragIdx(-1); }}
               onDragEnd={() => setDragIdx(-1)}
               onClick={() => p.setSelPlacementId(isSel ? '' : pl.id)}
-              className="crm-card" style={{ padding: '10px 14px', cursor: 'pointer', opacity: dragIdx === idx ? 0.4 : 1, borderColor: isSel ? 'var(--crm-text-primary)' : undefined }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ cursor: 'grab', color: 'var(--crm-text-tertiary)', fontSize: 11, userSelect: 'none' }}>⠿</span>
-                  <span style={{ fontWeight: 500, fontSize: 13 }}>{label}</span>
-                  {str(pl.badge) && <span className="crm-badge" style={{ fontSize: 9, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)' }}>{str(pl.badge)}</span>}
+              className="crm-card" style={{ padding: 0, cursor: 'pointer', opacity: dragIdx === idx ? 0.4 : 1, borderColor: isSel ? 'var(--crm-text-primary)' : undefined, overflow: 'hidden' }}>
+
+              {/* Product row */}
+              {cType === 'product' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px' }}>
+                  <span style={{ cursor: 'grab', color: '#d1d5db', fontSize: 11, userSelect: 'none' }}>⠿</span>
+                  {choice?.imageUrl ? <img src={str(choice.imageUrl)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} /> : <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" strokeWidth="1.5"><rect x="3" y="6" width="14" height="11" rx="1.5"/><path d="M7 6V4a3 3 0 0 1 6 0v2"/></svg></div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                    <div style={{ fontSize: 10, color: '#9ca3af' }}>Product add-on · Price from Shopify</div>
+                  </div>
+                  {actions}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span className="crm-badge" style={{ background: price === 'included' ? 'var(--crm-surface-hover)' : 'var(--crm-success-light)', color: price === 'included' ? 'var(--crm-text-tertiary)' : 'var(--crm-success)' }}>{price}</span>
-                  {(() => { const rsId = str(pl.availabilityRuleSetId); if (!rsId || !p.ruleSets || !p.rules) return null; const rs = p.ruleSets.find(r => r.id === rsId); if (!rs) return null; const n = p.rules.filter(r => r.ruleSetId === rsId && str(r.status) !== 'archived').length; return n > 0 ? <span className="crm-badge" style={{ fontSize: 9, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-tertiary)' }}>{n} rule{n !== 1 ? 's' : ''}</span> : null; })()}
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={e => { e.stopPropagation(); setEditingPlId(pl.id); setEditPlLabel(label); setEditPlCode(choice ? str(choice.code) : ''); setEditPlBadge(str(pl.badge)); setEditPlDesc(str(pl.helpTextOverride) || (choice ? str(choice.description) : '')); }}>✎</button>
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={e => { e.stopPropagation(); duplicatePlacement(pl); }} title="Duplicate">⧉</button>
-                  <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: 'var(--crm-error)' }} onClick={e => { e.stopPropagation(); removePlacement(pl.id); }}>✕</button>
+              )}
+
+              {/* Colour row */}
+              {cType === 'colour' && (() => {
+                const setId = choice ? str(choice.lensColourSetId) : '';
+                const setLabel = (p.lensColourSets ?? []).find(s => s.id === setId)?.label;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px' }}>
+                    <span style={{ cursor: 'grab', color: '#d1d5db', fontSize: 11, userSelect: 'none' }}>⠿</span>
+                    <div style={{ width: 36, height: 36, borderRadius: 18, background: 'linear-gradient(135deg, #e879f9, #a78bfa, #60a5fa)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                      <div style={{ fontSize: 10, color: '#9ca3af' }}>{setLabel ? `Set: ${setLabel} · Price per colour` : 'No colour set linked'}</div>
+                    </div>
+                    {actions}
+                  </div>
+                );
+              })()}
+
+              {/* Content row */}
+              {cType === 'content' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: '#fafafa' }}>
+                  <span style={{ cursor: 'grab', color: '#d1d5db', fontSize: 11, userSelect: 'none' }}>⠿</span>
+                  <div style={{ width: 36, height: 36, borderRadius: 6, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" strokeWidth="1.5"><rect x="3" y="2" width="14" height="16" rx="1.5"/><line x1="6" y1="6" x2="14" y2="6"/><line x1="6" y1="9.5" x2="14" y2="9.5"/><line x1="6" y1="13" x2="11" y2="13"/></svg></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                    <div style={{ fontSize: 10, color: '#9ca3af' }}>Content block · Display only</div>
+                  </div>
+                  {actions}
                 </div>
-              </div>
-              <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 4, marginLeft: 26 }}>
-                {str(pl.helpTextOverride) || (choice ? str(choice.description) : '') ? <div style={{ marginBottom: 2 }}>{str(pl.helpTextOverride) || str(choice?.description)}</div> : null}
-                {p.stepCode && choice ? <span style={{ fontFamily: 'monospace', fontSize: 9, background: 'var(--crm-surface-hover)', padding: '1px 4px', borderRadius: 3, marginRight: 6 }}>{p.stepCode}.{str(choice.code)}</span> : null}
-                {pl.isVisible !== false ? 'Visible' : 'Hidden'}
-              </div>
+              )}
+
+              {/* Standard row */}
+              {cType === 'standard' && (
+                <div style={{ padding: '10px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ cursor: 'grab', color: '#d1d5db', fontSize: 11, userSelect: 'none' }}>⠿</span>
+                      <span style={{ fontWeight: 500, fontSize: 13 }}>{label}</span>
+                      {str(pl.badge) && <span className="crm-badge" style={{ fontSize: 9, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-secondary)' }}>{str(pl.badge)}</span>}
+                    </div>
+                    {actions}
+                  </div>
+                  {(str(pl.helpTextOverride) || (choice ? str(choice.description) : '')) && (
+                    <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 3, marginLeft: 26 }}>{str(pl.helpTextOverride) || str(choice?.description)}</div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {addingChoice ? (
-        <div className="crm-card" style={{ padding: 10, marginTop: 6 }}>
-          <input className="crm-input" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} placeholder="Search or create choice…" value={search} onChange={e => setSearch(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter' && search.trim() && available.length === 0) createAndPlace(search); }} />
-          <div style={{ maxHeight: 160, overflow: 'auto', marginBottom: 6 }}>
-            {available.map(c => (
-              <button key={c.id} onClick={() => addPlacement(c.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 8px', border: 'none', cursor: 'pointer', background: 'transparent', fontSize: 11, borderRadius: 3 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--crm-surface-hover)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                {str(c.label)}
+      {addMode === 'colour' && (
+        <div style={{ marginTop: 6, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fafafa' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {(p.lensColourSets ?? []).map(s => (
+              <button key={s.id} onClick={() => handleColourSetSelect(s.id, s.label)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: 11 }}>
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#6b7280" strokeWidth="1.5"><circle cx="10" cy="10" r="7"/><circle cx="7" cy="9" r="1.5" fill="#6b7280"/><circle cx="10" cy="6.5" r="1.5" fill="#6b7280"/><circle cx="13" cy="9" r="1.5" fill="#6b7280"/></svg> {s.label}
               </button>
             ))}
-            {search.trim() && available.length === 0 && (
-              <button onClick={() => createAndPlace(search)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', cursor: 'pointer', background: 'transparent', fontSize: 11, borderRadius: 3, color: 'var(--crm-text-primary)', fontWeight: 500 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--crm-surface-hover)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = ''; }}>
-                + Create &quot;{search.trim()}&quot;
-              </button>
-            )}
-            {!search.trim() && available.length === 0 && <div style={{ fontSize: 11, color: 'var(--crm-text-tertiary)', padding: 8 }}>No available choices. Type to create one.</div>}
+            {!(p.lensColourSets ?? []).length && <div style={{ fontSize: 11, color: '#9ca3af', padding: 4 }}>No colour sets yet.</div>}
           </div>
-          <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11 }} onClick={() => { setAddingChoice(false); setSearch(''); }}>Cancel</button>
+          <button style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer', marginTop: 4 }} onClick={() => setAddMode(null)}>Cancel</button>
         </div>
-      ) : (
-        <button style={{ width: '100%', fontSize: 11, marginTop: 6, padding: '6px 0', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--crm-text-primary)', fontWeight: 500 }} onClick={() => setAddingChoice(true)}>+ Add choice</button>
       )}
+
+      {addingChoice ? (
+        <div style={{ marginTop: 6, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fafafa' }}>
+          <input className="crm-input" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} placeholder="Type a name and press Enter…" value={search} onChange={e => setSearch(e.target.value)} autoFocus onKeyDown={e => { if (e.key === 'Enter' && search.trim()) createAndPlace(search); if (e.key === 'Escape') { setAddingChoice(false); setAddMode(null); setSearch(''); } }} />
+          <button className="crm-btn crm-btn-ghost" style={{ fontSize: 10 }} onClick={() => { setAddingChoice(false); setAddMode(null); setSearch(''); }}>Cancel</button>
+        </div>
+      ) : !addMode && (
+        <div style={{ marginTop: 6, display: 'flex', gap: 3 }}>
+          <button onClick={() => { setAddMode('choice'); setAddingChoice(true); }} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 0', borderRadius: 6, border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 500, color: '#6b7280' }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3" fill="currentColor"/></svg>
+            Choice
+          </button>
+          <button onClick={() => setProductPickerOpen(true)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 0', borderRadius: 6, border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 500, color: '#6b7280' }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="6" width="14" height="11" rx="1.5"/><path d="M7 6V4a3 3 0 0 1 6 0v2"/></svg>
+            Product
+          </button>
+          <button onClick={() => setAddMode('colour')} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 0', borderRadius: 6, border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 500, color: '#6b7280' }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="10" cy="10" r="7"/><circle cx="7" cy="9" r="1.5" fill="currentColor"/><circle cx="10" cy="6.5" r="1.5" fill="currentColor"/><circle cx="13" cy="9" r="1.5" fill="currentColor"/></svg>
+            Colour
+          </button>
+          <button onClick={handleAddContent} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '6px 0', borderRadius: 6, border: '1px dashed #d1d5db', background: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 500, color: '#6b7280' }}>
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="2" width="14" height="16" rx="1.5"/><line x1="6" y1="6" x2="14" y2="6"/><line x1="6" y1="9.5" x2="14" y2="9.5"/><line x1="6" y1="13" x2="11" y2="13"/></svg>
+            Content
+          </button>
+        </div>
+      )}
+
+      <ProductSearchModal open={productPickerOpen} onClose={() => setProductPickerOpen(false)} onSelect={handleProductSelect} />
     </div>
   );
 }
@@ -285,6 +403,7 @@ export function StepEditor(p: {
   ruleSets: E[]; rules: E[]; clauses: E[];
   selPlacementId: string; setSelPlacementId: (id: string) => void;
   onReload: () => void; onDeleteStep: (id: string) => void;
+  lensColourSets?: { id: string; code: string; label: string }[];
 }) {
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupLabel, setNewGroupLabel] = useState('');
@@ -460,6 +579,7 @@ export function StepEditor(p: {
                 ruleSets={p.ruleSets} rules={p.rules}
                 selPlacementId={p.selPlacementId} setSelPlacementId={p.setSelPlacementId}
                 onReload={p.onReload}
+                lensColourSets={p.lensColourSets}
               />
             </div>
           </div>
@@ -547,7 +667,14 @@ export function Inspector(p: {
       <div className="crm-card" style={{ padding: '14px 16px' }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>{label}</h3>
         <div style={{ fontSize: 11, color: 'var(--crm-text-tertiary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+          {choice && str(choice.choiceType) && str(choice.choiceType) !== 'standard' && (
+            <div style={{ marginBottom: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: str(choice.choiceType) === 'product' ? '#dbeafe' : str(choice.choiceType) === 'colour' ? '#fae8ff' : '#f3f4f6', color: str(choice.choiceType) === 'product' ? '#1e40af' : str(choice.choiceType) === 'colour' ? '#86198f' : '#6b7280' }}>{str(choice.choiceType)}</span>
+            </div>
+          )}
           <div>Internal name: <strong style={{ color: 'var(--crm-text-secondary)' }}>{choice ? str(choice.code) : ''}</strong></div>
+          {choice && str(choice.shopifyProductId) && <div>Shopify ID: <code style={{ fontSize: 10, background: 'var(--crm-surface-hover)', padding: '1px 4px', borderRadius: 3 }}>{str(choice.shopifyProductId)}</code></div>}
+          {choice && str(choice.lensColourSetId) && <div>Colour set: <code style={{ fontSize: 10, background: 'var(--crm-surface-hover)', padding: '1px 4px', borderRadius: 3 }}>{str(choice.lensColourSetId).slice(0, 8)}…</code></div>}
           {(() => { const g = p.groups.find(g => g.id === pl.groupId); const s = g ? p.steps.find(s => s.id === g.stepId) : null; return s && choice ? <div>Path: <code style={{ fontSize: 10, background: 'var(--crm-surface-hover)', padding: '1px 4px', borderRadius: 3 }}>{str(s.code)}.{str(choice.code)}</code></div> : null; })()}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             Price: <strong style={{ color: 'var(--crm-text-secondary)' }}>{price ? (price.type === 'override' ? '$' + price.amount : '+$' + price.amount) : 'included'}</strong>

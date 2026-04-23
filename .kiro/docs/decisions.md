@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-010: Extended Group Types — Product, Content, Lens Colour
+
+**Date:** 2026-04-22 · **Status:** Accepted
+
+**Context:** The configurator needs three new patterns: add-on products (separate cart lines), content/info displays, and shared lens colour palettes. Rather than new choice types, these are new group types that change how a group sources data and renders.
+
+**Decision:** Added `group_type` enum (`standard`, `product`, `content`, `lens_colour`) to `step_choice_groups`. Lens colours get dedicated tables (`lens_colour_sets` + `lens_colour_options`) as a shared catalogue — sets like "Polarized", "Custom Tint" are reusable across flows via `lens_colour_set_id` FK on groups. Product add-ons use existing `cfg_choices` with new `shopify_product_id` + `image_url` columns. Content uses `selection_mode: 'none'` with `content_body` on choices. Price stored at `lens_colour_options` level.
+
+**Consequences:** Colour palettes are managed centrally (Settings → Lens Colours), not per-flow. Adding a colour to a palette makes it available everywhere. Product add-ons become separate cart lines. Three new columns on `cfg_choices`, two on `step_choice_groups`, two new tables.
+
+---
+
 ### ADR-009: Remove Legacy Product Options UI, Rename Channels → Flows
 
 **Date:** 2026-04-22 · **Status:** Accepted

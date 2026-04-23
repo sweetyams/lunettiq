@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import FlowEditor from './FlowEditor';
 import type { FlowData, FlowSelection } from './FlowEditor';
 import LiveConfiguratorPreview from './LiveConfiguratorPreview';
 import { cfgFetch } from './flow-helpers';
 
 export default function ProductOptionsClient() {
+  const searchParams = useSearchParams();
+  const initialFlowId = searchParams.get('flowId') ?? undefined;
   const [flowData, setFlowData] = useState<FlowData | null>(null);
   const [flowLoading, setFlowLoading] = useState(true);
   const [flowError, setFlowError] = useState('');
@@ -38,7 +41,7 @@ export default function ProductOptionsClient() {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--crm-space-5)' }}>
         <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, margin: 0 }}>Configurator</h1>
-        <Link href="/crm/settings/product-options/channels" className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}>Flows</Link>
+        <Link href="/crm/settings/product-options/flows" className="crm-btn crm-btn-ghost" style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 12px' }}>Flows</Link>
       </div>
 
       <FlowEditor
@@ -47,6 +50,7 @@ export default function ProductOptionsClient() {
         error={flowError}
         onReload={loadFlowData}
         onSelectionChange={setFlowSelection}
+        initialFlowId={initialFlowId}
       />
 
       {flowData && !flowLoading && (

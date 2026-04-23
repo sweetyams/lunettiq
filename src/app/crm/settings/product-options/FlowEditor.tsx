@@ -20,9 +20,11 @@ interface FlowEditorProps {
   onReload?: () => void;
   /** Fires whenever the active flow/step/group changes */
   onSelectionChange?: (sel: FlowSelection) => void;
+  /** Pre-select a flow on mount */
+  initialFlowId?: string;
 }
 
-export default function FlowEditor({ data: externalData, loading: externalLoading, error: externalError, onReload: externalReload, onSelectionChange }: FlowEditorProps) {
+export default function FlowEditor({ data: externalData, loading: externalLoading, error: externalError, onReload: externalReload, onSelectionChange, initialFlowId }: FlowEditorProps) {
   // Internal state used only when no external data is provided (standalone mode)
   const [internalData, setInternalData] = useState<FlowData | null>(null);
   const [internalLoading, setInternalLoading] = useState(true);
@@ -45,10 +47,17 @@ export default function FlowEditor({ data: externalData, loading: externalLoadin
   const onReload = standalone ? load : (externalReload ?? load);
 
   // Selection state
-  const [flowId, setFlowId] = useState('');
+  const [flowId, setFlowId] = useState(initialFlowId ?? '');
   const [stepId, setStepId] = useState('');
   const [groupId, setGroupId] = useState('');
   const [placementId, setPlacementId] = useState('');
+  const [lensColourSets, setLensColourSets] = useState<{ id: string; code: string; label: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/crm/settings/lens-colours', { credentials: 'include' })
+      .then(r => r.json()).then(d => setLensColourSets((d.data?.sets ?? []).map((s: any) => ({ id: s.id, code: s.code, label: s.label }))))
+      .catch(() => {});
+  }, []);
 
   const flows = data?.flows ?? [];
   const activeFlow = flows.find(f => f.id === flowId) ?? flows[0] ?? null;
@@ -101,6 +110,7 @@ export default function FlowEditor({ data: externalData, loading: externalLoadin
         ruleSets={data?.ruleSets ?? []} rules={data?.rules ?? []} clauses={data?.clauses ?? []}
         selPlacementId={placementId} setSelPlacementId={setPlacementId}
         onReload={onReload}
+        lensColourSets={lensColourSets}
         onDeleteStep={async (id) => {
           if (!confirm('Delete this step and all its groups/choices?')) return;
           const { cfgDelete } = await import('./flow-helpers');

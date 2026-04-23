@@ -2,14 +2,14 @@
 
 ## Revised Concept
 
-These aren't new choice types — they're new **group types** that change how a group sources its data and renders. The existing selection logic (`single`/`multi`/`none`, required/optional) stays unchanged.
+These are **choice types** — each choice in a group defines its own behaviour. A single group can mix types (e.g. standard choices alongside a colour picker and a content block).
 
-| Group Type | Source | Selection | Renders as |
+| Choice Type | Source | Renders as | Cart behaviour |
 |---|---|---|---|
-| `standard` | `group_choices` → `cfg_choices` | single/multi | List, cards, swatches, table (existing) |
-| `product` | `group_choices` → `cfg_choices` with `shopify_product_id` | multi (pick 0+) | Product cards with image, price, title |
-| `content` | `group_choices` → `cfg_choices` with rich display data | none | Info cards — image, heading, bullets |
-| `lens_colour` | `lens_colour_options` via `lens_colour_set_id` | single | Swatch grid grouped by category |
+| `standard` | `cfg_choices` | Selectable row | Attribute on frame line |
+| `product` | `cfg_choices` with `shopify_product_id` | Selectable row | Separate cart line |
+| `colour` | `cfg_choices` with `lens_colour_set_id` | Selectable row → expands swatch picker | Colour code attribute |
+| `content` | `cfg_choices` with `content_body` | Info card (display only) | No cart impact |
 
 ---
 
@@ -184,11 +184,10 @@ Set: "Transitions" (code: transitions)
 
 | Table | Change |
 |---|---|
-| `cfg_choices` | Add `image_url` text, `shopify_product_id` text, `content_body` text |
-| `step_choice_groups` | Add `group_type` enum, `lens_colour_set_id` uuid FK |
+| `cfg_choices` | Add `choice_type` enum, `lens_colour_set_id` uuid FK, `image_url` text, `shopify_product_id` text, `content_body` text |
 | New: `lens_colour_sets` | Shared catalogue of lens finish categories |
-| New: `lens_colour_options` | Individual colours within a set |
-| New enum: `group_type` | `standard`, `product`, `content`, `lens_colour` |
+| New: `lens_colour_options` | Individual colours within a set (with price) |
+| New enum: `choice_type` | `standard`, `product`, `colour`, `content` |
 
 ## CRM management
 
@@ -205,3 +204,36 @@ Set: "Transitions" (code: transitions)
 5. Update flow builder group form
 6. Update storefront configurator rendering
 7. Update cart serialization for product add-ons + colour selections
+
+## Implementation Status
+
+| Step | Status | File(s) |
+|---|---|---|
+| Schema: `group_type` enum | ✅ | `lib/db/schema.ts` |
+| Schema: `lens_colour_sets` + `lens_colour_options` tables | ✅ | `lib/db/schema.ts` |
+| Schema: `group_type` + `lens_colour_set_id` on `step_choice_groups` | ✅ | `lib/db/schema.ts` |
+| Schema: `image_url`, `shopify_product_id`, `content_body` on `cfg_choices` | ✅ | `lib/db/schema.ts` |
+| Seed: 4 sets, 17 colours (Standard, Custom Solid, Custom Fade, Polarized) | ✅ | `scripts/seed-lens-colours.ts` |
+| API: Lens colours CRUD | ✅ | `app/api/crm/settings/lens-colours/route.ts` |
+| CRM UI: Lens Colours settings page | ✅ | `app/crm/settings/lens-colours/` |
+| CRM Settings: Lens Colours link | ✅ | `app/crm/settings/page.tsx` |
+| ADR-010 logged | ✅ | `.kiro/docs/decisions.md` |
+| Flow builder: group type selector + palette linking | ✅ | `FlowPanels.tsx`, `FlowEditor.tsx` |
+| Storefront: render new group types | ✅ | `LiveConfiguratorPreview.tsx` |
+| Cart: add-on product line items | ✅ | `lib/configurator/serialize-flow.ts`, `context/CartContext.tsx` |
+
+## Requirements
+
+| ID | Requirement | Status |
+|---|---|---|
+| REQ-ECT-001 | Lens colour sets are a shared catalogue, not per-flow | ✅ |
+| REQ-ECT-002 | Each colour has label, short desc, full desc, swatch, image, hex, price, category | ✅ |
+| REQ-ECT-003 | Price stored at lens_colour_options level | ✅ |
+| REQ-ECT-004 | Sets CRUD via CRM settings page | ✅ |
+| REQ-ECT-005 | Colours CRUD with hex preview | ✅ |
+| REQ-ECT-006 | Groups link to a set via lens_colour_set_id | ✅ |
+| REQ-ECT-007 | group_type enum: standard, product, content, lens_colour | ✅ |
+| REQ-ECT-008 | Product groups: choices with shopify_product_id become separate cart lines | ✅ |
+| REQ-ECT-009 | Content groups: selection_mode none, display-only | ✅ |
+| REQ-ECT-010 | Lens colour groups: render swatches from linked set | ✅ |
+| REQ-ECT-011 | Seed data: Standard ($0), Custom Solid ($25), Custom Fade ($25), Polarized ($70) | ✅ |

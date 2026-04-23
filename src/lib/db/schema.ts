@@ -1055,6 +1055,8 @@ export const configurationSnapshots = pgTable('configuration_snapshots', {
 
 export const flowStatusEnum = pgEnum('flow_status', ['draft', 'published', 'archived']);
 export const requiredModeEnum = pgEnum('required_mode', ['always', 'conditional', 'never']);
+export const choiceTypeEnum = pgEnum('choice_type', ['standard', 'product', 'colour', 'content']);
+export const groupTypeEnum = pgEnum('group_type', ['standard', 'product', 'content', 'lens_colour']);
 export const groupDisplayEnum = pgEnum('group_display', ['list', 'cards', 'swatches', 'table']);
 export const choiceStatusEnum = pgEnum('choice_status', ['active', 'inactive', 'archived']);
 export const ruleOwnerTypeEnum = pgEnum('rule_owner_type', ['flow', 'step', 'group_choice', 'price_rule', 'validation_rule']);
@@ -1126,6 +1128,11 @@ export const cfgChoices = pgTable('cfg_choices', {
   description: text('description'),
   internalName: text('internal_name'),
   baseType: text('base_type'),
+  imageUrl: text('image_url'),
+  shopifyProductId: text('shopify_product_id'),
+  contentBody: text('content_body'),
+  choiceType: choiceTypeEnum('choice_type').default('standard'),
+  lensColourSetId: uuid('lens_colour_set_id').references(() => lensColourSets.id),
   status: choiceStatusEnum('status').default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -1236,4 +1243,36 @@ export const channelProductRules = pgTable('channel_product_rules', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
   index('idx_channel_product_rules_flow').on(t.flowId),
+]);
+
+// ── Extended Group Types ─────────────────────────────────
+
+export const lensColourSets = pgTable('lens_colour_sets', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  sortOrder: integer('sort_order').default(0),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const lensColourOptions = pgTable('lens_colour_options', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  setId: uuid('set_id').notNull().references(() => lensColourSets.id),
+  code: text('code').notNull().unique(),
+  label: text('label').notNull(),
+  shortDescription: text('short_description'),
+  description: text('description'),
+  swatchUrl: text('swatch_url'),
+  imageUrl: text('image_url'),
+  hex: text('hex'),
+  hexEnd: text('hex_end'),
+  price: decimal('price', { precision: 12, scale: 2 }).default('0'),
+  category: text('category'),
+  sortOrder: integer('sort_order').default(0),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_lens_colour_options_set').on(t.setId),
 ]);

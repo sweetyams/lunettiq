@@ -19,7 +19,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }
   archived: { bg: '#f3f4f6', color: '#6b7280', label: 'Archived' },
 };
 
-export default function ChannelsClient() {
+export default function FlowsClient() {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [facets, setFacets] = useState<Facets>({ tags: [], productTypes: [] });
@@ -154,6 +154,7 @@ export default function ChannelsClient() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                      <Link href={`/crm/settings/product-options?flowId=${f.id}`} className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }}>Edit Flow</Link>
                       <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => toggleStatus(f)}>{f.status === 'published' ? 'Unpublish' : 'Publish'}</button>
                       <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => { setEditId(f.id); setEditLabel(f.label); setEditCode(f.code); setEditChannel(f.channelType); }}>✎</button>
                       <button className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: '#ef4444' }} onClick={() => removeFlow(f.id)}>✕</button>

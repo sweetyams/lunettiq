@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { FlowData, FlowSelection } from './FlowEditor';
 import { E, str, num, placementLabel, placementDescription, formatPlacementPrice } from './flow-helpers';
 import { ProductSearchModal } from '@/components/crm/ProductSearchModal';
@@ -108,6 +108,17 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
   const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [testProduct, setTestProduct] = useState<TestProduct | null>(null);
   const [loadingProduct, setLoadingProduct] = useState(false);
+  const [lensColours, setLensColours] = useState<Record<string, { id: string; code: string; label: string; hex: string | null; hexEnd: string | null; price: string; category: string | null; shortDescription: string | null }[]>>({});
+
+  useEffect(() => {
+    fetch('/api/crm/settings/lens-colours', { credentials: 'include' })
+      .then(r => r.json()).then(d => {
+        const bySet: typeof lensColours = {};
+        for (const c of d.data?.colours ?? []) { if (!bySet[c.setId]) bySet[c.setId] = []; bySet[c.setId].push(c); }
+        for (const arr of Object.values(bySet)) arr.sort((a, b) => (a as any).sortOrder - (b as any).sortOrder);
+        setLensColours(bySet);
+      }).catch(() => {});
+  }, []);
 
   const flow = data?.flows?.find(f => f.id === selection.flowId) ?? null;
 
@@ -309,6 +320,7 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
           {activeStep.groups.map((group: TreeGroup) => {
             const mode = str(group.selectionMode);
             const chosen = selections[group.id] ?? new Set();
+
             return (
               <div key={group.id} style={{ marginBottom: 16 }}>
                 {activeStep.groups.length > 1 && (
@@ -316,12 +328,68 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
                     {str(group.label)}{group.isRequired ? '' : ' (optional)'}
                   </div>
                 )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {group.placements.map((pl: E) => {
+                    const choice = choiceMap.get(str(pl.choiceId));
+                    const cType = choice ? str(choice.choiceType) || 'standard' : 'standard';
                     const label = placementLabel(pl, choiceMap);
                     const desc = placementDescription(pl, choiceMap);
                     const price = formatPlacementPrice(pl.id, data?.priceRules ?? []);
                     const isChosen = chosen.has(pl.id);
+
+                    // Content: display only
+                    if (cType === 'content') {
+                      return (
+                        <div key={pl.id} style={{ padding: '12px 14px', borderRadius: 8, border: '1px solid var(--crm-border)', background: 'var(--crm-surface)' }}>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                          {desc && <div style={{ fontSize: 11, color: 'var(--crm-text-tertiary)', marginTop: 4 }}>{desc}</div>}
+                          {choice?.contentBody && <div style={{ fontSize: 11, color: 'var(--crm-text-secondary)', marginTop: 4 }}>{String(choice.contentBody)}</div>}
+                        </div>
+                      );
+                    }
+
+                    // Colour: selectable + swatch expander
+                    if (cType === 'colour') {
+                      const setId = choice ? str(choice.lensColourSetId) : '';
+                      const colours = lensColours[setId] ?? [];
+                      const colourSelKey = `${group.id}:${pl.id}:colour`;
+                      const chosenColourId = (selections as any)[colourSelKey]?.values().next().value as string | undefined;
+                      return (
+                        <div key={pl.id}>
+                          <button onClick={() => toggleChoice(group.id, pl.id, mode, false)} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                            padding: '10px 14px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                            border: `1.5px solid ${isChosen ? 'var(--crm-text-primary)' : 'var(--crm-border)'}`,
+                            background: isChosen ? 'var(--crm-surface-active, rgba(0,0,0,0.03))' : 'transparent',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isChosen ? 'var(--crm-text-primary)' : 'var(--crm-border)'}`, background: isChosen ? 'var(--crm-text-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {isChosen && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
+                              </span>
+                              <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                            </div>
+                            <span style={{ fontSize: 12, color: 'var(--crm-text-tertiary)' }}>{price}</span>
+                          </button>
+                          {isChosen && colours.length > 0 && (
+                            <div style={{ padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                              {colours.map(c => {
+                                const sel = chosenColourId === c.id;
+                                const bg = c.hexEnd ? `linear-gradient(180deg, ${c.hex} 0%, ${c.hexEnd} 100%)` : (c.hex || '#ddd');
+                                return (
+                                  <button key={c.id} onClick={() => { const s = new Set<string>(); s.add(c.id); setSelections(prev => ({ ...prev, [colourSelKey]: s })); }} title={`${c.label}${Number(c.price) > 0 ? ` (+$${c.price})` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
+                                    <div style={{ width: 36, height: 36, borderRadius: 18, background: bg, border: sel ? '2.5px solid var(--crm-text-primary)' : '2px solid var(--crm-border)', transition: 'border 120ms' }} />
+                                    <span style={{ fontSize: 9, color: sel ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)', fontWeight: sel ? 600 : 400, maxWidth: 48, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Standard + Product: selectable row
                     return (
                       <button key={pl.id} onClick={() => toggleChoice(group.id, pl.id, mode, !!activeStep.autoAdvance)} style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

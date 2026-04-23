@@ -69,6 +69,30 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
     setTimeout(() => setToast(''), 3000);
   }
 
+  async function downloadAllImages() {
+    const allUrls = new Map<string, string>();
+    const slug = (product.handle ?? product.shopifyProductId).replace(/[^a-z0-9-]/gi, '-');
+    imgSrcs.forEach((url, i) => allUrls.set(url, `${slug}_${i + 1}.jpg`));
+    variants.forEach(v => { if (v.imageUrl && !allUrls.has(v.imageUrl)) allUrls.set(v.imageUrl, `${slug}_variant_${v.sku || v.shopifyVariantId}.jpg`); });
+    if (!allUrls.size) { setToast('No images to download'); setTimeout(() => setToast(''), 2000); return; }
+    setToast(`Downloading ${allUrls.size} images…`);
+    try {
+      const { default: JSZip } = await import('jszip');
+      const zip = new JSZip();
+      await Promise.all(Array.from(allUrls).map(async ([url, name]) => {
+        try { const res = await fetch(url); if (res.ok) zip.file(name, await res.blob()); } catch {}
+      }));
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug}_images.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setToast(`Downloaded ${allUrls.size} images`);
+    } catch { setToast('Download failed'); }
+    setTimeout(() => setToast(''), 3000);
+  }
+
   return (
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <Link href="/crm/products" className="crm-btn crm-btn-ghost" style={{ marginBottom: 'var(--crm-space-4)', display: 'inline-flex', padding: 0 }}>
@@ -95,6 +119,7 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
               ))}
             </div>
           )}
+          <button onClick={downloadAllImages} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--crm-text-tertiary)', padding: '6px 0', marginTop: 4 }}>↓ Download all images</button>
           {product.description && (
             <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)', lineHeight: 1.6, marginTop: 'var(--crm-space-5)' }} dangerouslySetInnerHTML={{ __html: product.description }} />
           )}
