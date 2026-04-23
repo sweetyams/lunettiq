@@ -321,6 +321,10 @@ export const syncProduct = inngest.createFunction(
 
     // Auto-assign to family and filters for new/updated products
     await autoAssignProduct(String(p.id), p.handle);
+
+    // Invalidate configurator channel resolution cache
+    const { cacheInvalidate } = await import('@/lib/crm/configurator-resolve');
+    await cacheInvalidate(String(p.id));
   }
 );
 

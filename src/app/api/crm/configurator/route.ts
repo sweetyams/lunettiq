@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import {
   configuratorFlows, flowSteps, stepChoiceGroups, cfgChoices,
   groupChoices, ruleSets, cfgRules, ruleClauses, cfgPriceRules,
+  channelProductRules,
 } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
@@ -14,6 +15,7 @@ const TABLES: Record<string, any> = {
   choice: cfgChoices, placement: groupChoices,
   ruleSet: ruleSets, rule: cfgRules, clause: ruleClauses,
   priceRule: cfgPriceRules,
+  channelRule: channelProductRules,
 };
 
 // GET — load full flow tree or entity list

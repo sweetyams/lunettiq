@@ -56,7 +56,6 @@ Steps with `href` trigger `router.push()` before showing tooltip. 300ms delay af
 | `src/components/crm/CrmShell.tsx` | Mounts `<CrmTour />` inside CRM layout |
 | `src/components/crm/CrmSidebar.tsx` | Sidebar nav items with `data-tour` attributes |
 | `src/app/crm/settings/ResetTourButton.tsx` | "Restart CRM tour" button on settings page |
-| `src/components/crm/CrmTour.stories.tsx` | Storybook story |
 
 ## Adding a New Step
 

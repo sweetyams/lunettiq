@@ -1,4 +1,4 @@
-# Spec: Channel–Product Assignment Rules
+# Spec: Channel–Product Assignment Rules (UI: "Flows")
 
 ## Problem
 
@@ -170,3 +170,42 @@ PDP loads → resolveChannelsForProduct(productId) → get flow
          → render dynamic configurator modal
          → on complete → add to cart with configuration attributes
 ```
+
+## Implementation Status
+
+| Step | Status | File(s) |
+|---|---|---|
+| Schema: `channel_product_rules` table + `channel_rule_type` enum | ✅ | `lib/db/schema.ts` |
+| Schema: `cubitts` added to `channel` enum | ✅ | `lib/db/schema.ts` |
+| CRUD API: `channelRule` entity via `/api/crm/configurator` | ✅ | `app/api/crm/configurator/route.ts` |
+| Facets API: distinct tags + product types | ✅ | `app/api/crm/products/facets/route.ts` |
+| Resolve service: `resolveChannelsForProduct()` | ✅ | `lib/crm/configurator-resolve.ts` |
+| Resolve endpoint: `GET /api/storefront/configurator/resolve` | ✅ | `app/api/storefront/configurator/resolve/route.ts` |
+| Upstash cache: 1h TTL, lazy-loaded, integration-gated | ✅ | `lib/crm/configurator-resolve.ts` |
+| Cache invalidation: product webhook in Inngest | ✅ | `lib/inngest/functions.ts` (sync-product) |
+| Storefront APIs: dynamic channel support | ✅ | `app/api/storefront/product-options/route.ts`, `app/api/storefront/configure/route.ts` |
+| CRM UI: Channels page with rules CRUD, drag-drop, tag cloud | ✅ | `app/crm/settings/product-options/channels/ChannelsClient.tsx` |
+| CRM UI: Status badges (Draft/Published) | ✅ | `app/crm/settings/product-options/channels/ChannelsClient.tsx` |
+| CRM Settings: Channels link on settings index | ✅ | `app/crm/settings/page.tsx` |
+| Cubitts channel seed data | ✅ | `scripts/seed-cubitts-channel.ts` |
+| Wire into PDP (replace hardcoded channel logic) | ⬜ | — |
+
+## Requirements
+
+| ID | Requirement | Status |
+|---|---|---|
+| REQ-CPR-001 | Rules evaluate include_tag, exclude_tag against product tags | ✅ |
+| REQ-CPR-002 | Rules evaluate include_product_type, exclude_product_type (case-insensitive) | ✅ |
+| REQ-CPR-003 | Rules evaluate include_ids, exclude_ids against comma-separated product IDs | ✅ |
+| REQ-CPR-004 | Exclude rules override include rules for the same channel | ✅ |
+| REQ-CPR-005 | Only published flows are resolved | ✅ |
+| REQ-CPR-006 | Only active rules are evaluated | ✅ |
+| REQ-CPR-007 | Results cached in Upstash with 1h TTL | ✅ |
+| REQ-CPR-008 | Cache invalidated on product webhook | ✅ |
+| REQ-CPR-009 | Product not found returns empty array | ✅ |
+| REQ-CPR-010 | Multiple channels can match a single product | ✅ |
+| REQ-CPR-011 | Rules ordered by priority (lower = first) | ✅ |
+| REQ-CPR-012 | CRM UI: drag-drop reorder for rules | ✅ |
+| REQ-CPR-013 | CRM UI: tag cloud picker from real product data | ✅ |
+| REQ-CPR-014 | CRM UI: product type picker from real product data | ✅ |
+| REQ-CPR-015 | Storefront APIs accept any channel string | ✅ |

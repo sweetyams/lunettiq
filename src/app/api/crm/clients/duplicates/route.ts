@@ -4,7 +4,7 @@ import { duplicateCandidates, customersProjection } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
 export const GET = handler(async () => {
   await requireCrmAuth('org:clients:read');
@@ -31,7 +31,7 @@ export const GET = handler(async () => {
       tags: customersProjection.tags,
     })
     .from(customersProjection)
-    .where(sql`${customersProjection.shopifyCustomerId} = ANY(${ids})`);
+    .where(inArray(customersProjection.shopifyCustomerId, ids));
 
   const clientMap = new Map(clients.map(c => [c.id, c]));
 

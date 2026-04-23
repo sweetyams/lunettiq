@@ -4,6 +4,30 @@ Append-only. Newest first.
 
 ---
 
+### ADR-009: Remove Legacy Product Options UI, Rename Channels → Flows
+
+**Date:** 2026-04-22 · **Status:** Accepted
+
+**Context:** The product-options page had two views: "Builder" (flow editor + live preview) and "Logic & Diagnostics" (raw CRUD tables for legacy option_groups/options/price_rules/constraint_rules/step_definitions). The diagnostics view used a separate API (`/api/crm/product-options`) and two dead components (ConstraintMatrix, ExclusionGroups). "Channels" was confusing — implies sales channels, not configurator flows.
+
+**Decision:** Removed the Logic & Diagnostics view, its API route, and dead components (~350 lines). Renamed all UI labels from "Channels" to "Flows" to match the data model (`configurator_flows`). URL path `/channels` kept for bookmark stability.
+
+**Consequences:** Single-view product-options page (Builder only). Legacy tables still exist and are seeded, but no longer have a direct CRM editing UI — managed through the flow builder instead. "Flows" terminology is consistent with the DB schema.
+
+---
+
+### ADR-008: Cubitts Channel — Data-Only Seed into Existing Configurator
+
+**Date:** 2026-04-22 · **Status:** Accepted
+
+**Context:** Need a Cubitts-branded configurator flow (frame colour → frame size → lens type → lens colour → lens coatings → summary) with GBP pricing (£175 base, +£50 polarisation). The existing configurator has two parallel table systems: legacy (option_groups/options/price_rules/constraint_rules/step_definitions) and builder (configuratorFlows/flowSteps/stepChoiceGroups/cfgChoices/groupChoices/cfgPriceRules).
+
+**Decision:** Add `cubitts` to the `channel` enum and seed data into both table systems via `scripts/seed-cubitts-channel.ts`. No schema changes — Cubitts-specific option groups and options are scoped via the `channels` jsonb array on each option. Frame colour maps to `finish_state` layer, frame size to `material` layer, lens colour/coatings to existing layers. Builder tables use `currency: 'GBP'` on price rules.
+
+**Consequences:** Cubitts channel is fully isolated from optical/sun/reglaze via channel scoping. Existing configurator UI/engine works unchanged — just reads different data for the cubitts channel. GBP pricing introduces multi-currency in the builder price rules (existing channels use CAD).
+
+---
+
 ### ADR-007: Implicit Exclusion via Group Selection Mode
 
 **Date:** 2026-04-21 · **Status:** Accepted

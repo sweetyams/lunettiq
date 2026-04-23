@@ -946,7 +946,7 @@ export const optionLayerEnum = pgEnum('option_layer', [
 
 export const selectionModeEnum = pgEnum('selection_mode', ['single', 'multi', 'none']);
 
-export const channelEnum = pgEnum('channel', ['optical', 'sun', 'reglaze']);
+export const channelEnum = pgEnum('channel', ['optical', 'sun', 'reglaze', 'cubitts']);
 
 export const pricingTypeEnum = pgEnum('pricing_type', ['absolute', 'delta']);
 
@@ -1219,4 +1219,21 @@ export const flowVersions = pgTable('flow_versions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (t) => [
   index('idx_flow_versions_flow').on(t.flowId),
+]);
+
+export const channelRuleTypeEnum = pgEnum('channel_rule_type', [
+  'include_tag', 'exclude_tag', 'include_product_type', 'exclude_product_type', 'include_ids', 'exclude_ids',
+]);
+
+export const channelProductRules = pgTable('channel_product_rules', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  flowId: uuid('flow_id').notNull().references(() => configuratorFlows.id),
+  ruleType: channelRuleTypeEnum('rule_type').notNull(),
+  value: text('value').notNull(),
+  priority: integer('priority').default(100),
+  status: choiceStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_channel_product_rules_flow').on(t.flowId),
 ]);

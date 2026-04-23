@@ -39,7 +39,6 @@ Staff can replay the tour at any time from **Settings → Onboarding → Restart
 | `src/components/crm/CrmShell.tsx` | Mounts `<CrmTour />` inside the CRM layout. |
 | `src/components/crm/CrmSidebar.tsx` | Attaches `data-tour` attributes to sidebar nav links. |
 | `src/app/crm/settings/ResetTourButton.tsx` | "Restart CRM tour" button — clears localStorage and redirects to `/crm`. |
-| `src/components/crm/CrmTour.stories.tsx` | Storybook story for isolated testing. |
 
 ### Target Binding
 
@@ -92,7 +91,6 @@ Skip / Done → write localStorage → hide tour
 
 - **UI**: Settings → Onboarding → "Restart CRM tour"
 - **Manual**: `localStorage.removeItem('lunettiq_crm_tour_done')` in the browser console
-- **Storybook**: The decorator automatically clears localStorage before each render
 
 ## Styling
 

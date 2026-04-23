@@ -149,4 +149,3 @@ Dual auth: Clerk for `/crm/*`, Shopify OAuth refresh for `/account/*`. CORS for 
 - Integrations: gated on `isIntegrationEnabled()` / `getKey()`
 - Webhooks: Shopify → HMAC → Inngest → idempotent upsert
 - Roles: `owner`, `manager`, `sa`, `readonly` in `publicMetadata.role`
-- Storybook: `.stories.tsx` co-located

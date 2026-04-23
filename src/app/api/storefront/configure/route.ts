@@ -13,7 +13,7 @@ import { eq } from 'drizzle-orm';
  */
 
 interface ConfigRequest {
-  channel: 'optical' | 'sun' | 'reglaze';
+  channel: string;
   selections: string[];
   basePrice?: number;
 }
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const body: ConfigRequest = await request.json();
     const { channel, selections, basePrice } = body;
 
-    if (!channel || !['optical', 'sun', 'reglaze'].includes(channel)) {
+    if (!channel) {
       return NextResponse.json({ error: 'channel required' }, { status: 400 });
     }
     if (!selections?.length) {

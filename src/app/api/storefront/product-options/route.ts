@@ -11,13 +11,13 @@ import { eq, and } from 'drizzle-orm';
  */
 export async function GET(request: NextRequest) {
   const channel = request.nextUrl.searchParams.get('channel');
-  if (!channel || !['optical', 'sun', 'reglaze'].includes(channel)) {
-    return NextResponse.json({ error: 'channel required (optical|sun|reglaze)' }, { status: 400 });
+  if (!channel) {
+    return NextResponse.json({ error: 'channel query param required' }, { status: 400 });
   }
 
   const [steps, groups, allOptions, prices, constraints] = await Promise.all([
     db.select().from(stepDefinitions)
-      .where(and(eq(stepDefinitions.channel, channel as 'optical' | 'sun' | 'reglaze'), eq(stepDefinitions.active, true)))
+      .where(and(eq(stepDefinitions.channel, channel as typeof stepDefinitions.channel.enumValues[number]), eq(stepDefinitions.active, true)))
       .orderBy(stepDefinitions.sortOrder),
     db.select().from(optionGroups).where(eq(optionGroups.active, true)),
     db.select().from(options).where(eq(options.active, true)).orderBy(options.sortOrder),
