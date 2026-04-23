@@ -12,6 +12,7 @@ const SETTINGS_GROUPS = [
       { href: '/crm/settings/product-options', label: 'Configurator Builder', description: 'Flows, steps, choices, pricing rules, and constraints' },
       { href: '/crm/settings/product-options/flows', label: 'Flows', description: 'Configurator flows and product assignment rules' },
       { href: '/crm/settings/lens-colours', label: 'Lens Colours', description: 'Colour palettes for tints, polarized, transitions, and custom dips' },
+      { href: '/crm/settings/inventory', label: 'Inventory', description: 'Security stock, shipping location, low stock thresholds' },
       { href: '/crm/settings/metafield-visibility', label: 'Metafields', description: 'Choose which fields show on product pages' },
     ],
   },

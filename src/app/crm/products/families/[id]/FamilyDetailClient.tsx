@@ -146,6 +146,9 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
         </div>
       )}
 
+      {/* Inventory by colour × location */}
+      <FamilyInventoryGrid familyId={familyId} />
+
       {/* Shopify Products */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
         <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Shopify Products ({members.length})</div>
@@ -281,6 +284,63 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FamilyInventoryGrid({ familyId }: { familyId: string }) {
+  const [levels, setLevels] = useState<Array<{ familyId: string | null; colour: string | null; locationId: string; locationName: string; onHand: number; available: number }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/crm/inventory?familyId=${familyId}`, { credentials: 'include' })
+      .then(r => r.json()).then(d => setLevels(d.data ?? []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }, [familyId]);
+
+  if (loading || !levels.length) return null;
+
+  const colours = Array.from(new Set(levels.map(l => l.colour).filter(Boolean))) as string[];
+  const locations = Array.from(new Set(levels.map(l => l.locationName)));
+
+  if (!colours.length || !locations.length) return null;
+
+  const getAvailable = (colour: string, loc: string) => {
+    const l = levels.find(x => x.colour === colour && x.locationName === loc);
+    return l?.available ?? 0;
+  };
+
+  return (
+    <div style={{ marginBottom: 'var(--crm-space-5)' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--crm-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock by Colour</div>
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: '#f9fafb' }}>
+              <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Colour</th>
+              {locations.map(loc => (
+                <th key={loc} style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>{loc}</th>
+              ))}
+              <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {colours.map(colour => {
+              const total = locations.reduce((s, loc) => s + getAvailable(colour, loc), 0);
+              return (
+                <tr key={colour} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '6px 10px', fontWeight: 500, textTransform: 'capitalize' }}>{colour.replace(/-/g, ' ')}</td>
+                  {locations.map(loc => {
+                    const avail = getAvailable(colour, loc);
+                    return <td key={loc} style={{ padding: '6px 10px', textAlign: 'right', color: avail > 0 ? '#065f46' : '#dc2626', fontWeight: avail > 0 ? 400 : 600 }}>{avail}</td>;
+                  })}
+                  <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600 }}>{total}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
