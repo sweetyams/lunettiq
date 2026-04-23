@@ -3,10 +3,12 @@ export const maxDuration = 120;
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { syncFromShopify } from '@/lib/crm/inventory-sync';
+import { syncFromShopify, syncFromSquare } from '@/lib/crm/inventory-sync';
 
 export const POST = handler(async () => {
   await requireCrmAuth('org:settings:integrations');
-  const result = await syncFromShopify();
-  return jsonOk({ message: `Synced ${result.synced} inventory levels across ${result.locations} locations` });
+  const [shopify, square] = await Promise.all([syncFromShopify(), syncFromSquare()]);
+  return jsonOk({
+    message: `Synced ${shopify.synced} from Shopify (${shopify.locations} locations), ${square.synced} from Square (${square.locations} locations)`,
+  });
 });

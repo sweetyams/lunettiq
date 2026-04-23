@@ -173,11 +173,17 @@ export async function projectToChannels(familyId: string | null, colour: string 
     if (variantId) {
       const levels = await getLevels({ variantId });
       const total = levels.reduce((sum, l) => sum + l.available, 0);
-      // TODO: push to Shopify via Admin API
-      // TODO: push to Square via inventory write
       await db.update(productVariantsProjection)
         .set({ inventoryQuantity: total, availableForSale: total > 0 })
         .where(eq(productVariantsProjection.shopifyVariantId, variantId));
+      // Push to Shopify
+      try {
+        const { shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
+        for (const l of levels) {
+          const [loc] = await db.select().from(locations).where(eq(locations.id, l.locationId));
+          if (loc?.shopifyLocationId) await shopifySetInventory(variantId, loc.shopifyLocationId, l.available);
+        }
+      } catch (e) { console.error('[inventory] Shopify push failed:', e); }
     }
     return;
   }
@@ -205,14 +211,23 @@ export async function projectToChannels(familyId: string | null, colour: string 
       .from(productVariantsProjection)
       .where(inArray(productVariantsProjection.shopifyProductId, productIds));
 
-    // Update local projection
+    // Update local projection + push to Shopify
     for (const v of variants) {
       await db.update(productVariantsProjection)
         .set({ inventoryQuantity: onlineAvailable, availableForSale: onlineAvailable > 0 })
         .where(eq(productVariantsProjection.shopifyVariantId, v.shopifyVariantId));
     }
 
-    // TODO: Push to Shopify Admin API (inventorySetQuantities)
-    // TODO: Push to Square Inventory API (batch change)
+    // Push to Shopify Admin API
+    try {
+      const { shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
+      const shippingLoc = await db.select().from(locations).where(eq(locations.id, shippingLocationId!));
+      const shopifyLocId = shippingLoc[0]?.shopifyLocationId;
+      if (shopifyLocId) {
+        for (const v of variants) {
+          await shopifySetInventory(v.shopifyVariantId, shopifyLocId, onlineAvailable);
+        }
+      }
+    } catch (e) { console.error('[inventory] Shopify push failed:', e); }
   }
 }

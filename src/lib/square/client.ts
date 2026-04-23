@@ -157,3 +157,21 @@ export async function listLocations(): Promise<Array<{ id: string; name: string;
   const data = await squareGet<{ locations: Array<{ id: string; name: string; address?: any }> }>('/locations');
   return data.locations ?? [];
 }
+
+/** Get inventory counts for catalog items at locations. READ-ONLY. */
+export async function getInventoryCounts(catalogObjectIds: string[], locationIds: string[]): Promise<Array<{ catalogObjectId: string; locationId: string; quantity: number }>> {
+  const token = await resolveToken();
+  const base = getBaseUrl();
+  const res = await fetch(`${base}/inventory/counts/batch-retrieve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Square-Version': '2024-10-17' },
+    body: JSON.stringify({ catalog_object_ids: catalogObjectIds, location_ids: locationIds, states: ['IN_STOCK'] }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.counts ?? []).map((c: any) => ({
+    catalogObjectId: c.catalog_object_id,
+    locationId: c.location_id,
+    quantity: parseFloat(c.quantity ?? '0'),
+  }));
+}

@@ -52,3 +52,40 @@ export async function graphqlAdmin<T>(
     return { ok: false, error: (e as Error).message };
   }
 }
+
+// ── Inventory ────────────────────────────────────────────
+
+const SET_INVENTORY_MUTATION = `mutation($input: InventorySetQuantitiesInput!) {
+  inventorySetQuantities(input: $input) {
+    inventoryAdjustmentGroup { reason }
+    userErrors { field message }
+  }
+}`;
+
+/**
+ * Set inventory quantity for a variant at a location.
+ * Uses Shopify's inventorySetQuantities which requires inventory_item_id.
+ */
+export async function shopifySetInventory(variantId: string, shopifyLocationId: string, available: number): Promise<boolean> {
+  // First get the inventory_item_id for this variant
+  const itemResult = await graphqlAdmin<any>(`query($id: ID!) {
+    productVariant(id: $id) { inventoryItem { id } }
+  }`, { id: `gid://shopify/ProductVariant/${variantId}` });
+
+  const inventoryItemId = itemResult?.productVariant?.inventoryItem?.id;
+  if (!inventoryItemId) return false;
+
+  const result = await graphqlAdmin<any>(SET_INVENTORY_MUTATION, {
+    input: {
+      reason: 'correction',
+      name: 'available',
+      quantities: [{
+        inventoryItemId,
+        locationId: `gid://shopify/Location/${shopifyLocationId}`,
+        quantity: available,
+      }],
+    },
+  });
+
+  return !result?.inventorySetQuantities?.userErrors?.length;
+}

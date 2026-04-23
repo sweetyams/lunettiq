@@ -1352,4 +1352,58 @@ export const deleteDraftOrder = inngest.createFunction(
 
 // ─── Export all functions ────────────────────────────────
 
-export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership, cleanupDraftOrders, syncDraftOrder, deleteDraftOrder];
+// ─── Inventory: update stock on order events ─────────────
+
+export const inventoryOnOrder = inngest.createFunction(
+  { id: 'inventory-on-order', retries: 2, triggers: [{ event: 'shopify/order.updated' }] },
+  async ({ event }) => {
+    const o = event.data;
+    if (!o.line_items?.length) return;
+
+    const { resolveFrame, adjust, projectToChannels } = await import('@/lib/crm/inventory');
+    const { locations: locTable } = await import('@/lib/db/schema');
+
+    // Determine what changed
+    const isNew = o.financial_status === 'paid' || o.financial_status === 'authorized';
+    const isCancelled = !!o.cancelled_at;
+    const isFulfilled = o.fulfillment_status === 'fulfilled';
+
+    // Get the location for this order (use location_id from line items or default)
+    const orderLocationId = o.location_id ? String(o.location_id) : null;
+    let locationId: string | null = null;
+    if (orderLocationId) {
+      const [loc] = await db.select().from(locTable).where(eq(locTable.shopifyLocationId, orderLocationId));
+      locationId = loc?.id ?? null;
+    }
+    if (!locationId) {
+      // Fallback to first location
+      const [loc] = await db.select().from(locTable).where(eq(locTable.active, true)).limit(1);
+      locationId = loc?.id ?? null;
+    }
+    if (!locationId) return;
+
+    for (const li of o.line_items) {
+      const variantId = li.variant_id ? String(li.variant_id) : null;
+      if (!variantId) continue;
+      const qty = li.quantity ?? 1;
+
+      const frame = await resolveFrame(variantId);
+
+      if (isCancelled) {
+        // Release committed stock
+        await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: -qty, reason: 'return', referenceId: String(o.id), referenceType: 'shopify_order' });
+      } else if (isFulfilled) {
+        // Decrement on_hand + committed
+        await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'on_hand', delta: -qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
+        await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: -qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
+      } else if (isNew) {
+        // Reserve stock
+        await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
+      }
+
+      await projectToChannels(frame.familyId, frame.colour, frame.variantId);
+    }
+  }
+);
+
+export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership, cleanupDraftOrders, syncDraftOrder, deleteDraftOrder, inventoryOnOrder];
