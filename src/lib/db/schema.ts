@@ -1279,6 +1279,8 @@ export const lensColourOptions = pgTable('lens_colour_options', {
 
 // ── Inventory ────────────────────────────────────────────
 
+export const inventoryLifecycleEnum = pgEnum('inventory_lifecycle', ['coming_soon', 'active', 'low_stock', 'sold_out', 'archived']);
+
 export const inventoryAdjustmentReasonEnum = pgEnum('inventory_adjustment_reason', [
   'sale', 'return', 'recount', 'damage', 'loss', 'transfer', 'received', 'manual', 'sync',
 ]);
@@ -1295,6 +1297,10 @@ export const inventoryLevels = pgTable('inventory_levels', {
   available: integer('available').default(0),
   lowStockThreshold: integer('low_stock_threshold'),
   discontinued: boolean('discontinued').default(false),
+  lifecycle: inventoryLifecycleEnum('lifecycle').default('active'),
+  runQuantity: integer('run_quantity'),
+  replenishable: boolean('replenishable').default(false),
+  discontinueAtZero: boolean('discontinue_at_zero').default(true),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: true }),
 }, (t) => [
@@ -1322,4 +1328,32 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
   index('idx_inv_adj_family').on(t.familyId, t.colour),
   index('idx_inv_adj_variant').on(t.variantId),
   index('idx_inv_adj_created').on(t.createdAt),
+]);
+
+export const transferStatusEnum = pgEnum('transfer_status', ['requested', 'approved', 'shipped', 'received', 'cancelled']);
+
+export const inventoryTransfers = pgTable('inventory_transfers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  fromLocationId: text('from_location_id').notNull().references(() => locations.id),
+  toLocationId: text('to_location_id').notNull().references(() => locations.id),
+  status: transferStatusEnum('status').default('requested'),
+  requestedBy: text('requested_by'),
+  approvedBy: text('approved_by'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_transfers_status').on(t.status),
+]);
+
+export const inventoryTransferLines = pgTable('inventory_transfer_lines', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  transferId: uuid('transfer_id').notNull().references(() => inventoryTransfers.id),
+  familyId: text('family_id'),
+  colour: text('colour'),
+  variantId: text('variant_id'),
+  quantity: integer('quantity').notNull(),
+  receivedQuantity: integer('received_quantity'),
+}, (t) => [
+  index('idx_transfer_lines_transfer').on(t.transferId),
 ]);

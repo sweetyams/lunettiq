@@ -132,6 +132,14 @@ export async function adjust(opts: {
   const securityStock = field === 'security_stock' ? newValue : (level.securityStock ?? 0);
   updates.available = recalcAvailable(onHand, committed, securityStock);
 
+  // Auto-sold-out: if available hits 0 and discontinueAtZero is true
+  const newAvailable = updates.available as number;
+  if (newAvailable <= 0 && level.discontinueAtZero !== false) {
+    updates.lifecycle = 'sold_out';
+  } else if (newAvailable > 0 && (level as any).lifecycle === 'sold_out') {
+    updates.lifecycle = newAvailable <= (level.lowStockThreshold ?? 5) ? 'low_stock' : 'active';
+  }
+
   await db.update(inventoryLevels).set(updates).where(eq(inventoryLevels.id, level.id));
 
   // Audit log
