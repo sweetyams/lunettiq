@@ -15,22 +15,23 @@ export interface MetafieldField {
   group: string;     // group key
   unit?: string;     // suffix e.g. ' mm', ' g'
   type?: string;     // Shopify metafield type e.g. 'single_line_text_field', 'number_integer', 'boolean'
+  pin?: boolean;     // Pin in Shopify admin (max 20)
 }
 
 export const METAFIELD_GROUPS: MetafieldGroup[] = [
   {
     key: 'details', label: 'Product Details',
     fields: [
-      { key: 'product_name', label: 'Product Name', group: 'details', type: 'single_line_text_field' },
-      { key: 'product_type', label: 'Product Type', group: 'details', type: 'single_line_text_field' },
-      { key: 'collection', label: 'Collection', group: 'details', type: 'single_line_text_field' },
+      { key: 'product_name', label: 'Product Name', group: 'details', type: 'single_line_text_field', pin: true },
+      { key: 'product_type', label: 'Product Type', group: 'details', type: 'single_line_text_field', pin: true },
+      { key: 'collection', label: 'Collection', group: 'details', type: 'single_line_text_field', pin: true },
       { key: 'designer_notes', label: 'Designer Notes', group: 'details', type: 'multi_line_text_field' },
     ],
   },
   {
     key: 'design', label: 'Frame Design',
     fields: [
-      { key: 'frame_shape', label: 'Frame Shape', group: 'design', type: 'single_line_text_field' },
+      { key: 'frame_shape', label: 'Frame Shape', group: 'design', type: 'single_line_text_field', pin: true },
       { key: 'frame_thickness', label: 'Frame Thickness', group: 'design', type: 'single_line_text_field' },
       { key: 'brow_line', label: 'Brow Line', group: 'design', type: 'single_line_text_field' },
       { key: 'bridge_shape', label: 'Bridge Shape', group: 'design', type: 'single_line_text_field' },
@@ -42,7 +43,7 @@ export const METAFIELD_GROUPS: MetafieldGroup[] = [
   {
     key: 'materials_components', label: 'Materials & Components',
     fields: [
-      { key: 'frame_material', label: 'Frame Material', group: 'materials_components', type: 'single_line_text_field' },
+      { key: 'frame_material', label: 'Frame Material', group: 'materials_components', type: 'single_line_text_field', pin: true },
       { key: 'nose_pad_type', label: 'Nose Pad Type', group: 'materials_components', type: 'single_line_text_field' },
       { key: 'nose_fit', label: 'Nose Fit', group: 'materials_components', type: 'single_line_text_field' },
       { key: 'frame_finish', label: 'Frame Finish', group: 'materials_components', type: 'single_line_text_field' },
@@ -52,21 +53,21 @@ export const METAFIELD_GROUPS: MetafieldGroup[] = [
   {
     key: 'fit_sizing', label: 'Fit & Sizing',
     fields: [
-      { key: 'face_width_fit', label: 'Face Fit Width', group: 'fit_sizing', type: 'single_line_text_field' },
-      { key: 'lens_width', label: 'Lens Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'bridge_width', label: 'Bridge Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'temple_length', label: 'Temple Length', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'lens_height', label: 'Lens Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'front_height', label: 'Front Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'overall_frame_width', label: 'Overall Frame Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
-      { key: 'weight_grams', label: 'Weight', group: 'fit_sizing', unit: ' g', type: 'number_decimal' },
+      { key: 'face_width_fit', label: 'Face Fit Width', group: 'fit_sizing', type: 'single_line_text_field', pin: true },
+      { key: 'lens_width', label: 'Lens Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'bridge_width', label: 'Bridge Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'temple_length', label: 'Temple Length', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'lens_height', label: 'Lens Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'front_height', label: 'Front Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'overall_frame_width', label: 'Overall Frame Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer', pin: true },
+      { key: 'weight_grams', label: 'Weight', group: 'fit_sizing', unit: ' g', type: 'number_decimal', pin: true },
     ],
   },
   {
     key: 'compatibility', label: 'Compatibility',
     fields: [
-      { key: 'prescription_compatible', label: 'Prescription Compatible', group: 'compatibility', type: 'boolean' },
-      { key: 'progressive_suitable', label: 'Progressive Suitable', group: 'compatibility', type: 'boolean' },
+      { key: 'prescription_compatible', label: 'Prescription Compatible', group: 'compatibility', type: 'boolean', pin: true },
+      { key: 'progressive_suitable', label: 'Progressive Suitable', group: 'compatibility', type: 'boolean', pin: true },
       { key: 'high_prescription_suitable', label: 'High Prescription Suitable', group: 'compatibility', type: 'boolean' },
       { key: 'clip_on_compatible', label: 'Clip-On Compatible', group: 'compatibility', type: 'boolean' },
     ],
@@ -74,7 +75,7 @@ export const METAFIELD_GROUPS: MetafieldGroup[] = [
   {
     key: 'colour', label: 'Colour',
     fields: [
-      { key: 'primary_frame_colour', label: 'Primary Frame Colour', group: 'colour', type: 'single_line_text_field' },
+      { key: 'primary_frame_colour', label: 'Primary Frame Colour', group: 'colour', type: 'single_line_text_field', pin: true },
       { key: 'secondary_frame_colour', label: 'Secondary Frame Colour', group: 'colour', type: 'single_line_text_field' },
       { key: 'default_lens_colour', label: 'Default Lens Colour', group: 'colour', type: 'single_line_text_field' },
     ],

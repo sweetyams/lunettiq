@@ -4,6 +4,8 @@ import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { METAFIELD_GROUPS } from '@/lib/crm/metafield-schema';
+import { db } from '@/lib/db';
+import { storeSettings } from '@/lib/db/schema';
 
 const SHOP = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
 const TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
@@ -21,7 +23,14 @@ async function gql(query: string, variables?: Record<string, unknown>) {
 const CREATE_DEFINITION = `mutation($definition: MetafieldDefinitionInput!) {
   metafieldDefinitionCreate(definition: $definition) {
     createdDefinition { id name key namespace }
-    userErrors { field message }
+    userErrors { field message code }
+  }
+}`;
+
+const UPDATE_DEFINITION = `mutation($definition: MetafieldDefinitionUpdateInput!) {
+  metafieldDefinitionUpdate(definition: $definition) {
+    updatedDefinition { id name key namespace }
+    userErrors { field message code }
   }
 }`;
 
@@ -33,7 +42,7 @@ export const POST = handler(async () => {
   await requireCrmAuth('org:settings:integrations');
   if (!SHOP || !TOKEN) return jsonError('Shopify not configured', 500);
 
-  let created = 0, skipped = 0;
+  let created = 0, updated = 0, skipped = 0;
   const errors: string[] = [];
 
   for (const group of METAFIELD_GROUPS) {
@@ -45,23 +54,43 @@ export const POST = handler(async () => {
           key: field.key,
           type: field.type ?? 'single_line_text_field',
           ownerType: 'PRODUCT',
-          pin: true,
+          ...(field.pin && { pin: true }),
         },
       });
 
       const userErrors = result.data?.metafieldDefinitionCreate?.userErrors ?? [];
-      if (userErrors.length) {
-        const msg = userErrors.map((e: any) => e.message).join(', ');
-        if (msg.includes('already exists') || msg.includes('taken')) {
+      if (!userErrors.length) { created++; continue; }
+
+      const isExisting = userErrors.some((e: any) => e.code === 'TAKEN' || e.message?.includes('in use') || e.message?.includes('already exists'));
+      if (isExisting) {
+        // Try updating the existing definition's name
+        const upResult = await gql(UPDATE_DEFINITION, {
+          definition: {
+            namespace: 'custom',
+            key: field.key,
+            ownerType: 'PRODUCT',
+            name: field.label,
+          },
+        });
+        const upErrors = upResult.data?.metafieldDefinitionUpdate?.userErrors ?? [];
+        if (upErrors.length) {
           skipped++;
         } else {
-          errors.push(`${field.key}: ${msg}`);
+          updated++;
         }
       } else {
-        created++;
+        errors.push(`${field.key}: ${userErrors.map((e: any) => e.message).join(', ')}`);
       }
     }
   }
 
-  return jsonOk({ created, skipped, errors });
+  // Update CRM metafield visibility groups to match new schema
+  const groups = METAFIELD_GROUPS.map(g => ({ label: g.label, keys: g.fields.map(f => `custom.${f.key}`) }));
+  const allKeys = METAFIELD_GROUPS.flatMap(g => g.fields.map(f => `custom.${f.key}`));
+  await db.insert(storeSettings).values({ key: 'metafield_groups', value: JSON.stringify(groups) })
+    .onConflictDoUpdate({ target: storeSettings.key, set: { value: JSON.stringify(groups), updatedAt: new Date() } });
+  await db.insert(storeSettings).values({ key: 'metafield_visible_fields', value: JSON.stringify(allKeys) })
+    .onConflictDoUpdate({ target: storeSettings.key, set: { value: JSON.stringify(allKeys), updatedAt: new Date() } });
+
+  return jsonOk({ created, updated, skipped, errors });
 });

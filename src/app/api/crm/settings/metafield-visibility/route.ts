@@ -5,7 +5,7 @@ import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { eq, sql } from 'drizzle-orm';
-import { METAFIELD_GROUPS } from '@/lib/crm/metafield-schema';
+import { METAFIELD_GROUPS, ALL_FIELD_KEYS } from '@/lib/crm/metafield-schema';
 
 const KEY = 'metafield_visible_fields';
 const GROUPS_KEY = 'metafield_groups';
@@ -37,13 +37,15 @@ export const GET = handler(async () => {
   const totalProducts = await db.execute(sql`SELECT count(*) as cnt FROM products_projection WHERE metafields IS NOT NULL`);
   const total = Number((totalProducts.rows[0] as any)?.cnt ?? 0);
 
-  const available: string[] = [];
+  const canonicalKeys = new Set(ALL_FIELD_KEYS.map(k => `custom.${k}`));
   const coverage: Record<string, number> = {};
   for (const row of keyRows.rows as any[]) {
     const key = `${row.ns}.${row.field}`;
-    available.push(key);
+    if (!canonicalKeys.has(key)) continue;
     coverage[key] = Number(row.cnt);
   }
+  // All canonical keys are available, even with 0 coverage
+  const available = ALL_FIELD_KEYS.map(k => `custom.${k}`);
 
   return jsonOk({ visible, groups, available, coverage, totalProducts: total });
 });
