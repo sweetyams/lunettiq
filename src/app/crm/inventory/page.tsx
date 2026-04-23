@@ -20,6 +20,8 @@ export default function InventoryPage() {
   const [locationFilter, setLocationFilter] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
   const [expandedFamily, setExpandedFamily] = useState<string | null>(null);
+  const [tab, setTab] = useState<'levels' | 'history'>('levels');
+  const [adjustments, setAdjustments] = useState<any[]>([]);
 
   function load() {
     setLoading(true);
@@ -28,6 +30,13 @@ export default function InventoryPage() {
       .catch(() => {}).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (tab === 'history' && !adjustments.length) {
+      fetch('/api/crm/inventory/adjustments', { credentials: 'include' })
+        .then(r => r.json()).then(d => setAdjustments(d.data ?? [])).catch(() => {});
+    }
+  }, [tab]);
 
   async function sync() {
     setSyncing(true);
@@ -96,6 +105,16 @@ export default function InventoryPage() {
         Stock levels by frame family and colour. Grouped by physical frame — optical and sun share the same pool.
       </p>
 
+      {/* Tab: Levels / History */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--crm-border-light)', marginBottom: 'var(--crm-space-4)' }}>
+        {(['levels', 'history'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding: '8px 16px', fontSize: 12, cursor: 'pointer', background: 'none', border: 'none', borderBottom: `2px solid ${tab === t ? '#111' : 'transparent'}`, color: tab === t ? '#111' : '#9ca3af', fontWeight: tab === t ? 600 : 400 }}>
+            {t === 'levels' ? 'Stock Levels' : 'Adjustment History'}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'levels' && <>
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--crm-space-4)', flexWrap: 'wrap' }}>
         <input className="crm-input" style={{ flex: '1 1 160px', fontSize: 12 }} value={search} onChange={e => setSearch(e.target.value)} placeholder="Search families…" />
@@ -185,6 +204,41 @@ export default function InventoryPage() {
               </div>
             );
           })}
+        </div>
+      )}
+      </>}
+
+      {tab === 'history' && (
+        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: '#f9fafb' }}>
+                <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Date</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Frame</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Reason</th>
+                <th style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Change</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {adjustments.map((a: any) => (
+                <tr key={a.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '6px 10px', color: '#9ca3af', whiteSpace: 'nowrap' }}>{new Date(a.createdAt).toLocaleString()}</td>
+                  <td style={{ padding: '6px 10px', fontWeight: 500, textTransform: 'capitalize' }}>
+                    {a.familyId ? `${a.familyId.replace(/-/g, ' ')} — ${(a.colour ?? '').replace(/-/g, ' ')}` : a.variantId ?? '—'}
+                  </td>
+                  <td style={{ padding: '6px 10px' }}>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: a.reason === 'sale' ? '#dbeafe' : a.reason === 'return' ? '#d1fae5' : a.reason === 'damage' || a.reason === 'loss' ? '#fef2f2' : '#f3f4f6', color: a.reason === 'sale' ? '#1e40af' : a.reason === 'return' ? '#065f46' : a.reason === 'damage' || a.reason === 'loss' ? '#dc2626' : '#6b7280', fontWeight: 500 }}>{a.reason}</span>
+                  </td>
+                  <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: a.quantityChange > 0 ? '#16a34a' : a.quantityChange < 0 ? '#dc2626' : '#9ca3af' }}>
+                    {a.quantityChange > 0 ? `+${a.quantityChange}` : a.quantityChange}
+                  </td>
+                  <td style={{ padding: '6px 10px', color: '#9ca3af', fontSize: 11 }}>{a.note ?? '—'}</td>
+                </tr>
+              ))}
+              {adjustments.length === 0 && <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>No adjustments yet</td></tr>}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

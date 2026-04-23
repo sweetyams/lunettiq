@@ -28,6 +28,7 @@ export const POST = handler(async (request) => {
 
   if (action === 'adjust') {
     if (!body.field || body.delta === undefined || !body.reason) return jsonError('field, delta, reason required', 400);
+    if (['damage', 'loss'].includes(body.reason) && !body.note) return jsonError('Note required for damage/loss adjustments', 400);
     const level = await adjust({
       familyId, colour, variantId, locationId,
       field: body.field, delta: body.delta, reason: body.reason,
@@ -57,6 +58,29 @@ export const POST = handler(async (request) => {
     });
     await projectToChannels(familyId, colour, variantId);
     return jsonOk(level);
+  }
+
+  if (action === 'return') {
+    if (!body.quantity || !body.condition) return jsonError('quantity and condition (sellable|damaged) required', 400);
+    if (body.condition === 'sellable') {
+      const level = await adjust({
+        familyId, colour, variantId, locationId,
+        field: 'on_hand', delta: body.quantity, reason: 'return',
+        referenceId: body.orderId, referenceType: body.orderId ? 'shopify_order' : undefined,
+        staffId: session.userId, note: body.note ?? `Return: ${body.condition}`,
+      });
+      await projectToChannels(familyId, colour, variantId);
+      return jsonOk(level);
+    } else {
+      // Damaged return — log but don't add back to sellable stock
+      const level = await adjust({
+        familyId, colour, variantId, locationId,
+        field: 'on_hand', delta: 0, reason: 'damage',
+        referenceId: body.orderId, referenceType: body.orderId ? 'shopify_order' : undefined,
+        staffId: session.userId, note: body.note ?? `Damaged return — not restocked`,
+      });
+      return jsonOk(level);
+    }
   }
 
   return jsonError('action must be adjust, recount, or receive', 400);
