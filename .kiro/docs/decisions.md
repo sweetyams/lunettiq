@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-011: Canonical Frame-Level Inventory
+
+**Date:** 2026-04-23 · **Status:** Accepted
+
+**Context:** Lunettiq sells the same physical frame as both optical and sun configurations. Shopify has separate variants, Square has separate catalog items. Tracking inventory at variant level causes double-counting and false stockouts.
+
+**Decision:** Inventory tracks at `family + colour + location` level — the physical frame. `inventory_levels` table uses `familyId + colour + locationId` as the canonical key. All Shopify variants and Square items for the same frame project from the same stock pool. Non-family products fall back to variant-level tracking. Lunettiq Postgres is the inventory master; Shopify and Square are projections updated via `projectToChannels()`.
+
+**Consequences:** Selling any variant (optical or sun) decrements the same pool. All channel projections update on every change. Requires family membership to be accurate. Products not in families track independently at variant level.
+
+---
+
 ### ADR-010: Extended Choice Types — Product, Content, Lens Colour
 
 **Date:** 2026-04-22 · **Status:** Accepted
