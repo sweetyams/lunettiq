@@ -45,6 +45,8 @@ export function ProductsClient() {
   const [rxFilter, setRxFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'draft'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'shopify' | 'square'>('shopify');
   const [syncFilter, setSyncFilter] = useState(false);
   const [types, setTypes] = useState<string[]>([]);
   const [vendors, setVendors] = useState<string[]>([]);
@@ -115,6 +117,9 @@ export function ProductsClient() {
   const filtered = products.filter(p => {
     if (stockFilter === 'in' && (p.totalInventory ?? 0) <= 0) return false;
     if (stockFilter === 'out' && (p.totalInventory ?? 0) > 0) return false;
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+    if (sourceFilter === 'square' && !p.shopifyProductId.startsWith('sq__')) return false;
+    if (sourceFilter === 'shopify' && p.shopifyProductId.startsWith('sq__')) return false;
     if (syncFilter) {
       const c = (p.metafields as any)?.custom ?? {};
       if (c.product_name && c.product_type && c.primary_frame_colour) return false;
@@ -147,22 +152,54 @@ export function ProductsClient() {
             <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, border: '2px solid var(--crm-border)', borderTopColor: 'var(--crm-text-primary)', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
           )}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {[
-            { value: 'optical', label: 'Optical', active: categoryFilter === 'optical', toggle: () => setCategoryFilter(categoryFilter === 'optical' ? '' : 'optical'), bg: '#dbeafe', color: '#1e40af' },
-            { value: 'sun', label: 'Sun', active: categoryFilter === 'sun', toggle: () => setCategoryFilter(categoryFilter === 'sun' ? '' : 'sun'), bg: '#fef3c7', color: '#92400e' },
-            { value: 'in', label: 'In Stock', active: stockFilter === 'in', toggle: () => setStockFilter(stockFilter === 'in' ? 'all' : 'in'), bg: '#dcfce7', color: '#16a34a' },
-            { value: 'out', label: 'Out of Stock', active: stockFilter === 'out', toggle: () => setStockFilter(stockFilter === 'out' ? 'all' : 'out'), bg: '#fef2f2', color: '#dc2626' },
-            { value: 'sync', label: 'Needs Sync', active: syncFilter, toggle: () => setSyncFilter(!syncFilter), bg: '#fef3c7', color: '#92400e' },
-          ].map(f => (
-            <button key={f.value} onClick={f.toggle} style={{
-              padding: '5px 12px', fontSize: 'var(--crm-text-xs)', fontWeight: 500, borderRadius: 20, cursor: 'pointer',
-              border: f.active ? `1.5px solid ${f.color}` : '1px solid var(--crm-border)',
-              background: f.active ? f.bg : 'var(--crm-surface)',
-              color: f.active ? f.color : 'var(--crm-text-secondary)',
-              transition: 'all 150ms var(--ease-out)',
-            }}>{f.label}</button>
-          ))}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Category */}
+          <div style={{ display: 'flex', gap: 2, background: 'var(--crm-surface-hover)', borderRadius: 20, padding: 2 }}>
+            {([['all', 'All'], ['optical', 'Optical'], ['sun', 'Sun']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setCategoryFilter(v === 'all' ? '' : v === categoryFilter ? '' : v)} style={{
+                padding: '4px 10px', fontSize: 10, fontWeight: 500, borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: (v === 'all' && !categoryFilter) || categoryFilter === v ? 'var(--crm-text-primary)' : 'transparent',
+                color: (v === 'all' && !categoryFilter) || categoryFilter === v ? '#fff' : 'var(--crm-text-tertiary)',
+              }}>{l}</button>
+            ))}
+          </div>
+          {/* Status */}
+          <div style={{ display: 'flex', gap: 2, background: 'var(--crm-surface-hover)', borderRadius: 20, padding: 2 }}>
+            {([['all', 'All'], ['active', 'Active'], ['draft', 'Draft']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setStatusFilter(v)} style={{
+                padding: '4px 10px', fontSize: 10, fontWeight: 500, borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: statusFilter === v ? 'var(--crm-text-primary)' : 'transparent',
+                color: statusFilter === v ? '#fff' : 'var(--crm-text-tertiary)',
+              }}>{l}</button>
+            ))}
+          </div>
+          {/* Stock */}
+          <div style={{ display: 'flex', gap: 2, background: 'var(--crm-surface-hover)', borderRadius: 20, padding: 2 }}>
+            {([['all', 'All'], ['in', 'In Stock'], ['out', 'Out']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setStockFilter(v)} style={{
+                padding: '4px 10px', fontSize: 10, fontWeight: 500, borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: stockFilter === v ? 'var(--crm-text-primary)' : 'transparent',
+                color: stockFilter === v ? '#fff' : 'var(--crm-text-tertiary)',
+              }}>{l}</button>
+            ))}
+          </div>
+          {/* Source */}
+          <div style={{ display: 'flex', gap: 2, background: 'var(--crm-surface-hover)', borderRadius: 20, padding: 2 }}>
+            {([['shopify', 'Shopify'], ['square', 'Square'], ['all', 'All']] as const).map(([v, l]) => (
+              <button key={v} onClick={() => setSourceFilter(v)} style={{
+                padding: '4px 10px', fontSize: 10, fontWeight: 500, borderRadius: 18, border: 'none', cursor: 'pointer',
+                background: sourceFilter === v ? 'var(--crm-text-primary)' : 'transparent',
+                color: sourceFilter === v ? '#fff' : 'var(--crm-text-tertiary)',
+              }}>{l}</button>
+            ))}
+          </div>
+          {/* Needs Sync */}
+          <button onClick={() => setSyncFilter(!syncFilter)} style={{
+            padding: '4px 10px', fontSize: 10, fontWeight: 500, borderRadius: 18, cursor: 'pointer',
+            border: syncFilter ? '1.5px solid #92400e' : '1px solid var(--crm-border)',
+            background: syncFilter ? '#fef3c7' : 'transparent',
+            color: syncFilter ? '#92400e' : 'var(--crm-text-tertiary)',
+          }}>⚠ Needs Sync</button>
         </div>
       </div>
 
@@ -172,16 +209,20 @@ export function ProductsClient() {
             const images = (p.images ?? []) as Array<{ src?: string } | string>;
             const imgSrc = typeof images[0] === 'string' ? images[0] : images[0]?.src;
             const inv = p.totalInventory ?? 0;
-            const variants = p.variants ?? [];
             const custom = (p.metafields as any)?.custom ?? {};
             const missingKeys = ['product_name', 'product_type', 'primary_frame_colour'].filter(k => !custom[k]);
             const needsSync = missingKeys.length > 0;
+            const isSquare = p.shopifyProductId.startsWith('sq__');
 
             return (
               <Link key={p.shopifyProductId} href={`/crm/products/${p.shopifyProductId}`}
                 className="crm-card" style={{ overflow: 'hidden', textDecoration: 'none', color: 'inherit', opacity: searching ? 0.6 : 1, transition: 'opacity 0.15s' }}>
-                <div style={{ aspectRatio: '1', background: 'var(--crm-bg)', overflow: 'hidden', position: 'relative' }}>
-                  {imgSrc && <img src={imgSrc} alt={p.title ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                <div style={{ aspectRatio: '1', background: isSquare ? '#e5e7eb' : 'var(--crm-bg)', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {isSquare ? (
+                    <span style={{ fontSize: 32, color: '#9ca3af' }}>■</span>
+                  ) : imgSrc ? (
+                    <img src={imgSrc} alt={p.title ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : null}
                   <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444', border: '1.5px solid #fff' }} title={`${inv} in stock`} />
                   {p.status && <StatusBadge status={p.status} style={{ position: 'absolute', top: 6, left: 6, borderRadius: 4 }} />}
                   {needsSync && <span style={{ position: 'absolute', top: p.status ? 26 : 6, left: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e', fontWeight: 600, border: '1px solid #fde68a' }} title={`Missing: ${missingKeys.join(', ')}`}>!</span>}
@@ -199,6 +240,7 @@ export function ProductsClient() {
                       : (p.metafields?.custom?.product_type ?? p.metafields?.custom?.product_category) === 'optical'
                         ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
                         : null}
+                    {isSquare && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280' }}>SQUARE</span>}
                   </div>
                   <div style={{ marginTop: 6, height: 3, borderRadius: 2, background: '#f3f4f6', overflow: 'hidden' }}>
                     <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, (inv / 20) * 100)}%`, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444' }} />
