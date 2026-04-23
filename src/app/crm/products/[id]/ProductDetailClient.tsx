@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ClientPicker } from '@/components/crm/ClientPicker';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Product {
   shopifyProductId: string;
@@ -131,7 +132,7 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
           <div className="crm-card" style={{ padding: 'var(--crm-space-5)' }}>
             <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {product.title}
-              {product.status && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: product.status === 'active' ? '#95FFB9' : product.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: product.status === 'active' ? '#065f46' : product.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{product.status}</span>}
+              {product.status && <StatusBadge status={product.status} size="md" />}
             </h1>
             <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)', marginBottom: 'var(--crm-space-4)' }}>
               {[product.vendor, product.productType].filter(Boolean).join(' · ')}

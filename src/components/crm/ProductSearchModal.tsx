@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Product { shopifyProductId: string; title: string; vendor: string | null; productType: string | null; priceMin: string | null; imageUrl: string | null; tags: string[] | null; status: string | null; variants?: Array<{ title: string | null; inventoryQuantity: number | null }> }
 
@@ -93,7 +94,7 @@ export function ProductSearchModal({ open, onClose, onSelect, skipVariantSelecti
                       <div style={{ padding: '8px 10px' }}>
                         <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                         <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 2 }}>
-                          {p.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600, marginRight: 4 }}>{p.status}</span>}
+                          {p.status && <StatusBadge status={p.status} style={{ marginRight: 4 }} />}
                           {p.vendor}{p.priceMin ? ` · $${p.priceMin}` : ''}
                         </div>
                       </div>

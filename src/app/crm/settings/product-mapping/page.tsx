@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Mapping {
   square_catalog_id: string; square_name: string; shopify_product_id: string | null;
@@ -247,7 +248,7 @@ export default function ProductMappingPage() {
                         <div>
                           <span style={{ color: 'var(--crm-text-primary)' }}>{m.shopify_title}</span>
                           {m.shopify_type && <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: m.shopify_type.toLowerCase().includes('sun') ? '#fef3c7' : '#dbeafe', color: m.shopify_type.toLowerCase().includes('sun') ? '#92400e' : '#1e40af' }}>{m.shopify_type}</span>}
-                          {m.shopify_status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.shopify_status === 'active' ? '#95FFB9' : m.shopify_status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: m.shopify_status === 'active' ? '#065f46' : m.shopify_status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{m.shopify_status}</span>}
+                          {m.shopify_status && <StatusBadge status={m.shopify_status} style={{ marginLeft: 4 }} />}
                         </div>
                       </div>
                     ) : m.family_id ? (
@@ -391,7 +392,7 @@ function ProductSearch({ products, familyMembers, families, onSelect, hint }: { 
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
-              <span>{p.title}{p.status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}</span>
+              <span>{p.title}{p.status && <StatusBadge status={p.status} style={{ marginLeft: 4 }} />}</span>
               <span style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 6 }}>
                 {type && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: type === 'sun' ? '#fef3c7' : '#dbeafe', color: type === 'sun' ? '#92400e' : '#1e40af' }}>{type === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
                 {famName && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#f3e8ff', color: '#7c3aed' }}>{famName}</span>}

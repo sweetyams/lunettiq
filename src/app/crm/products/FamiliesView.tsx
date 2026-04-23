@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Family {
   id: string; name: string;
@@ -150,7 +151,7 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
                               <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {p.colour ?? p.title}
                                 {isPlaceholder && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQ</span>}
-                                {p.product_status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.product_status === 'active' ? '#95FFB9' : p.product_status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.product_status === 'active' ? '#065f46' : p.product_status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.product_status}</span>}
+                                {p.product_status && <StatusBadge status={p.product_status} style={{ marginLeft: 4 }} />}
                               </div>
                               <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{p.type ?? ''}</div>
                             </div>

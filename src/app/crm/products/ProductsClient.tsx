@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Product {
   shopifyProductId: string; title: string | null; vendor: string | null;
@@ -182,7 +183,7 @@ export function ProductsClient() {
                 <div style={{ aspectRatio: '1', background: 'var(--crm-bg)', overflow: 'hidden', position: 'relative' }}>
                   {imgSrc && <img src={imgSrc} alt={p.title ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444', border: '1.5px solid #fff' }} title={`${inv} in stock`} />
-                  {p.status && <span style={{ position: 'absolute', top: 6, left: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
+                  {p.status && <StatusBadge status={p.status} style={{ position: 'absolute', top: 6, left: 6, borderRadius: 4 }} />}
                   {needsSync && <span style={{ position: 'absolute', top: p.status ? 26 : 6, left: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e', fontWeight: 600, border: '1px solid #fde68a' }} title={`Missing: ${missingKeys.join(', ')}`}>!</span>}
                 </div>
                 <div style={{ padding: 'var(--crm-space-3)' }}>

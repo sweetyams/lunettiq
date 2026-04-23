@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 function badgeStyle(status: string | null) {
   if (!status) return null;
   return {
-    background: status === 'active' ? '#d1fae5' : status === 'draft' ? '#CFEDFF' : '#f3f4f6',
+    background: status === 'active' ? '#95FFB9' : status === 'draft' ? '#CFEDFF' : '#f3f4f6',
     color: status === 'active' ? '#065f46' : status === 'draft' ? '#1e40af' : '#6b7280',
     label: status,
   };
@@ -46,15 +46,15 @@ describe('Product status badge', () => {
   describe('badge colours', () => {
     it('active is green', () => {
       const style = badgeStyle('active')!;
-      expect(style.background).toBe('#d1fae5');
+      expect(style.background).toBe('#95FFB9');
       expect(style.color).toBe('#065f46');
       expect(style.label).toBe('active');
     });
 
-    it('draft is yellow', () => {
+    it('draft is blue', () => {
       const style = badgeStyle('draft')!;
-      expect(style.background).toBe('#fef3c7');
-      expect(style.color).toBe('#92400e');
+      expect(style.background).toBe('#CFEDFF');
+      expect(style.color).toBe('#1e40af');
       expect(style.label).toBe('draft');
     });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 export interface PickerProduct {
   id: string;
@@ -73,9 +74,7 @@ export function InlineProductPicker({ excludeIds, multi, showVariants, onSelect,
     return f;
   }, [products, excludeIds, query, vendorFilter, typeFilter]);
 
-  const statusBadge = (s: string | null) => s ? (
-    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 8, background: s === 'active' ? '#95FFB9' : s === 'draft' ? '#CFEDFF' : '#f3f4f6', color: s === 'active' ? '#065f46' : s === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{s}</span>
-  ) : null;
+  const statusBadge = (s: string | null) => s ? <StatusBadge status={s} /> : null;
 
   if (loading) return <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#9ca3af' }}>Loading products…</div>;
 

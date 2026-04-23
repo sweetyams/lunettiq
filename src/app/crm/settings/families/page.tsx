@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
 import { useToast } from '@/components/crm/CrmShell';
+import { StatusBadge } from '@/components/crm/StatusBadge';
 
 interface Family { id: string; name: string }
 interface Member { id: string; family_id: string; product_id: string; type: string | null; colour: string | null; colour_hex: string | null; sort_order: number; handle: string; title: string; image: string | null; status: string; barcode: string | null; default_lens_type: string | null; default_lens_colour: string | null; convertible_to_optical: boolean | null; convertible_to_sun: boolean | null }
@@ -258,7 +259,7 @@ export default function FamiliesPage() {
                           <div>
                             <div style={{ fontWeight: 500 }}>
                               {p.title}
-                              {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
+                              {p.status && <StatusBadge status={p.status} style={{ marginLeft: 6 }} />}
                             </div>
                           </div>
                         </div>
@@ -319,7 +320,7 @@ export default function FamiliesPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {m.image ? <img src={m.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
                             <span style={{ fontWeight: 500 }}>{m.title}</span>
-                            {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#95FFB9' : m.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{m.status}</span>}
+                            {m.status && <StatusBadge status={m.status} />}
                           </div>
                         </td>
                         <td style={{ padding: '6px 10px' }}>
