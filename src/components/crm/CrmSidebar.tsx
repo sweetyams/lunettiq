@@ -18,18 +18,30 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Clients',
     items: [
       { href: '/crm/clients', label: 'Clients', icon: <UsersIcon />, tour: 'sidebar-clients' },
-      { href: '/crm/orders', label: 'Orders', icon: <ShoppingBagIcon /> },
-      { href: '/crm/draft-orders', label: 'Draft Orders', icon: <ShoppingBagIcon /> },
-      { href: '/crm/appointments', label: 'Appointments', icon: <CalendarIcon />, tour: 'sidebar-appointments' },
       { href: '/crm/segments', label: 'Segments', icon: <FilterIcon />, tour: 'sidebar-segments' },
-      { href: '/crm/loyalty', label: 'Loyalty', icon: <DiamondIcon />, tour: 'sidebar-loyalty' },
+      { href: '/crm/appointments', label: 'Appointments', icon: <CalendarIcon />, tour: 'sidebar-appointments' },
     ],
   },
   {
-    label: 'Catalogue',
+    label: 'Orders',
+    items: [
+      { href: '/crm/orders', label: 'Orders', icon: <ShoppingBagIcon /> },
+      { href: '/crm/draft-orders', label: 'Draft Orders', icon: <ClipboardIcon /> },
+    ],
+  },
+  {
+    label: 'Products',
     items: [
       { href: '/crm/products', label: 'Products', icon: <BoxIcon />, tour: 'sidebar-products' },
       { href: '/crm/products/families', label: 'Families', icon: <CircleIcon /> },
+      { href: '/crm/inventory', label: 'Inventory', icon: <WarehouseIcon /> },
+    ],
+  },
+  {
+    label: 'Loyalty',
+    items: [
+      { href: '/crm/loyalty', label: 'Loyalty', icon: <DiamondIcon />, tour: 'sidebar-loyalty' },
+      { href: '/crm/second-sight', label: 'Second Sight', icon: <RecycleIcon /> },
     ],
   },
   {
@@ -43,15 +55,15 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'System',
     items: [
       { href: '/crm/settings', label: 'Settings', icon: <GearIcon />, tour: 'sidebar-settings' },
-      { href: '/crm/settings/integrations', label: 'Integrations', icon: <PlugIcon /> },
     ],
   },
 ];
 
 function isActive(pathname: string, href: string) {
   if (href === '/crm') return pathname === '/crm';
-  if (href === '/crm/settings') return pathname === '/crm/settings';
+  if (href === '/crm/settings') return pathname === '/crm/settings' || pathname.startsWith('/crm/settings/');
   if (href === '/crm/products') return pathname === '/crm/products' || (pathname.startsWith('/crm/products/') && !pathname.startsWith('/crm/products/families'));
+  if (href === '/crm/inventory') return pathname.startsWith('/crm/inventory');
   return pathname === href || pathname.startsWith(href + '/');
 }
 
@@ -161,4 +173,13 @@ function PlugIcon() {
 }
 function CircleIcon() {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>;
+}
+function ClipboardIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>;
+}
+function WarehouseIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z"/><line x1="6" y1="18" x2="6" y2="14"/><line x1="10" y1="18" x2="10" y2="12"/><line x1="14" y1="18" x2="14" y2="14"/><line x1="18" y1="18" x2="18" y2="16"/></svg>;
+}
+function RecycleIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 19H4.815a1.83 1.83 0 0 1-1.57-.881 1.785 1.785 0 0 1-.004-1.784L7.196 9.5"/><path d="M11 19h8.203a1.83 1.83 0 0 0 1.556-.89 1.784 1.784 0 0 0 0-1.775l-1.226-2.12"/><path d="M14 16l3 3-3 3"/><path d="m8.293 13.596-4.6-7.966a1.78 1.78 0 0 1 .012-1.783A1.83 1.83 0 0 1 5.275 3h2.558"/><path d="m12.5 5.5 2-3.5"/><path d="M15.453 5.89 13 9.5"/><path d="m7 19 3-5.5"/></svg>;
 }

@@ -170,8 +170,9 @@ export function ProductsClient() {
             return (
               <Link key={p.shopifyProductId} href={`/crm/products/${p.shopifyProductId}`}
                 className="crm-card" style={{ overflow: 'hidden', textDecoration: 'none', color: 'inherit', opacity: searching ? 0.6 : 1, transition: 'opacity 0.15s' }}>
-                <div style={{ aspectRatio: '1', background: 'var(--crm-bg)', overflow: 'hidden' }}>
+                <div style={{ aspectRatio: '1', background: 'var(--crm-bg)', overflow: 'hidden', position: 'relative' }}>
                   {imgSrc && <img src={imgSrc} alt={p.title ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444', border: '1.5px solid #fff' }} title={`${inv} in stock`} />
                 </div>
                 <div style={{ padding: 'var(--crm-space-3)' }}>
                   <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -133,8 +133,10 @@ export function InlineProductPicker({ excludeIds, multi, showVariants, onSelect,
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f9fafb'; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ''; }}>
                 <td style={{ padding: '6px 10px' }}>
-                  {multi && <input type="checkbox" checked={selected.has(p.id)} onChange={() => setSelected(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} style={{ marginRight: 6 }} />}
-                  {p.imageUrl ? <img src={p.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {multi && <input type="checkbox" checked={selected.has(p.id)} onChange={() => setSelected(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} />}
+                    {p.imageUrl ? <img src={p.imageUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
+                  </div>
                 </td>
                 <td style={{ padding: '6px 10px' }}>
                   <div style={{ fontWeight: 500 }}>{p.title}</div>

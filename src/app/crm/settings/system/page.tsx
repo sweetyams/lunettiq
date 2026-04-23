@@ -9,6 +9,7 @@ const ACTIONS = [
   { id: 'reconcile-products', label: 'Reconcile Products', description: 'Check DB products against Shopify, archive missing', endpoint: '/api/crm/system/reconcile-products' },
   { id: 'auto-match-square', label: 'Auto-Match Square', description: 'Match Square catalog items to Shopify products', endpoint: '/api/crm/system/auto-match-square' },
   { id: 'backfill-locations', label: 'Backfill Locations', description: 'Assign location_id to Square orders missing it', endpoint: '/api/crm/system/backfill-locations' },
+  { id: 'inventory-sync', label: 'Inventory Sync', description: 'Pull stock levels from Shopify for all locations', endpoint: '/api/crm/inventory/sync' },
   { id: 'seed-colour-groups', label: 'Seed Colour Groups', description: 'Create default colour groups if none exist', endpoint: '/api/crm/system/seed-colour-groups' },
 ];
 

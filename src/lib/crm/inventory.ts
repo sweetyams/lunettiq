@@ -108,10 +108,6 @@ export async function adjust(opts: {
   const { familyId, colour, variantId, locationId, field, delta, reason, referenceId, referenceType, staffId, note } = opts;
 
   // Find or create the level
-  const where = familyId && colour
-    ? and(eq(inventoryLevels.familyId, familyId), eq(inventoryLevels.colour, colour), eq(inventoryLevels.locationId, locationId))
-    : eq(inventoryLevels.variantId, variantId!), eq(inventoryLevels.locationId, locationId);
-
   let [level] = await db.select().from(inventoryLevels).where(
     familyId && colour
       ? and(eq(inventoryLevels.familyId, familyId), eq(inventoryLevels.colour, colour), eq(inventoryLevels.locationId, locationId))

@@ -1,0 +1,91 @@
+/**
+ * Inventory sync — pull from Shopify, resolve to canonical levels, project back.
+ */
+import { db } from '@/lib/db';
+import { locations, productVariantsProjection, productFamilyMembers, inventoryLevels } from '@/lib/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
+import { graphqlAdmin } from '@/lib/shopify/admin-graphql';
+import { adjust, projectToChannels } from './inventory';
+
+const INVENTORY_QUERY = `query($locationId: ID!, $cursor: String) {
+  location(id: $locationId) {
+    inventoryLevels(first: 250, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        quantities(names: ["available", "committed", "on_hand"]) { name quantity }
+        item { variant { id } }
+      }
+    }
+  }
+}`;
+
+function stripGid(gid: string) { return gid.replace(/^gid:\/\/shopify\/\w+\//, ''); }
+
+export async function syncFromShopify(): Promise<{ synced: number; locations: number }> {
+  const locs = await db.select().from(locations).where(sql`shopify_location_id IS NOT NULL`);
+  let totalSynced = 0;
+
+  for (const loc of locs) {
+    if (!loc.shopifyLocationId) continue;
+    const locationGid = `gid://shopify/Location/${loc.shopifyLocationId}`;
+    let cursor: string | null = null;
+
+    while (true) {
+      const result = await graphqlAdmin<any>(INVENTORY_QUERY, { locationId: locationGid, cursor });
+      const data = result?.location?.inventoryLevels;
+      if (!data?.nodes?.length) break;
+
+      for (const node of data.nodes) {
+        const variantGid = node.item?.variant?.id;
+        if (!variantGid) continue;
+        const variantId = stripGid(variantGid);
+
+        const quantities: Record<string, number> = {};
+        for (const q of node.quantities ?? []) quantities[q.name] = q.quantity;
+
+        const onHand = quantities.on_hand ?? quantities.available ?? 0;
+        const committed = quantities.committed ?? 0;
+
+        // Resolve to family+colour
+        const [variant] = await db.select({ productId: productVariantsProjection.shopifyProductId })
+          .from(productVariantsProjection).where(eq(productVariantsProjection.shopifyVariantId, variantId));
+        if (!variant?.productId) continue;
+
+        const [member] = await db.select({ familyId: productFamilyMembers.familyId, colour: productFamilyMembers.colour })
+          .from(productFamilyMembers).where(eq(productFamilyMembers.productId, variant.productId));
+
+        const familyId = member?.familyId ?? null;
+        const colour = member?.colour ?? null;
+
+        // Upsert inventory level
+        const where = familyId && colour
+          ? and(eq(inventoryLevels.familyId, familyId), eq(inventoryLevels.colour, colour), eq(inventoryLevels.locationId, loc.id))
+          : and(eq(inventoryLevels.variantId, variantId), eq(inventoryLevels.locationId, loc.id));
+
+        const [existing] = await db.select().from(inventoryLevels).where(where);
+
+        if (existing) {
+          const securityStock = existing.securityStock ?? 0;
+          await db.update(inventoryLevels).set({
+            onHand, committed,
+            available: Math.max(0, onHand - committed - securityStock),
+            syncedAt: new Date(), updatedAt: new Date(),
+          }).where(eq(inventoryLevels.id, existing.id));
+        } else {
+          await db.insert(inventoryLevels).values({
+            familyId, colour, variantId: familyId ? null : variantId,
+            locationId: loc.id, onHand, committed, securityStock: 0,
+            available: Math.max(0, onHand - committed),
+            syncedAt: new Date(),
+          });
+        }
+        totalSynced++;
+      }
+
+      if (!data.pageInfo.hasNextPage) break;
+      cursor = data.pageInfo.endCursor;
+    }
+  }
+
+  return { synced: totalSynced, locations: locs.length };
+}
