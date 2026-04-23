@@ -142,7 +142,7 @@ export const POST = handler(async () => {
 
     if (!metafields.length) { skipped++; continue; }
 
-    // Batch write (Shopify allows up to 25 per call)
+    // Batch write to Shopify (up to 25 per call)
     for (let i = 0; i < metafields.length; i += 25) {
       const batch = metafields.slice(i, i + 25);
       const result = await gql(SET_METAFIELDS, { metafields: batch });
@@ -151,6 +151,14 @@ export const POST = handler(async () => {
         errors.push(`${row.id}: ${userErrors.map((e: any) => e.message).join(', ')}`);
       }
     }
+
+    // Update local DB with remapped metafields
+    const localCustom = { ...(row.metafields?.custom ?? {}), ...Object.fromEntries(metafields.map(m => [m.key, m.value])) };
+    await db.execute(sql`
+      UPDATE products_projection
+      SET metafields = jsonb_set(COALESCE(metafields, '{}'::jsonb), '{custom}', ${JSON.stringify(localCustom)}::jsonb)
+      WHERE shopify_product_id = ${row.id}
+    `);
     updated++;
   }
 
