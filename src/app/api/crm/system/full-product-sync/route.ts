@@ -23,7 +23,7 @@ const QUERY = `query($cursor: String) {
       createdAt updatedAt
       images(first: 10) { nodes { url altText } }
       variants(first: 50) { nodes { id title sku price inventoryQuantity compareAtPrice selectedOptions { name value } image { url } } }
-      metafields(first: 30) { nodes { namespace key value } }
+      metafields(first: 50) { nodes { namespace key value } }
       priceRangeV2 { minVariantPrice { amount } maxVariantPrice { amount } }
     }
   }
@@ -56,6 +56,34 @@ export const POST = handler(async () => {
       }
       // Remap old keys to new canonical structure
       if (metafields.custom) metafields.custom = remapMetafields(metafields.custom);
+      if (!metafields.custom) metafields.custom = {};
+      const c = metafields.custom;
+
+      // Derive canonical fields from title + tags if missing
+      if (!c.product_name) {
+        const clean = (p.title ?? '').replace(/\s*[-–]\s*(prescription|sunglasses|optical|optics)$/i, '').trim();
+        const parts = clean.split(/\s*[©–]\s*|\s+-\s+/).map((s: string) => s.trim()).filter(Boolean);
+        const typeWords = new Set(['sun', 'optics', 'optical', 'sunglasses']);
+        const nameParts = (parts[0] ?? '').split(/\s+/).filter((w: string) => !typeWords.has(w.toLowerCase()));
+        if (nameParts.length) c.product_name = nameParts.map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
+      if (!c.primary_frame_colour) {
+        const clean = (p.title ?? '').replace(/\s*[-–]\s*(prescription|sunglasses|optical|optics)$/i, '').trim();
+        const parts = clean.split(/\s*[©–]\s*|\s+-\s+/).map((s: string) => s.trim()).filter(Boolean);
+        const typeWords = new Set(['sun', 'optics', 'optical', 'sunglasses']);
+        const colourPart = parts[1] ? parts[1].split(/\s+/).filter((w: string) => !typeWords.has(w.toLowerCase())).join(' ') : null;
+        if (colourPart) c.primary_frame_colour = colourPart.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+      }
+      if (!c.product_type) {
+        const existing = c.product_category;
+        if (existing) {
+          c.product_type = existing.toLowerCase() === 'sun' ? 'Sunglasses' : existing.charAt(0).toUpperCase() + existing.slice(1).toLowerCase();
+        } else {
+          const tags = (p.tags ?? []).map((t: string) => t.toLowerCase());
+          if (tags.includes('sunglasses') || tags.includes('sun')) c.product_type = 'Sunglasses';
+          else if (tags.includes('optics') || tags.includes('optical')) c.product_type = 'Optical';
+        }
+      }
       const images = p.images.nodes.map((i: any) => ({ src: i.url, alt: i.altText }));
       const status = p.status?.toLowerCase() === 'active' ? 'active' : p.status?.toLowerCase() === 'draft' ? 'draft' : 'archived';
 

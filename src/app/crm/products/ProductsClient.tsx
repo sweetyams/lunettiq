@@ -44,6 +44,7 @@ export function ProductsClient() {
   const [rxFilter, setRxFilter] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'in' | 'out'>('all');
+  const [syncFilter, setSyncFilter] = useState(false);
   const [types, setTypes] = useState<string[]>([]);
   const [vendors, setVendors] = useState<string[]>([]);
   const [materials, setMaterials] = useState<string[]>([]);
@@ -113,6 +114,10 @@ export function ProductsClient() {
   const filtered = products.filter(p => {
     if (stockFilter === 'in' && (p.totalInventory ?? 0) <= 0) return false;
     if (stockFilter === 'out' && (p.totalInventory ?? 0) > 0) return false;
+    if (syncFilter) {
+      const c = (p.metafields as any)?.custom ?? {};
+      if (c.product_name && c.product_type && c.primary_frame_colour) return false;
+    }
     return true;
   });
 
@@ -147,6 +152,7 @@ export function ProductsClient() {
             { value: 'sun', label: 'Sun', active: categoryFilter === 'sun', toggle: () => setCategoryFilter(categoryFilter === 'sun' ? '' : 'sun'), bg: '#fef3c7', color: '#92400e' },
             { value: 'in', label: 'In Stock', active: stockFilter === 'in', toggle: () => setStockFilter(stockFilter === 'in' ? 'all' : 'in'), bg: '#dcfce7', color: '#16a34a' },
             { value: 'out', label: 'Out of Stock', active: stockFilter === 'out', toggle: () => setStockFilter(stockFilter === 'out' ? 'all' : 'out'), bg: '#fef2f2', color: '#dc2626' },
+            { value: 'sync', label: 'Needs Sync', active: syncFilter, toggle: () => setSyncFilter(!syncFilter), bg: '#fef3c7', color: '#92400e' },
           ].map(f => (
             <button key={f.value} onClick={f.toggle} style={{
               padding: '5px 12px', fontSize: 'var(--crm-text-xs)', fontWeight: 500, borderRadius: 20, cursor: 'pointer',
@@ -166,6 +172,9 @@ export function ProductsClient() {
             const imgSrc = typeof images[0] === 'string' ? images[0] : images[0]?.src;
             const inv = p.totalInventory ?? 0;
             const variants = p.variants ?? [];
+            const custom = (p.metafields as any)?.custom ?? {};
+            const missingKeys = ['product_name', 'product_type', 'primary_frame_colour'].filter(k => !custom[k]);
+            const needsSync = missingKeys.length > 0;
 
             return (
               <Link key={p.shopifyProductId} href={`/crm/products/${p.shopifyProductId}`}
@@ -173,6 +182,7 @@ export function ProductsClient() {
                 <div style={{ aspectRatio: '1', background: 'var(--crm-bg)', overflow: 'hidden', position: 'relative' }}>
                   {imgSrc && <img src={imgSrc} alt={p.title ?? ''} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                   <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444', border: '1.5px solid #fff' }} title={`${inv} in stock`} />
+                  {needsSync && <span style={{ position: 'absolute', top: 6, left: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e', fontWeight: 600, border: '1px solid #fde68a' }} title={`Missing: ${missingKeys.join(', ')}`}>!</span>}
                 </div>
                 <div style={{ padding: 'var(--crm-space-3)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
