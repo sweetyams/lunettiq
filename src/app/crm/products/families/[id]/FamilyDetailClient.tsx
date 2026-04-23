@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
 
-interface Member { productId: string; type: string | null; colour: string | null; colour_hex: string | null; title: string; handle: string; image: string | null; sales: { units: number; orders: number; revenue: number }; squareLinks: number }
+interface Member { productId: string; type: string | null; colour: string | null; colour_hex: string | null; title: string; handle: string; image: string | null; productStatus: string | null; sales: { units: number; orders: number; revenue: number }; squareLinks: number }
 interface SquareItem { square_name: string; units: number; orders: number; revenue: number }
 interface FamilySales { familyId: string; members: Member[]; familyOnlySquare: SquareItem[]; totals: { orders: string; units: string; revenue: string }; byChannel: Array<{ source: string; units: string; revenue: string }>; byLocation: Array<{ location_id: string; units: string; revenue: string }> }
 interface Family { id: string; name: string }
-interface Product { id: string; title: string; handle: string; category?: string | null }
+interface Product { id: string; title: string; handle: string; category?: string | null; status?: string | null }
 interface SquareMapping { square_catalog_id: string; square_name: string; shopify_product_id: string | null; family_id: string | null; status: string }
 
 export function FamilyDetailClient({ familyId }: { familyId: string }) {
@@ -27,12 +28,12 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
     Promise.all([
       fetch(`/api/crm/products/families/${familyId}/sales${days ? `?days=${days}` : ''}`, { credentials: 'include' }).then(r => r.json()),
       fetch('/api/crm/settings/families', { credentials: 'include' }).then(r => r.json()),
-      fetch('/api/crm/products?limit=500', { credentials: 'include' }).then(r => r.json()),
+      fetch('/api/crm/products?limit=500&status=active,draft', { credentials: 'include' }).then(r => r.json()),
       fetch(`/api/crm/product-mappings?limit=200&status=unmatched`, { credentials: 'include' }).then(r => r.json()),
     ]).then(([salesD, famD, prodD, sqD]) => {
       setSales(salesD.data);
       setFamily((famD.data?.families ?? []).find((f: Family) => f.id === familyId) ?? null);
-      setAllProducts((prodD.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_category })));
+      setAllProducts((prodD.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_category, status: p.status })));
       setUnmappedSquare(sqD.data?.mappings ?? []);
     }).catch(() => {}).finally(() => setLoading(false));
   }
@@ -179,6 +180,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
                         {isPlaceholder ? <>{m.title} <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQUARE</span></> : (
                           <Link href={`/crm/products/${m.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>{m.title}</Link>
                         )}
+                        {m.productStatus && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.productStatus === 'active' ? '#d1fae5' : m.productStatus === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.productStatus === 'active' ? '#065f46' : m.productStatus === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{m.productStatus}</span>}
                       </div>
                       <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{m.colour}</div>
                     </div>
@@ -242,27 +244,13 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
       {/* Add Product Modal */}
       {showAddProduct && (
         <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowAddProduct(false); setProductSearch(''); } }}>
-          <div className="crm-card crm-modal" style={{ width: 420, padding: 'var(--crm-space-5)' }}>
+          onClick={e => { if (e.target === e.currentTarget) setShowAddProduct(false); }}>
+          <div className="crm-card crm-modal" style={{ width: 600, padding: 'var(--crm-space-5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
               <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Add Shopify Product to {family.name}</h2>
-              <button onClick={() => { setShowAddProduct(false); setProductSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
+              <button onClick={() => setShowAddProduct(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
             </div>
-            <input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-              {productSearch.length >= 2 && allProducts
-                .filter(p => !memberIds.has(p.id) && p.title.toLowerCase().includes(productSearch.toLowerCase()))
-                .slice(0, 10)
-                .map(p => (
-                  <button key={p.id} onClick={() => addMember(p.id)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: '6px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4 }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                    <span>{p.title}</span>
-                    {p.category && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: p.category === 'sun' ? '#fef3c7' : '#dbeafe', color: p.category === 'sun' ? '#92400e' : '#1e40af' }}>{p.category === 'sun' ? 'SUN' : 'OPT'}</span>}
-                  </button>
-                ))}
-            </div>
+            <InlineProductPicker excludeIds={memberIds} onSelect={id => { addMember(id); setShowAddProduct(false); }} />
           </div>
         </div>
       )}

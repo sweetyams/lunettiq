@@ -19,20 +19,20 @@ export const GET = handler(async () => {
       (
         SELECT json_agg(row_to_json(sub)) FROM (
           SELECT p2.shopify_product_id as id, p2.title, p2.images->0->>'src' as image,
-            p2.metafields->'custom'->>'product_category' as category,
+            p2.metafields->'custom'->>'product_category' as category, p2.status as product_status,
             m2.colour, m2.type,
             (SELECT count(*) FROM product_mappings pm2
              WHERE pm2.shopify_product_id = p2.shopify_product_id
              AND pm2.status IN ('confirmed', 'auto', 'manual', 'related')) as square_links
           FROM product_family_members m2
           JOIN products_projection p2 ON p2.shopify_product_id = m2.product_id
-          WHERE m2.family_id = f.id
+          WHERE m2.family_id = f.id AND COALESCE(p2.status, 'active') != 'archived'
           ORDER BY m2.sort_order
         ) sub
       ) as products
     FROM product_families f
     LEFT JOIN product_family_members m ON m.family_id = f.id
-    LEFT JOIN products_projection p ON p.shopify_product_id = m.product_id
+    LEFT JOIN products_projection p ON p.shopify_product_id = m.product_id AND COALESCE(p.status, 'active') != 'archived'
     LEFT JOIN product_mappings pm ON (pm.shopify_product_id = m.product_id OR pm.family_id = f.id)
       AND pm.status IN ('confirmed', 'auto', 'manual', 'related')
     GROUP BY f.id, f.name

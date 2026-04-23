@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
+import { useToast } from '@/components/crm/CrmShell';
 
 interface Family { id: string; name: string }
 interface Member { id: string; family_id: string; product_id: string; type: string | null; colour: string | null; colour_hex: string | null; sort_order: number; handle: string; title: string; image: string | null; status: string }
 interface UnassignedProduct { id: string; handle: string; title: string; image: string | null; status: string }
 
 export default function FamiliesPage() {
+  const { toast } = useToast();
   const [families, setFamilies] = useState<Family[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [unassigned, setUnassigned] = useState<UnassignedProduct[]>([]);
@@ -15,13 +18,14 @@ export default function FamiliesPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [newFamily, setNewFamily] = useState({ id: '', name: '' });
   const [search, setSearch] = useState('');
+  const [autoAssigning, setAutoAssigning] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
   const [linkFilter, setLinkFilter] = useState<'all' | 'shopify' | 'square'>('all');
   const [memberSearch, setMemberSearch] = useState('');
   const [squareSearch, setSquareSearch] = useState('');
   const [squareItems, setSquareItems] = useState<Array<{ squareCatalogId: string; squareName: string; parsedFrame: string | null; parsedColour: string | null; parsedType: string | null }>>([]);
-  const [allProducts, setAllProducts] = useState<Array<{ id: string; title: string; handle: string }>>([]);
+  const [allProducts, setAllProducts] = useState<Array<{ id: string; title: string; handle: string; status: string | null }>>([]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -32,11 +36,22 @@ export default function FamiliesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function autoAssignAll() {
+    setAutoAssigning(true);
+    try {
+      const res = await fetch('/api/crm/settings/families/auto-assign', { method: 'POST', credentials: 'include' });
+      const d = await res.json();
+      toast(d.data?.message ?? 'Done');
+      load();
+    } catch { toast('Auto-assign failed', 'error'); }
+    setAutoAssigning(false);
+  }
+
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    fetch('/api/crm/products?limit=500', { credentials: 'include' })
+    fetch('/api/crm/products?limit=500&status=active,draft', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => setAllProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle }))))
+      .then(d => setAllProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, status: p.status }))))
       .catch(() => {});
   }, []);
 
@@ -137,7 +152,14 @@ export default function FamiliesPage() {
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <div style={{ marginBottom: 'var(--crm-space-4)' }}>
         <a href="/crm/settings" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>← Settings</a>
-        <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Product Families</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Product Families</h1>
+          {unassigned.length > 0 && (
+            <button onClick={autoAssignAll} disabled={autoAssigning} className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>
+              {autoAssigning ? 'Assigning…' : `Auto-assign ${unassigned.length} unassigned`}
+            </button>
+          )}
+        </div>
         <p style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>
           Group products by model. Shown as colour/type switcher on PDP.
         </p>
@@ -229,7 +251,7 @@ export default function FamiliesPage() {
                           <div>
                             <div style={{ fontWeight: 500 }}>
                               {p.title}
-                              {p.status !== 'active' && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#f3f4f6', color: '#6b7280' }}>{p.status}</span>}
+                              {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
                             </div>
                           </div>
                         </div>
@@ -277,6 +299,7 @@ export default function FamiliesPage() {
                         <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5', flexShrink: 0 }} />
                       )}
                       <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
+                      {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#d1fae5' : m.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600, flexShrink: 0 }}>{m.status}</span>}
                     </div>
                     <select value={m.type ?? ''} onChange={e => updateMember(m.id, 'type', e.target.value)}
                       className="crm-input" style={{ fontSize: 10, padding: '2px 24px 2px 6px', width: 80 }}>
@@ -299,24 +322,13 @@ export default function FamiliesPage() {
       {/* Add member modal */}
       {showAddMember && (
         <div className="crm-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowAddMember(false); setMemberSearch(''); } }}>
-          <div className="crm-card crm-modal" style={{ width: 400, padding: 'var(--crm-space-5)' }}>
+          onClick={e => { if (e.target === e.currentTarget) setShowAddMember(false); }}>
+          <div className="crm-card crm-modal" style={{ width: 600, padding: 'var(--crm-space-5)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
               <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Add Product to {families.find(f => f.id === activeFamily)?.name}</h2>
-              <button onClick={() => { setShowAddMember(false); setMemberSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
+              <button onClick={() => setShowAddMember(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--crm-text-tertiary)' }}>✕</button>
             </div>
-            <input value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Search products…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 8 }} autoFocus />
-            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-              {searchedProducts.map(p => (
-                <button key={p.id} onClick={() => { addMember(p.id); setMemberSearch(''); }}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', fontSize: 'var(--crm-text-xs)', border: 'none', background: 'none', cursor: 'pointer', borderRadius: 4 }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
-                  <div style={{ fontWeight: 500 }}>{p.title}</div>
-                  <div style={{ color: 'var(--crm-text-tertiary)' }}>{p.handle}</div>
-                </button>
-              ))}
-            </div>
+            <InlineProductPicker excludeIds={memberProductIds} onSelect={id => { addMember(id); setShowAddMember(false); }} />
           </div>
         </div>
       )}

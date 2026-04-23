@@ -11,6 +11,7 @@ interface Product {
   description: string | null;
   vendor: string | null;
   productType: string | null;
+  status: string | null;
   tags: string[] | null;
   images: unknown;
   metafields: unknown;
@@ -128,7 +129,10 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
         {/* RIGHT: Details card */}
         <div>
           <div className="crm-card" style={{ padding: 'var(--crm-space-5)' }}>
-            <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-2)' }}>{product.title}</h1>
+            <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {product.title}
+              {product.status && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: product.status === 'active' ? '#d1fae5' : product.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: product.status === 'active' ? '#065f46' : product.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{product.status}</span>}
+            </h1>
             <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)', marginBottom: 'var(--crm-space-4)' }}>
               {[product.vendor, product.productType].filter(Boolean).join(' · ')}
             </div>
@@ -671,6 +675,8 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
   const [showAll, setShowAll] = useState(false);
   const [visibleSet, setVisibleSet] = useState<Set<string> | null>(null);
   const [fieldGroups, setFieldGroups] = useState(FALLBACK_GROUPS);
+  const [open, setOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetch('/api/crm/settings/metafield-visibility', { credentials: 'include' })
@@ -694,8 +700,8 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
 
   const custom = (metafields as any).custom ?? {};
   const isVisible = (key: string) => showAll || !visibleSet || visibleSet.has(`custom.${key}`);
+  const toggleSection = (label: string) => setOpenSections(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n; });
 
-  // Grouped fields — include empty visible fields to show missing warning
   const grouped = fieldGroups.map(g => ({
     label: g.label,
     fields: g.keys
@@ -703,47 +709,69 @@ function MetafieldsCard({ metafields }: { metafields: Record<string, Record<stri
       .map(k => ({ key: k, value: custom[k] ?? null, empty: !custom[k] && custom[k] !== 0 && custom[k] !== false })),
   })).filter(g => g.fields.length > 0);
 
-  // Ungrouped visible fields
   const groupedKeys = new Set(fieldGroups.flatMap(g => g.keys));
   const ungrouped = Object.entries(custom)
     .filter(([k]) => !groupedKeys.has(k) && isVisible(k))
     .map(([k, v]) => ({ key: k, value: v as string }));
 
   return (
-    <>
-      {grouped.map(g => (
-        <div key={g.label} className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-          <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500, marginBottom: 'var(--crm-space-2)' }}>
-            {g.label}
-          </div>
-          {g.fields.map(f => (
-            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-              <span style={{ color: f.empty ? 'var(--crm-warning, #d97706)' : 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
-              {f.empty
-                ? <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)', opacity: 0.8 }}>missing</span>
-                : <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
-              }
-            </div>
-          ))}
+    <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', overflow: 'hidden' }}>
+      {/* Header — click to expand */}
+      <button onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--crm-space-4)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+          <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Metafields</span>
+          <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{grouped.reduce((n, g) => n + g.fields.length, 0) + ungrouped.length} fields</span>
         </div>
-      ))}
-      {(ungrouped.length > 0 || !showAll) && (
-        <div className="crm-card" style={{ marginTop: 'var(--crm-space-4)', padding: 'var(--crm-space-4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: ungrouped.length ? 'var(--crm-space-2)' : 0 }}>
-            <div style={{ fontSize: 'var(--crm-text-xs)', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>{ungrouped.length > 0 ? 'Other' : ''}</div>
-            <button onClick={() => setShowAll(!showAll)} style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>
-              {showAll ? 'Show configured only' : 'Show all fields'}
-            </button>
-          </div>
-          {ungrouped.map(f => (
-            <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
-              <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
-              <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+        {open && (
+          <span onClick={e => { e.stopPropagation(); setShowAll(!showAll); }} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', cursor: 'pointer' }}>
+            {showAll ? 'Configured only' : 'Show all'}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ padding: '0 var(--crm-space-4) var(--crm-space-4)' }}>
+          {grouped.map(g => {
+            const sOpen = openSections.has(g.label);
+            return (
+              <div key={g.label} style={{ borderTop: '1px solid var(--crm-border-light)' }}>
+                <button onClick={() => toggleSection(g.label)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <span style={{ fontSize: 9, color: 'var(--crm-text-tertiary)', transition: 'transform 0.15s', transform: sOpen ? 'rotate(90deg)' : 'none' }}>▶</span>
+                  <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>{g.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>({g.fields.length})</span>
+                </button>
+                {sOpen && g.fields.map(f => (
+                  <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0 5px 16px', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+                    <span style={{ color: f.empty ? 'var(--crm-warning, #d97706)' : 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+                    {f.empty
+                      ? <span style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-warning, #d97706)', opacity: 0.8 }}>missing</span>
+                      : <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}{UNIT_SUFFIX[f.key] ?? ''}</span>
+                    }
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {ungrouped.length > 0 && (
+            <div style={{ borderTop: '1px solid var(--crm-border-light)' }}>
+              <button onClick={() => toggleSection('__other')} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <span style={{ fontSize: 9, color: 'var(--crm-text-tertiary)', transition: 'transform 0.15s', transform: openSections.has('__other') ? 'rotate(90deg)' : 'none' }}>▶</span>
+                <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--crm-text-tertiary)', fontWeight: 500 }}>Other</span>
+                <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>({ungrouped.length})</span>
+              </button>
+              {openSections.has('__other') && ungrouped.map(f => (
+                <div key={f.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0 5px 16px', borderBottom: '1px solid var(--crm-border-light)', fontSize: 'var(--crm-text-sm)' }}>
+                  <span style={{ color: 'var(--crm-text-tertiary)', whiteSpace: 'nowrap' }}>{formatKey(f.key)}</span>
+                  <span style={{ textAlign: 'right', wordBreak: 'break-word', maxWidth: '65%' }}>{formatValue(f.value)}</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }
 

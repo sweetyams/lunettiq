@@ -5,7 +5,7 @@ import { productsProjection, productVariantsProjection } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { toSlug } from '@/lib/shopify/slug';
 
 const SHOP = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
@@ -125,6 +125,24 @@ export const POST = handler(async () => {
     AND old_p.status = 'archived' AND new_p.handle = old_p.handle AND new_p.status = 'active'
   `);
 
+  // Re-link product_filters from archived→active
+  await db.execute(sql`
+    UPDATE product_filters pf
+    SET product_id = new_p.shopify_product_id
+    FROM products_projection old_p, products_projection new_p
+    WHERE old_p.shopify_product_id = pf.product_id
+    AND old_p.status = 'archived' AND new_p.handle = old_p.handle AND new_p.status = 'active'
+  `);
+
+  // Re-link product_colours from archived→active
+  await db.execute(sql`
+    UPDATE product_colours pc
+    SET product_id = new_p.shopify_product_id
+    FROM products_projection old_p, products_projection new_p
+    WHERE old_p.shopify_product_id = pc.product_id
+    AND old_p.status = 'archived' AND new_p.handle = old_p.handle AND new_p.status = 'active'
+  `);
+
   const relinked = await db.execute(sql`
     SELECT m.id as member_id, m.family_id, m.product_id as old_id,
            new_p.shopify_product_id as new_id
@@ -143,6 +161,32 @@ export const POST = handler(async () => {
       relinkCount++;
     }
   }
+
+  // Clean up: remove archived products from relationship tables (no active replacement found)
+  await db.execute(sql`
+    DELETE FROM product_family_members WHERE product_id IN (
+      SELECT m.product_id FROM product_family_members m
+      JOIN products_projection p ON p.shopify_product_id = m.product_id
+      WHERE p.status = 'archived'
+      AND NOT EXISTS (SELECT 1 FROM products_projection p2 WHERE p2.handle = p.handle AND p2.status = 'active')
+    )
+  `);
+  await db.execute(sql`
+    DELETE FROM product_filters WHERE product_id IN (
+      SELECT pf.product_id FROM product_filters pf
+      JOIN products_projection p ON p.shopify_product_id = pf.product_id
+      WHERE p.status = 'archived'
+      AND NOT EXISTS (SELECT 1 FROM products_projection p2 WHERE p2.handle = p.handle AND p2.status = 'active')
+    )
+  `);
+  await db.execute(sql`
+    DELETE FROM product_colours WHERE product_id IN (
+      SELECT pc.product_id FROM product_colours pc
+      JOIN products_projection p ON p.shopify_product_id = pc.product_id
+      WHERE p.status = 'archived'
+      AND NOT EXISTS (SELECT 1 FROM products_projection p2 WHERE p2.handle = p.handle AND p2.status = 'active')
+    )
+  `);
 
   // Regenerate family slugs
   const { regenerateAllSlugs } = await import('@/lib/crm/regenerate-slugs');

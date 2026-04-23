@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 interface Product {
   shopifyProductId: string; title: string | null; vendor: string | null;
-  productType: string | null; priceMin: string | null; priceMax: string | null;
+  productType: string | null; status: string | null; priceMin: string | null; priceMax: string | null;
   images: unknown; tags: string[] | null; totalInventory?: number; metafields?: any;
   variants?: Array<{ title: string | null; inventoryQuantity: number | null }>;
 }
@@ -73,6 +73,7 @@ export function ProductsClient() {
     if (rxFilter) params.set('rx', rxFilter);
     if (tagFilter) params.set('tag', tagFilter);
     params.set('limit', '250');
+    params.set('status', 'active,draft');
 
     try {
       const res = await fetch(`/api/crm/products?${params}`, { credentials: 'include', signal: controller.signal });
@@ -182,6 +183,7 @@ export function ProductsClient() {
                       : p.metafields?.custom?.product_category === 'optical'
                         ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
                         : null}
+                    {p.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
                     {p.priceMin && <span>${p.priceMin}</span>}
                     {((p as any).sales?.units > 0 || (p as any).sales?.squareUnits > 0) && (
                       <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--crm-text-tertiary)' }}>

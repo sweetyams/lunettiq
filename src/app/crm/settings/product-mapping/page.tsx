@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
 
 interface Mapping {
   square_catalog_id: string; square_name: string; shopify_product_id: string | null;
   shopify_title: string | null; shopify_handle: string | null; shopify_type: string | null;
+  shopify_image: string | null; shopify_status: string | null;
   shopify_image: string | null; family_id: string | null;
   product_category: string | null; family_type: string | null; family_colour: string | null; family_name: string | null;
   confidence: string | null; status: string; parsed_frame: string | null;
   parsed_colour: string | null; parsed_type: string | null;
 }
-interface ShopifyProduct { id: string; title: string; handle: string; category?: string | null; variants?: Array<{ id: string; title: string | null }> }
+interface ShopifyProduct { id: string; title: string; handle: string; status?: string | null; category?: string | null; variants?: Array<{ id: string; title: string | null }> }
 
 const STATUS_COLOURS: Record<string, string> = {
   auto: '#16a34a', confirmed: '#16a34a', related: '#2563eb', manual: '#8b5cf6', unmatched: '#dc2626', ignored: '#9ca3af',
@@ -50,8 +52,8 @@ export default function ProductMappingPage() {
   useEffect(() => { setPage(0); load(filter, search, 0); }, [filter]);
   useEffect(() => { load(filter, search, page); }, [page]);
   useEffect(() => {
-    fetch('/api/crm/products?limit=500', { credentials: 'include' })
-      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_category ?? null, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
+    fetch('/api/crm/products?limit=500&status=active,draft', { credentials: 'include' })
+      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, status: p.status, category: p.metafields?.custom?.product_category ?? null, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
     fetch('/api/crm/settings/families', { credentials: 'include' })
       .then(r => r.json()).then(d => { setFamilies(d.data?.families ?? []); setFamilyMembers(d.data?.members ?? []); })
@@ -244,6 +246,7 @@ export default function ProductMappingPage() {
                         <div>
                           <span style={{ color: 'var(--crm-text-primary)' }}>{m.shopify_title}</span>
                           {m.shopify_type && <span style={{ marginLeft: 6, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: m.shopify_type.toLowerCase().includes('sun') ? '#fef3c7' : '#dbeafe', color: m.shopify_type.toLowerCase().includes('sun') ? '#92400e' : '#1e40af' }}>{m.shopify_type}</span>}
+                          {m.shopify_status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.shopify_status === 'active' ? '#d1fae5' : m.shopify_status === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.shopify_status === 'active' ? '#065f46' : m.shopify_status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{m.shopify_status}</span>}
                         </div>
                       </div>
                     ) : m.family_id ? (
@@ -303,7 +306,7 @@ export default function ProductMappingPage() {
             <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
               Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
             </div>
-            <ProductSearch products={products} familyMembers={familyMembers} families={families} onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} />
+            <InlineProductPicker showVariants onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} maxHeight={400} />
           </div>
         </div>
       )}
@@ -387,7 +390,7 @@ function ProductSearch({ products, familyMembers, families, onSelect, hint }: { 
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--crm-surface-hover)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'none')}
             >
-              <span>{p.title}</span>
+              <span>{p.title}{p.status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}</span>
               <span style={{ display: 'flex', gap: 3, flexShrink: 0, marginLeft: 6 }}>
                 {type && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: type === 'sun' ? '#fef3c7' : '#dbeafe', color: type === 'sun' ? '#92400e' : '#1e40af' }}>{type === 'sun' ? 'SUN' : 'OPTICAL'}</span>}
                 {famName && <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 4, background: '#f3e8ff', color: '#7c3aed' }}>{famName}</span>}

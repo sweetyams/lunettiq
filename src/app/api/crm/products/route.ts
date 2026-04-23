@@ -44,8 +44,15 @@ export const GET = handler(async (request) => {
     ? sql`(CASE WHEN ${productsProjection.title} ILIKE ${q.trim() + '%'} THEN 0 ELSE 1 END) ASC, ${productsProjection.title} ASC`
     : sql`${productsProjection.title} ASC`;
 
-  // Default: show only active products (exclude archived, draft, placeholder)
-  const statusFilter = sql`COALESCE(${productsProjection.status}, 'active') = 'active'`;
+  // Default: show only active products unless status param overrides
+  const statusParam = request.nextUrl.searchParams.get('status');
+  const statusFilter = statusParam === 'all'
+    ? sql`1=1`
+    : statusParam?.includes(',')
+      ? sql`COALESCE(${productsProjection.status}, 'active') IN (${sql.join(statusParam.split(',').map(s => sql`${s.trim()}`), sql`, `)})`
+      : statusParam
+        ? sql`COALESCE(${productsProjection.status}, 'active') = ${statusParam}`
+        : sql`COALESCE(${productsProjection.status}, 'active') = 'active'`;
   const finalWhere = where ? sql`${where} AND ${statusFilter}` : statusFilter;
 
   const rows = await db.select().from(productsProjection).where(finalWhere).orderBy(orderBy).limit(limit);

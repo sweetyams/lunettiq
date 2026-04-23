@@ -7,7 +7,7 @@ interface Family {
   id: string; name: string;
   product_count: string; colour_count: string;
   optical_count: string; sun_count: string; square_count: string;
-  products: Array<{ id: string; image: string | null; title: string; category: string | null; colour: string | null; type: string | null; square_links: string }> | null;
+  products: Array<{ id: string; image: string | null; title: string; category: string | null; colour: string | null; type: string | null; product_status: string | null; square_links: string }> | null;
 }
 
 export function FamiliesView({ activeView, onSwitchView }: { activeView?: string; onSwitchView?: (v: 'products' | 'families') => void } = {}) {
@@ -143,6 +143,7 @@ export function FamiliesView({ activeView, onSwitchView }: { activeView?: string
                               <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {p.colour ?? p.title}
                                 {isPlaceholder && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQ</span>}
+                                {p.product_status && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.product_status === 'active' ? '#d1fae5' : p.product_status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.product_status === 'active' ? '#065f46' : p.product_status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.product_status}</span>}
                               </div>
                               <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{p.type ?? ''}</div>
                             </div>

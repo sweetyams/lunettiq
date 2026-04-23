@@ -19,10 +19,11 @@ export const GET = handler(async (request) => {
   // Get assignments with product handles
   const assignments = await db.execute(sql`
     SELECT pf.id, pf.product_id, pf.filter_group_id, pf.status, pf.matched_by,
-           p.handle, p.title, p.images->0->>'src' as image
+           p.handle, p.title, p.images->0->>'src' as image, p.status as product_status
     FROM product_filters pf
     JOIN products_projection p ON p.shopify_product_id = pf.product_id
-    ${type ? sql`WHERE pf.filter_group_id LIKE ${type + ':%'}` : sql``}
+    WHERE COALESCE(p.status, 'active') != 'archived'
+    ${type ? sql`AND pf.filter_group_id LIKE ${type + ':%'}` : sql``}
     ORDER BY pf.filter_group_id, p.title
   `);
 
@@ -35,6 +36,7 @@ export const GET = handler(async (request) => {
       WHERE pf.product_id = p.shopify_product_id
       AND pf.filter_group_id LIKE ${type + ':%'}
     )
+    AND COALESCE(p.status, 'active') != 'archived'
     ORDER BY p.title
   `) : null;
 

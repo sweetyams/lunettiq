@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-interface Product { shopifyProductId: string; title: string; vendor: string | null; productType: string | null; priceMin: string | null; imageUrl: string | null; tags: string[] | null; variants?: Array<{ title: string | null; inventoryQuantity: number | null }> }
+interface Product { shopifyProductId: string; title: string; vendor: string | null; productType: string | null; priceMin: string | null; imageUrl: string | null; tags: string[] | null; status: string | null; variants?: Array<{ title: string | null; inventoryQuantity: number | null }> }
 
 interface Props {
   open: boolean;
@@ -24,7 +24,7 @@ export function ProductSearchModal({ open, onClose, onSelect }: Props) {
   useEffect(() => {
     if (!open) { setQuery(''); setResults([]); setAllProducts([]); setSelected(null); setVendor(''); setProductType(''); setPriceMax(''); return; }
     setLoading(true);
-    fetch('/api/crm/products?limit=200', { credentials: 'include' })
+    fetch('/api/crm/products?limit=200&status=active,draft', { credentials: 'include' })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => { setAllProducts(d.data ?? []); setResults(d.data ?? []); })
       .catch(() => {})
@@ -91,7 +91,10 @@ export function ProductSearchModal({ open, onClose, onSelect }: Props) {
                       </div>
                       <div style={{ padding: '8px 10px' }}>
                         <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
-                        <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 2 }}>{p.vendor}{p.priceMin ? ` · $${p.priceMin}` : ''}</div>
+                        <div style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', marginTop: 2 }}>
+                          {p.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600, marginRight: 4 }}>{p.status}</span>}
+                          {p.vendor}{p.priceMin ? ` · $${p.priceMin}` : ''}
+                        </div>
                       </div>
                     </button>
                   ))}

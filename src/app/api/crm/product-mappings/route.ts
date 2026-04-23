@@ -17,7 +17,7 @@ export const GET = handler(async (request) => {
 
   let query = sql`
     SELECT m.*, p.title as shopify_title, p.handle as shopify_handle, p.product_type as shopify_type,
-      p.images::jsonb->0->>'src' as shopify_image,
+      p.images::jsonb->0->>'src' as shopify_image, p.status as shopify_status,
       p.metafields->'custom'->>'product_category' as product_category,
       fm.type as family_type, fm.colour as family_colour, f.name as family_name
     FROM product_mappings m

@@ -15,6 +15,7 @@ export const GET = handler(async () => {
     SELECT m.*, p.handle, p.title, p.images->0->>'src' as image, p.status
     FROM product_family_members m
     JOIN products_projection p ON p.shopify_product_id = m.product_id
+    WHERE COALESCE(p.status, 'active') != 'archived'
     ORDER BY m.family_id, m.sort_order
   `);
   const unassigned = await db.execute(sql`
@@ -23,6 +24,7 @@ export const GET = handler(async () => {
     WHERE NOT EXISTS (
       SELECT 1 FROM product_family_members m WHERE m.product_id = p.shopify_product_id
     )
+    AND COALESCE(p.status, 'active') != 'archived'
     ORDER BY p.title
   `);
   return jsonOk({ families, members: members.rows, unassigned: unassigned.rows });

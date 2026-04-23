@@ -42,6 +42,7 @@ export interface FamilySalesResult {
     title: string;
     handle: string;
     image: string | null;
+    productStatus: string | null;
     type: string | null;
     colour: string | null;
     sales: SalesResult;
@@ -208,10 +209,10 @@ export async function getProductSales(productId: string): Promise<ProductSalesRe
 export async function getFamilySales(familyId: string, sinceDate?: Date): Promise<FamilySalesResult> {
   // Get family members
   const members = await db.execute(sql`
-    SELECT m.product_id, m.type, m.colour, p.title, p.handle, p.images->0->>'src' as image
+    SELECT m.product_id, m.type, m.colour, p.title, p.handle, p.images->0->>'src' as image, p.status as product_status
     FROM product_family_members m
     JOIN products_projection p ON p.shopify_product_id = m.product_id
-    WHERE m.family_id = ${familyId}
+    WHERE m.family_id = ${familyId} AND COALESCE(p.status, 'active') != 'archived'
     ORDER BY m.sort_order
   `);
   const memberRows = members.rows as any[];
@@ -239,6 +240,7 @@ export async function getFamilySales(familyId: string, sinceDate?: Date): Promis
       title: m.title,
       handle: m.handle,
       image: m.image,
+      productStatus: m.product_status ?? null,
       type: m.type,
       colour: m.colour,
       sales,
