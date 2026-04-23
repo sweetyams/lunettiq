@@ -207,6 +207,7 @@ export default function LocationsClient() {
                         <button onClick={() => deleteLocation(loc.id, loc.name)} className="crm-btn crm-btn-ghost" style={{ fontSize: 11, padding: '4px 8px', color: '#ef4444' }}>Delete</button>
                       </div>
                     </div>
+                    <LocationInventory locationId={loc.id} />
                   </div>
                 )}
               </div>
@@ -215,6 +216,66 @@ export default function LocationsClient() {
 
           {locations.length === 0 && (
             <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No locations. Click "Sync from Shopify + Square" to import.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LocationInventory({ locationId }: { locationId: string }) {
+  const [open, setOpen] = useState(false);
+  const [levels, setLevels] = useState<Array<{ familyId: string | null; colour: string | null; onHand: number; committed: number; available: number }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || levels.length) return;
+    setLoading(true);
+    fetch(`/api/crm/inventory?locationId=${locationId}`, { credentials: 'include' })
+      .then(r => r.json()).then(d => setLevels(d.data ?? []))
+      .catch(() => {}).finally(() => setLoading(false));
+  }, [open]);
+
+  // Group by family
+  const families = new Map<string, Array<typeof levels[0]>>();
+  for (const l of levels) {
+    const key = l.familyId ?? '—';
+    if (!families.has(key)) families.set(key, []);
+    families.get(key)!.push(l);
+  }
+  const totalAvailable = levels.reduce((s, l) => s + l.available, 0);
+
+  return (
+    <div style={{ marginTop: 8, marginLeft: 24 }}>
+      <button onClick={() => setOpen(!open)} style={{ fontSize: 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 8, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
+        Inventory
+        {levels.length > 0 && <span style={{ padding: '0 5px', borderRadius: 8, background: totalAvailable > 0 ? '#d1fae5' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600, fontSize: 9 }}>{totalAvailable}</span>}
+      </button>
+      {open && (
+        <div style={{ marginTop: 6 }}>
+          {loading ? <div style={{ fontSize: 11, color: '#9ca3af' }}>Loading…</div> : levels.length === 0 ? (
+            <div style={{ fontSize: 11, color: '#9ca3af' }}>No inventory data</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Array.from(families.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([fam, items]) => (
+                <div key={fam}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{fam === '—' ? 'Unassigned' : fam}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {items.sort((a, b) => (a.colour ?? '').localeCompare(b.colour ?? '')).map((l, i) => (
+                      <span key={i} style={{
+                        fontSize: 10, padding: '2px 8px', borderRadius: 4,
+                        background: l.available > 0 ? '#f0fdf4' : l.available === 0 ? '#fef2f2' : '#f9fafb',
+                        color: l.available > 0 ? '#065f46' : l.available === 0 ? '#dc2626' : '#6b7280',
+                        border: `1px solid ${l.available > 0 ? '#bbf7d0' : l.available === 0 ? '#fecaca' : '#e5e7eb'}`,
+                      }}>
+                        {l.colour ? l.colour.replace(/-/g, ' ') : 'default'} <span style={{ fontWeight: 600 }}>{l.available}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

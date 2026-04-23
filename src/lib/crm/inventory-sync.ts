@@ -106,7 +106,69 @@ export async function syncFromShopify(): Promise<{ synced: number; locations: nu
     }
   }
 
+  // Reconcile orphan variant-level rows into family+colour rows
+  const reconciled = await reconcileOrphanLevels();
+  if (reconciled.merged || reconciled.deleted) {
+    console.log('[inventory-sync] Reconciled orphans:', reconciled);
+  }
+
   return { synced: totalSynced, locations: locs.length, errors };
+}
+
+/**
+ * Reconcile orphan variant-level inventory rows.
+ * When a variant now belongs to a family+colour, merge its inventory into the family row and delete the orphan.
+ */
+export async function reconcileOrphanLevels(): Promise<{ merged: number; deleted: number }> {
+  const orphans = await db.select().from(inventoryLevels)
+    .where(and(sql`${inventoryLevels.familyId} IS NULL`, sql`${inventoryLevels.variantId} IS NOT NULL`));
+  if (!orphans.length) return { merged: 0, deleted: 0 };
+
+  // Batch-resolve variants → products → family+colour
+  const variantIds = orphans.map(o => o.variantId!);
+  const variants = await db.select({ variantId: productVariantsProjection.shopifyVariantId, productId: productVariantsProjection.shopifyProductId })
+    .from(productVariantsProjection)
+    .where(sql`${productVariantsProjection.shopifyVariantId} IN (${sql.join(variantIds.map(id => sql`${id}`), sql`, `)})`);
+  const variantToProduct = new Map(variants.map(v => [v.variantId, v.productId]));
+
+  const productIds = [...new Set(variants.map(v => v.productId))];
+  const memberships = productIds.length ? await db.select()
+    .from(productFamilyMembers)
+    .where(sql`${productFamilyMembers.productId} IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})`) : [];
+  const productToFamily = new Map(memberships.filter(m => m.familyId && m.colour).map(m => [m.productId, { familyId: m.familyId, colour: m.colour! }]));
+
+  let merged = 0, deleted = 0;
+  for (const orphan of orphans) {
+    const productId = variantToProduct.get(orphan.variantId!);
+    if (!productId) continue;
+    const family = productToFamily.get(productId);
+    if (!family) continue;
+
+    const [existing] = await db.select().from(inventoryLevels)
+      .where(and(eq(inventoryLevels.familyId, family.familyId), eq(inventoryLevels.colour, family.colour), eq(inventoryLevels.locationId, orphan.locationId)));
+
+    if (existing) {
+      // Merge orphan stock into canonical row
+      if ((orphan.onHand ?? 0) > 0) {
+        const newOnHand = (existing.onHand ?? 0) + (orphan.onHand ?? 0);
+        await db.update(inventoryLevels).set({
+          onHand: newOnHand,
+          available: Math.max(0, newOnHand - (existing.committed ?? 0) - (existing.securityStock ?? 0)),
+          updatedAt: new Date(),
+        }).where(eq(inventoryLevels.id, existing.id));
+        merged++;
+      }
+      await db.delete(inventoryLevels).where(eq(inventoryLevels.id, orphan.id));
+      deleted++;
+    } else {
+      // Convert orphan in-place to family-level row
+      await db.update(inventoryLevels).set({
+        familyId: family.familyId, colour: family.colour, variantId: null, updatedAt: new Date(),
+      }).where(eq(inventoryLevels.id, orphan.id));
+      merged++;
+    }
+  }
+  return { merged, deleted };
 }
 
 /** Pull inventory from Square for all locations with squareLocationId */

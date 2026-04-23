@@ -145,13 +145,14 @@ export function InlineProductPicker({ excludeIds, multi, showVariants, onSelect,
                 <td style={{ padding: '6px 10px' }}>{statusBadge(p.status)}</td>
                 <td style={{ padding: '6px 10px', textAlign: 'right', color: '#6b7280' }}>{p.priceMin ? `$${p.priceMin}` : '—'}</td>
                 <td style={{ padding: '6px 10px', textAlign: 'right' }}>
-                  {showVariants && p.variants && p.variants.length > 1 ? (
-                    <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#374151' }}>
-                      {expandedId === p.id ? 'Close' : `${p.variants.length} variants`}
-                    </button>
-                  ) : (
+                  <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end' }}>
                     <button onClick={() => onSelect(p.id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#374151' }}>Select</button>
-                  )}
+                    {showVariants && p.variants && p.variants.length > 1 && (
+                      <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#9ca3af' }}>
+                        {expandedId === p.id ? '▲' : `${p.variants.length}v`}
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

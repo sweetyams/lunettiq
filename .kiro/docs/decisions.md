@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-014: Frame-Level Inventory Reconciliation + Product UI Cleanup
+
+**Date:** 2026-04-23 · **Status:** Accepted
+
+**Context:** Inventory tracks at `familyId + colour + location` level so one physical frame colour shared across optical/sun products has unified stock. However, products not assigned to families (or missing colour on their family member) created orphan variant-level inventory rows with null family/colour — showing as "Unassigned 0 0 0" in the UI. Additionally, the families settings page had save-on-keystroke causing unusable text inputs, product mapping forced variant selection when product-level linking was the common case, and product cards were cluttered.
+
+**Decision:** (1) Added `reconcileOrphanLevels()` to inventory-sync — runs after every Shopify sync, finds variant-level orphan rows, resolves through variant→product→familyMember, merges stock into canonical family+colour rows or converts in-place. (2) Families settings inputs changed to save-on-blur instead of save-on-keystroke, with local-only state during editing. (3) Removed `convertible_to_optical/sun` checkboxes — redundant with the type dropdown since inventory is frame-level. (4) Added missing-colour warnings (amber badges + input highlights) in families settings. (5) Product mapping picker defaults to product-level selection, no forced variant step. (6) Simplified product cards: title + stock count, status badges, stock bar. Removed variant names, price, sold count. (7) Added colour/type sort dropdown to families views. (8) Unified All/Shopify/Square filter pills across families pages.
+
+**Consequences:** Orphan inventory rows auto-clean on sync. Family colour gaps are visually surfaced. Text editing in families settings is responsive. Product mapping workflow is faster. Product grid is scannable.
+
+---
+
 ### ADR-013: Locations Full CRUD + Non-Destructive Sync
 
 **Date:** 2026-04-23 · **Status:** Accepted

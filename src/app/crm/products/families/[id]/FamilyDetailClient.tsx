@@ -20,6 +20,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
   const [days, setDays] = useState(0); // 0 = all time
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
+  const [memberSort, setMemberSort] = useState<'colour' | 'type'>('colour');
   const [productSearch, setProductSearch] = useState('');
   const [squareSearch, setSquareSearch] = useState('');
 
@@ -96,7 +97,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
   if (loading) return <div style={{ padding: 'var(--crm-space-6)', color: 'var(--crm-text-tertiary)' }}>Loading…</div>;
   if (!family) return <div style={{ padding: 'var(--crm-space-6)' }}>Family not found</div>;
 
-  const members = sales?.members ?? [];
+  const members = (sales?.members ?? []).sort((a, b) => memberSort === 'colour' ? ((a.colour ?? '').localeCompare(b.colour ?? '') || (a.type ?? '').localeCompare(b.type ?? '')) : ((a.type ?? '').localeCompare(b.type ?? '') || (a.colour ?? '').localeCompare(b.colour ?? '')));
   const familyOnlySquare = sales?.familyOnlySquare ?? [];
   const totals = sales?.totals;
 
@@ -152,7 +153,13 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
       {/* Shopify Products */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-2)' }}>
         <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--crm-text-tertiary)', letterSpacing: '0.04em' }}>Shopify Products ({members.length})</div>
-        <button onClick={() => setShowAddProduct(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add Product</button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <select value={memberSort} onChange={e => setMemberSort(e.target.value as any)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--crm-border, #e5e7eb)', background: 'none' }}>
+            <option value="colour">Sort: Colour</option>
+            <option value="type">Sort: Type</option>
+          </select>
+          <button onClick={() => setShowAddProduct(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '3px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Add Product</button>
+        </div>
       </div>
       <div className="crm-card" style={{ overflow: 'hidden', marginBottom: 'var(--crm-space-5)' }}>
         <table className="crm-table">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
 import { useToast } from '@/components/crm/CrmShell';
 
@@ -26,6 +26,7 @@ export default function FamiliesPage() {
   const [memberSearch, setMemberSearch] = useState('');
   const [squareSearch, setSquareSearch] = useState('');
   const [squareItems, setSquareItems] = useState<Array<{ squareCatalogId: string; squareName: string; parsedFrame: string | null; parsedColour: string | null; parsedType: string | null }>>([]);
+  const [memberSort, setMemberSort] = useState<'colour' | 'type'>('colour');
   const [allProducts, setAllProducts] = useState<Array<{ id: string; title: string; handle: string; status: string | null }>>([]);
 
   const load = useCallback(() => {
@@ -56,7 +57,7 @@ export default function FamiliesPage() {
       .catch(() => {});
   }, []);
 
-  const familyMembers = activeFamily ? members.filter(m => m.family_id === activeFamily) : [];
+  const familyMembers = activeFamily ? members.filter(m => m.family_id === activeFamily).sort((a, b) => memberSort === 'colour' ? ((a.colour ?? '').localeCompare(b.colour ?? '') || (a.type ?? '').localeCompare(b.type ?? '')) : ((a.type ?? '').localeCompare(b.type ?? '') || (a.colour ?? '').localeCompare(b.colour ?? ''))) : [];
   const filteredFamilies = families.filter(f => {
     if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (linkFilter === 'all') return true;
@@ -141,12 +142,13 @@ export default function FamiliesPage() {
     load();
   }
 
-  async function updateMember(memberId: string, field: string, value: string) {
+  async function updateMember(memberId: string, field: string, value: string | boolean) {
     await fetch('/api/crm/settings/families', {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update-member', id: memberId, [field]: value }),
     });
-    load();
+    // Update local state instead of full reload
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, [field]: value } : m));
   }
 
   return (
@@ -186,8 +188,10 @@ export default function FamiliesPage() {
           </div>
           <div style={{ maxHeight: 500, overflowY: 'auto' }}>
             {filteredFamilies.map(f => {
-              const count = members.filter(m => m.family_id === f.id).length;
-              const hasShopify = members.some(m => m.family_id === f.id && !m.product_id.startsWith('sq__'));
+              const fMembers = members.filter(m => m.family_id === f.id);
+              const count = fMembers.length;
+              const hasShopify = fMembers.some(m => !m.product_id.startsWith('sq__'));
+              const missingColour = fMembers.filter(m => !m.colour).length;
               return (
                 <div key={f.id} onClick={() => setActiveFamily(activeFamily === f.id ? null : f.id)} style={{
                   padding: '8px 10px', borderRadius: 6, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -199,6 +203,7 @@ export default function FamiliesPage() {
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>{count}</span>
+                    {missingColour > 0 && <span title={`${missingColour} member${missingColour > 1 ? 's' : ''} missing colour`} style={{ fontSize: 9, padding: '0 4px', borderRadius: 4, background: '#fef3c7', color: '#92400e', fontWeight: 600, cursor: 'help' }}>⚠ {missingColour}</span>}
                     <button onClick={e => { e.stopPropagation(); deleteFamily(f.id); }} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
                   </div>
                 </div>
@@ -278,6 +283,10 @@ export default function FamiliesPage() {
                   {families.find(f => f.id === activeFamily)?.name} — {familyMembers.length} products
                 </span>
                 <div style={{ display: 'flex', gap: 4 }}>
+                  <select value={memberSort} onChange={e => setMemberSort(e.target.value as any)} className="crm-input" style={{ fontSize: 10, padding: '4px 8px' }}>
+                    <option value="colour">Sort: Colour</option>
+                    <option value="type">Sort: Type</option>
+                  </select>
                   <button onClick={() => setShowAddMember(true)} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: '1px solid var(--crm-border)', background: 'none', cursor: 'pointer' }}>+ Shopify</button>
                   <button onClick={() => { setShowAddSquare(true); if (!squareItems.length) fetch('/api/crm/product-mappings?limit=500&status=unmatched', { credentials: 'include' }).then(r => r.json()).then(d => setSquareItems(d.data?.mappings ?? [])).catch(() => {}); }} style={{ fontSize: 'var(--crm-text-xs)', padding: '4px 10px', borderRadius: 4, border: '1px solid #F59E0B', background: '#FFFBEB', color: '#92400E', cursor: 'pointer' }}>+ Square</button>
                 </div>
@@ -321,8 +330,9 @@ export default function FamiliesPage() {
                         </td>
                         <td style={{ padding: '6px 10px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <input value={m.colour ?? ''} onChange={e => updateMember(m.id, 'colour', e.target.value)} className="crm-input" placeholder="colour" style={{ fontSize: 10, width: '100%', padding: '2px 4px' }} />
+                            <DebouncedInput value={m.colour ?? ''} onSave={v => updateMember(m.id, 'colour', v)} className="crm-input" placeholder="colour" style={{ fontSize: 10, width: '100%', padding: '2px 4px', ...(m.colour ? {} : { borderColor: '#f59e0b', background: '#fffbeb' }) }} />
                             <input type="color" value={m.colour_hex ?? '#cccccc'} onChange={e => updateMember(m.id, 'colourHex', e.target.value)} style={{ width: 20, height: 20, border: '1px solid #e5e7eb', borderRadius: 3, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+                            {!m.colour && <span title="No colour — inventory will track as unassigned" style={{ fontSize: 12, cursor: 'help', flexShrink: 0 }}>⚠️</span>}
                           </div>
                         </td>
                         <td style={{ padding: '6px 4px', textAlign: 'center' }}>
@@ -335,23 +345,15 @@ export default function FamiliesPage() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 11 }}>
                               <div>
                                 <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Barcode</label>
-                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.barcode ?? ''} onChange={e => updateMember(m.id, 'barcode', e.target.value)} placeholder="Scan or enter" />
+                                <DebouncedInput className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.barcode ?? ''} onSave={v => updateMember(m.id, 'barcode', v)} placeholder="Scan or enter" />
                               </div>
                               <div>
                                 <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Default Lens Type</label>
-                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_type ?? ''} onChange={e => updateMember(m.id, 'defaultLensType', e.target.value)} placeholder="e.g. Sun, Clear" />
+                                <DebouncedInput className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_type ?? ''} onSave={v => updateMember(m.id, 'defaultLensType', v)} placeholder="e.g. Sun, Clear" />
                               </div>
                               <div>
                                 <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Default Lens Colour</label>
-                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_colour ?? ''} onChange={e => updateMember(m.id, 'defaultLensColour', e.target.value)} placeholder="e.g. Grey, Brown" />
-                              </div>
-                              <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 8 }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
-                                  <input type="checkbox" checked={m.convertible_to_optical !== false} onChange={e => updateMember(m.id, 'convertibleToOptical', e.target.checked)} /> Optical
-                                </label>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
-                                  <input type="checkbox" checked={m.convertible_to_sun !== false} onChange={e => updateMember(m.id, 'convertibleToSun', e.target.checked)} /> Sun
-                                </label>
+                                <DebouncedInput className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_colour ?? ''} onSave={v => updateMember(m.id, 'defaultLensColour', v)} placeholder="e.g. Grey, Brown" />
                               </div>
                             </div>
                           </td>
@@ -421,4 +423,10 @@ export default function FamiliesPage() {
       )}
     </div>
   );
+}
+
+function DebouncedInput({ value: initial, onSave, ...props }: { value: string; onSave: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>) {
+  const [value, setValue] = useState(initial);
+  const dirty = useRef(false);
+  return <input {...props} value={value} onChange={e => { setValue(e.target.value); dirty.current = true; }} onBlur={() => { if (dirty.current) { onSave(value); dirty.current = false; } }} onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }} />;
 }

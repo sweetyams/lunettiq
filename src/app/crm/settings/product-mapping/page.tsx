@@ -75,7 +75,8 @@ export default function ProductMappingPage() {
   async function linkProduct(squareCatalogId: string, shopifyProductId: string, shopifyVariantId?: string) {
     // Auto-resolve family from the chosen product
     const fm = familyMembers.find(m => m.product_id === shopifyProductId);
-    updateLocal(squareCatalogId, { shopify_product_id: shopifyProductId, status: 'manual' } as any);
+    const prod = products.find(p => p.id === shopifyProductId);
+    updateLocal(squareCatalogId, { shopify_product_id: shopifyProductId, shopify_title: prod?.title ?? shopifyProductId, shopify_status: prod?.status ?? null, status: 'manual' } as any);
     await fetch('/api/crm/product-mappings', {
       method: 'PATCH', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -306,7 +307,7 @@ export default function ProductMappingPage() {
             <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-3)' }}>
               Linking: {mappings.find(m => m.square_catalog_id === choosing)?.square_name}
             </div>
-            <InlineProductPicker showVariants onSelect={(productId, variantId) => { linkProduct(choosing, productId, variantId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} maxHeight={400} />
+            <InlineProductPicker onSelect={(productId) => { linkProduct(choosing, productId); setChoosing(null); }} hint={mappings.find(m => m.square_catalog_id === choosing)?.parsed_frame ?? ''} maxHeight={400} />
           </div>
         </div>
       )}

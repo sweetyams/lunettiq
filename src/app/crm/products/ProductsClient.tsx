@@ -175,41 +175,22 @@ export function ProductsClient() {
                   <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444', border: '1.5px solid #fff' }} title={`${inv} in stock`} />
                 </div>
                 <div style={{ padding: 'var(--crm-space-3)' }}>
-                  <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    <Highlight text={p.title ?? ''} query={debouncedQuery} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      <Highlight text={p.title ?? ''} query={debouncedQuery} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: inv > 5 ? '#065f46' : inv > 0 ? '#92400e' : '#dc2626', flexShrink: 0 }}>{inv}</span>
                   </div>
-                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                     {p.metafields?.custom?.product_category === 'sun'
                       ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e' }}>SUN</span>
                       : p.metafields?.custom?.product_category === 'optical'
                         ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
                         : null}
                     {p.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
-                    {p.priceMin && <span>${p.priceMin}</span>}
-                    {((p as any).sales?.units > 0 || (p as any).sales?.squareUnits > 0) && (
-                      <span style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--crm-text-tertiary)' }}>
-                        {(p as any).sales.units + (p as any).sales.squareUnits} sold
-                        {(p as any).sales.squareUnits > 0 && <span style={{ color: '#F59E0B' }}> · {(p as any).sales.squareUnits} in-store</span>}
-                      </span>
-                    )}
                   </div>
-                  {variants.length > 0 && (
-                    <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap', marginTop: 'var(--crm-space-2)' }}>
-                      {variants.slice(0, 4).map((v, i) => (
-                        <span key={i} className="crm-badge" style={{ fontSize: 10, background: 'var(--crm-surface-hover)', color: 'var(--crm-text-tertiary)' }}>
-                          {v.title}
-                        </span>
-                      ))}
-                      {variants.length > 4 && <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)' }}>+{variants.length - 4}</span>}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--crm-space-2)' }}>
-                    <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>
-                      {p.priceMin === p.priceMax ? `$${p.priceMin}` : `$${p.priceMin}–$${p.priceMax}`}
-                    </span>
-                    <span style={{ fontSize: 'var(--crm-text-xs)', color: inv > 0 ? 'var(--crm-success)' : 'var(--crm-error)' }}>
-                      {inv > 0 ? `${inv} in stock` : 'Out'}
-                    </span>
+                  <div style={{ marginTop: 6, height: 3, borderRadius: 2, background: '#f3f4f6', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 2, width: `${Math.min(100, (inv / 20) * 100)}%`, background: inv > 5 ? '#22c55e' : inv > 0 ? '#eab308' : '#ef4444' }} />
                   </div>
                 </div>
               </Link>
