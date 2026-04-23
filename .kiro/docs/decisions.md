@@ -4,15 +4,15 @@ Append-only. Newest first.
 
 ---
 
-### ADR-015: Canonical Product Metafield Schema
+### ADR-015: Canonical Product Metafield Schema + Migration
 
 **Date:** 2026-04-23 · **Status:** Accepted
 
-**Context:** Product metafields were stored as raw Shopify namespace/key pairs with inconsistent naming (mix of `udesly` and `custom` namespaces, snake_case and kebab-case keys). Display groups were hardcoded in multiple places. Moving to a structured Shopify metafield definition with 6 groups (details, design, materials_components, fit_sizing, compatibility, colour) and 30 canonical fields.
+**Context:** Product metafields were stored as raw Shopify namespace/key pairs with inconsistent naming (mix of `udesly` and `custom` namespaces, snake_case and kebab-case keys, values with embedded units like "52 mm"). No structured definitions on Shopify. Moving to 6 groups / 31 canonical fields with proper Shopify types.
 
-**Decision:** (1) Created `lib/crm/metafield-schema.ts` as single source of truth — defines `METAFIELD_GROUPS`, `FIELD_MAP`, `UNIT_SUFFIXES`, `OLD_KEY_MAP`, and `remapMetafields()`. (2) All three sync paths (full-product-sync, single-product sync, inngest webhook) now call `remapMetafields()` on the custom namespace, mapping old keys to new canonical keys. Old keys are preserved alongside new ones during transition. (3) ProductDetailClient and metafield-visibility API import groups from the schema module instead of hardcoding. (4) All `product_category` references updated to check `product_type` (new) with fallback to `product_category` (old) via COALESCE in SQL and `??` in JS. (5) Storefront `ProductMetafields` type left as-is — separate migration when storefront queries are updated.
+**Decision:** (1) `lib/crm/metafield-schema.ts` — single source of truth: `METAFIELD_GROUPS` (details, design, materials_components, fit_sizing, compatibility, colour), `FIELD_MAP`, `UNIT_SUFFIXES`, `OLD_KEY_MAP`, `remapMetafields()` with unit stripping. Each field has a Shopify type (`number_integer`, `boolean`, `multi_line_text_field`, etc.) and optional `pin` flag (18 of 31 pinned, under Shopify's 20 limit). (2) Two-step migration via Settings → System: "Setup Metafield Definitions" creates/updates definitions on Shopify + writes CRM visibility groups to `store_settings`; "Migrate Existing Metafields" reads all namespaces (udesly, custom), derives `product_name` from title parsing (`ANDY © GREY` → `Andy`) or udesly `short-name`, derives `product_type` from tags (`optics` → `Optical`, `sunglasses` → `Sunglasses`) or existing `product_category`, derives `primary_frame_colour` from title or existing `frame_colour`, strips unit suffixes, and writes canonical keys back to Shopify. (3) All sync paths (full, single, webhook) call `remapMetafields()` on ingest. (4) Metafield visibility API only exposes canonical keys, includes 0% coverage fields. (5) System page reorganized into 4 groups (Initial Setup, Product Sync, Inventory, Square Integration) with descriptions and run time estimates.
 
-**Consequences:** Running a full product sync will remap all existing metafields to the new structure. Old keys preserved for comparison. UI immediately shows new group labels. Once verified, old keys can be stripped from the DB and `OLD_KEY_MAP` removed.
+**Consequences:** Running setup + migrate populates all 31 canonical fields from existing data. Old keys preserved during transition. CRM display uses schema labels. Udesly namespace fully consumed. Future: strip old keys, remove `OLD_KEY_MAP`.
 
 ---
 

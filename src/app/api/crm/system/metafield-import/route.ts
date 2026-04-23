@@ -94,16 +94,31 @@ export const POST = handler(async () => {
       if (custom) Object.assign(merged, custom);
     }
 
-    // Derive fields from title and tags
+    // Derive fields from title and tags — always populate canonical keys
     const parsed = parseTitle(row.title);
-    if (parsed.name && !merged.product_name && !merged.short_name) merged.product_name = parsed.name;
-    if (parsed.colour && !merged.primary_frame_colour && !merged.frame_colour) merged.primary_frame_colour = parsed.colour;
-    // Use udesly short_name as product_name if available
-    if (merged.short_name && !merged.product_name) {
-      merged.product_name = merged.short_name.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+    // product_name: udesly short_name > parsed from title
+    if (!merged.product_name) {
+      const src = merged.short_name ?? parsed.name;
+      if (src) merged.product_name = src.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
-    const derivedType = deriveType(row.tags);
-    if (derivedType && !merged.product_type && !merged.product_category) merged.product_type = derivedType;
+
+    // primary_frame_colour: existing frame_colour > parsed from title
+    if (!merged.primary_frame_colour) {
+      const src = merged.frame_colour ?? parsed.colour;
+      if (src) merged.primary_frame_colour = src.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    }
+
+    // product_type: existing product_category > derived from tags
+    if (!merged.product_type) {
+      const existing = merged.product_category;
+      if (existing) {
+        merged.product_type = existing.toLowerCase() === 'sun' ? 'Sunglasses' : existing.charAt(0).toUpperCase() + existing.slice(1).toLowerCase();
+      } else {
+        const derived = deriveType(row.tags);
+        if (derived) merged.product_type = derived;
+      }
+    }
 
     if (!Object.keys(merged).length) { skipped++; continue; }
 
