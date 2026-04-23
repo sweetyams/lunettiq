@@ -807,7 +807,12 @@ export const productFamilyMembers = pgTable('product_family_members', {
   productId: text('product_id').notNull(),
   type: text('type'), // 'optical' | 'sun'
   colour: text('colour'), // display colour e.g. 'green', 'black'
-  colourHex: text('colour_hex'), // swatch hex for frontend
+  colourHex: text('colour_hex'),
+  barcode: text('barcode'),
+  defaultLensType: text('default_lens_type'),
+  defaultLensColour: text('default_lens_colour'),
+  convertibleToOptical: boolean('convertible_to_optical').default(true),
+  convertibleToSun: boolean('convertible_to_sun').default(true),
   sortOrder: integer('sort_order').default(0),
 }, (t) => ({
   uniq: uniqueIndex('pfm_family_product_uniq').on(t.familyId, t.productId),

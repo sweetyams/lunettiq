@@ -34,8 +34,9 @@ export const POST = handler(async (request) => {
     return jsonOk(transfer, 201);
   }
 
-  // Approve
+  // Approve — manager+ only
   if (action === 'approve') {
+    if (!['owner', 'manager'].includes(session.role)) return jsonError('Transfer approval requires manager or owner role', 403);
     const [t] = await db.update(inventoryTransfers).set({ status: 'approved', approvedBy: session.userId, updatedAt: new Date() }).where(eq(inventoryTransfers.id, body.id)).returning();
     return jsonOk(t);
   }

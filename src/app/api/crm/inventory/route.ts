@@ -26,6 +26,12 @@ export const POST = handler(async (request) => {
 
   if (!locationId) return jsonError('locationId required', 400);
 
+  // Permission checks by action
+  const role = session.role;
+  if (['recount'].includes(action) && !['owner', 'manager'].includes(role)) {
+    return jsonError('Recounts require manager or owner role', 403);
+  }
+
   if (action === 'adjust') {
     if (!body.field || body.delta === undefined || !body.reason) return jsonError('field, delta, reason required', 400);
     if (['damage', 'loss'].includes(body.reason) && !body.note) return jsonError('Note required for damage/loss adjustments', 400);

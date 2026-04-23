@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { InlineProductPicker } from '@/components/crm/InlineProductPicker';
 import { useToast } from '@/components/crm/CrmShell';
 
 interface Family { id: string; name: string }
-interface Member { id: string; family_id: string; product_id: string; type: string | null; colour: string | null; colour_hex: string | null; sort_order: number; handle: string; title: string; image: string | null; status: string }
+interface Member { id: string; family_id: string; product_id: string; type: string | null; colour: string | null; colour_hex: string | null; sort_order: number; handle: string; title: string; image: string | null; status: string; barcode: string | null; default_lens_type: string | null; default_lens_colour: string | null; convertible_to_optical: boolean | null; convertible_to_sun: boolean | null }
 interface UnassignedProduct { id: string; handle: string; title: string; image: string | null; status: string }
 
 export default function FamiliesPage() {
@@ -19,6 +19,7 @@ export default function FamiliesPage() {
   const [newFamily, setNewFamily] = useState({ id: '', name: '' });
   const [search, setSearch] = useState('');
   const [autoAssigning, setAutoAssigning] = useState(false);
+  const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
   const [linkFilter, setLinkFilter] = useState<'all' | 'shopify' | 'square'>('shopify');
@@ -303,7 +304,8 @@ export default function FamiliesPage() {
                   </thead>
                   <tbody>
                     {familyMembers.map(m => (
-                      <tr key={m.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <React.Fragment key={m.id}>
+                      <tr style={{ borderTop: '1px solid #f3f4f6', cursor: 'pointer' }} onClick={() => setExpandedMember(expandedMember === m.id ? null : m.id)}>
                         <td style={{ padding: '6px 10px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {m.image ? <img src={m.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
@@ -327,6 +329,35 @@ export default function FamiliesPage() {
                           <button onClick={() => removeMember(m.id)} style={{ fontSize: 10, color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer' }} title="Remove">✕</button>
                         </td>
                       </tr>
+                      {expandedMember === m.id && (
+                        <tr style={{ background: '#fafafa' }}>
+                          <td colSpan={5} style={{ padding: '10px 10px 10px 50px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 11 }}>
+                              <div>
+                                <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Barcode</label>
+                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.barcode ?? ''} onChange={e => updateMember(m.id, 'barcode', e.target.value)} placeholder="Scan or enter" />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Default Lens Type</label>
+                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_type ?? ''} onChange={e => updateMember(m.id, 'defaultLensType', e.target.value)} placeholder="e.g. Sun, Clear" />
+                              </div>
+                              <div>
+                                <label style={{ fontSize: 10, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Default Lens Colour</label>
+                                <input className="crm-input" style={{ width: '100%', fontSize: 11 }} value={m.default_lens_colour ?? ''} onChange={e => updateMember(m.id, 'defaultLensColour', e.target.value)} placeholder="e.g. Grey, Brown" />
+                              </div>
+                              <div style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 8 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={m.convertible_to_optical !== false} onChange={e => updateMember(m.id, 'convertibleToOptical', e.target.checked)} /> Optical
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={m.convertible_to_sun !== false} onChange={e => updateMember(m.id, 'convertibleToSun', e.target.checked)} /> Sun
+                                </label>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
