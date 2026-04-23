@@ -34,7 +34,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
     ]).then(([salesD, famD, prodD, sqD]) => {
       setSales(salesD.data);
       setFamily((famD.data?.families ?? []).find((f: Family) => f.id === familyId) ?? null);
-      setAllProducts((prodD.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_category, status: p.status })));
+      setAllProducts((prodD.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, category: p.metafields?.custom?.product_type ?? p.metafields?.custom?.product_category, status: p.status })));
       setUnmappedSquare(sqD.data?.mappings ?? []);
     }).catch(() => {}).finally(() => setLoading(false));
   }

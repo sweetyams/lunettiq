@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-015: Canonical Product Metafield Schema
+
+**Date:** 2026-04-23 · **Status:** Accepted
+
+**Context:** Product metafields were stored as raw Shopify namespace/key pairs with inconsistent naming (mix of `udesly` and `custom` namespaces, snake_case and kebab-case keys). Display groups were hardcoded in multiple places. Moving to a structured Shopify metafield definition with 6 groups (details, design, materials_components, fit_sizing, compatibility, colour) and 30 canonical fields.
+
+**Decision:** (1) Created `lib/crm/metafield-schema.ts` as single source of truth — defines `METAFIELD_GROUPS`, `FIELD_MAP`, `UNIT_SUFFIXES`, `OLD_KEY_MAP`, and `remapMetafields()`. (2) All three sync paths (full-product-sync, single-product sync, inngest webhook) now call `remapMetafields()` on the custom namespace, mapping old keys to new canonical keys. Old keys are preserved alongside new ones during transition. (3) ProductDetailClient and metafield-visibility API import groups from the schema module instead of hardcoding. (4) All `product_category` references updated to check `product_type` (new) with fallback to `product_category` (old) via COALESCE in SQL and `??` in JS. (5) Storefront `ProductMetafields` type left as-is — separate migration when storefront queries are updated.
+
+**Consequences:** Running a full product sync will remap all existing metafields to the new structure. Old keys preserved for comparison. UI immediately shows new group labels. Once verified, old keys can be stripped from the DB and `OLD_KEY_MAP` removed.
+
+---
+
 ### ADR-014: Frame-Level Inventory Reconciliation + Product UI Cleanup
 
 **Date:** 2026-04-23 · **Status:** Accepted

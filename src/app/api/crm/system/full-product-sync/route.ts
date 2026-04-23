@@ -7,6 +7,7 @@ import { jsonOk } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { eq, sql } from 'drizzle-orm';
 import { toSlug } from '@/lib/shopify/slug';
+import { remapMetafields } from '@/lib/crm/metafield-schema';
 
 const SHOP = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN;
 const TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
@@ -53,6 +54,8 @@ export const POST = handler(async () => {
         if (!metafields[mf.namespace]) metafields[mf.namespace] = {};
         metafields[mf.namespace][mf.key] = mf.value;
       }
+      // Remap old keys to new canonical structure
+      if (metafields.custom) metafields.custom = remapMetafields(metafields.custom);
       const images = p.images.nodes.map((i: any) => ({ src: i.url, alt: i.altText }));
       const status = p.status?.toLowerCase() === 'active' ? 'active' : p.status?.toLowerCase() === 'draft' ? 'draft' : 'archived';
 
@@ -105,15 +108,15 @@ export const POST = handler(async () => {
   }
 
   // Re-link family members from archived→active products (handles Shopify product ID changes)
-  // Also copy CRM-owned metafields (product_category etc) from archived to new active products
+  // Also copy CRM-owned metafields (product_type/product_category etc) from archived to new active products
   await db.execute(sql`
     UPDATE products_projection new_p
     SET metafields = new_p.metafields || jsonb_build_object('custom',
       COALESCE(new_p.metafields->'custom', '{}'::jsonb) || COALESCE(old_p.metafields->'custom', '{}'::jsonb))
     FROM products_projection old_p
     WHERE old_p.handle = new_p.handle AND old_p.status = 'archived' AND new_p.status = 'active'
-    AND old_p.metafields->'custom'->>'product_category' IS NOT NULL
-    AND (new_p.metafields->'custom'->>'product_category') IS NULL
+    AND COALESCE(old_p.metafields->'custom'->>'product_type', old_p.metafields->'custom'->>'product_category') IS NOT NULL
+    AND COALESCE(new_p.metafields->'custom'->>'product_type', new_p.metafields->'custom'->>'product_category') IS NULL
   `);
 
   // Re-link product_mappings from archived→active

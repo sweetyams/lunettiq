@@ -5,16 +5,14 @@ import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { eq, sql } from 'drizzle-orm';
+import { METAFIELD_GROUPS } from '@/lib/crm/metafield-schema';
 
 const KEY = 'metafield_visible_fields';
 const GROUPS_KEY = 'metafield_groups';
-const DEFAULT_GROUPS = [
-  { label: 'Sizing', keys: ['custom.lens_width', 'custom.bridge_width', 'custom.temple_length', 'custom.lens_height', 'custom.frame_width', 'custom.weight_grams'] },
-  { label: 'Material', keys: ['custom.material_type', 'custom.material_description', 'custom.origin', 'custom.hinge_type'] },
-  { label: 'Classification', keys: ['custom.shape', 'custom.frame_colour', 'custom.size_category', 'custom.gender_fit', 'custom.frame_type'] },
-  { label: 'Editorial', keys: ['custom.designer_notes', 'custom.collection_season', 'custom.face_notes', 'custom.short_name', 'custom.swatch'] },
-  { label: 'Rx', keys: ['custom.rx_compatible', 'custom.progressive_compatible', 'custom.max_lens_index', 'custom.supports_polarized'] },
-];
+const DEFAULT_GROUPS = METAFIELD_GROUPS.map(g => ({
+  label: g.label,
+  keys: g.fields.map(f => `custom.${f.key}`),
+}));
 
 // GET — return visible fields, groups, available fields with coverage
 export const GET = handler(async () => {

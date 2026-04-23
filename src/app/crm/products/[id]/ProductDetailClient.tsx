@@ -664,15 +664,11 @@ function ClientFeedback({ productId, onToast }: { productId: string; onToast: (m
   );
 }
 
-const FALLBACK_GROUPS = [
-  { label: 'Sizing', keys: ['lens_width', 'bridge_width', 'temple_length', 'lens_height', 'frame_width', 'weight_grams'] },
-  { label: 'Material', keys: ['material_type', 'material_description', 'origin', 'hinge_type'] },
-  { label: 'Classification', keys: ['shape', 'frame_colour', 'size_category', 'gender_fit', 'frame_type'] },
-  { label: 'Editorial', keys: ['designer_notes', 'collection_season', 'face_notes', 'short_name', 'swatch'] },
-  { label: 'Rx', keys: ['rx_compatible', 'progressive_compatible', 'max_lens_index', 'supports_polarized'] },
-];
+import { METAFIELD_GROUPS, UNIT_SUFFIXES, FIELD_MAP } from '@/lib/crm/metafield-schema';
 
-const UNIT_SUFFIX: Record<string, string> = { lens_width: ' mm', bridge_width: ' mm', temple_length: ' mm', lens_height: ' mm', frame_width: ' mm', weight_grams: ' g' };
+const FALLBACK_GROUPS = METAFIELD_GROUPS.map(g => ({ label: g.label, keys: g.fields.map(f => f.key) }));
+
+const UNIT_SUFFIX = UNIT_SUFFIXES;
 
 function MetafieldsCard({ metafields }: { metafields: Record<string, Record<string, string>> | null }) {
   const [showAll, setShowAll] = useState(false);
@@ -792,6 +788,8 @@ function formatValue(v: string): string {
 }
 
 function formatKey(key: string): string {
+  const field = FIELD_MAP.get(key);
+  if (field) return field.label;
   return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 

@@ -30,7 +30,7 @@ export const GET = handler(async (request) => {
   }
 
   if (type) conditions.push(ilike(productsProjection.productType, type));
-  if (category) conditions.push(sql`${productsProjection.metafields}->'custom'->>'product_category' = ${category}`);
+  if (category) conditions.push(sql`COALESCE(${productsProjection.metafields}->'custom'->>'product_type', ${productsProjection.metafields}->'custom'->>'product_category') = ${category}`);
   if (vendor) conditions.push(ilike(productsProjection.vendor, vendor));
   if (material) conditions.push(sql`${productsProjection.metafields}->'custom'->>'material' ILIKE ${material} OR ${productsProjection.metafields}->'custom'->>'acetate_source' ILIKE ${'%' + material + '%'}`);
   if (rx === 'true') conditions.push(sql`${productsProjection.metafields}->'custom'->>'rx_compatible' = 'true'`);

@@ -53,7 +53,7 @@ export default function ProductMappingPage() {
   useEffect(() => { load(filter, search, page); }, [page]);
   useEffect(() => {
     fetch('/api/crm/products?limit=500&status=active,draft', { credentials: 'include' })
-      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, status: p.status, category: p.metafields?.custom?.product_category ?? null, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
+      .then(r => r.json()).then(d => setProducts((d.data ?? []).map((p: any) => ({ id: p.shopifyProductId, title: p.title, handle: p.handle, status: p.status, category: p.metafields?.custom?.product_type ?? p.metafields?.custom?.product_category ?? null, variants: p.variants?.map((v: any) => ({ id: v.shopifyVariantId ?? v.id, title: v.title })) ?? [] }))))
       .catch(() => {});
     fetch('/api/crm/settings/families', { credentials: 'include' })
       .then(r => r.json()).then(d => { setFamilies(d.data?.families ?? []); setFamilyMembers(d.data?.members ?? []); })

@@ -5,6 +5,7 @@ import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
 import { eq, sql } from 'drizzle-orm';
+import { remapMetafields } from '@/lib/crm/metafield-schema';
 
 export const POST = handler(async (_request, ctx) => {
   await requireCrmAuth('org:products:read');
@@ -48,6 +49,8 @@ export const POST = handler(async (_request, ctx) => {
     }
     delete grouped.udesly;
   }
+  // Remap old keys to new canonical structure
+  if (grouped.custom) grouped.custom = remapMetafields(grouped.custom);
 
   await db.update(productsProjection).set({
     title: raw.title,

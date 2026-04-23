@@ -182,9 +182,9 @@ export function ProductsClient() {
                     <span style={{ fontSize: 10, fontWeight: 600, color: inv > 5 ? '#065f46' : inv > 0 ? '#92400e' : '#dc2626', flexShrink: 0 }}>{inv}</span>
                   </div>
                   <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {p.metafields?.custom?.product_category === 'sun'
+                    {(p.metafields?.custom?.product_type ?? p.metafields?.custom?.product_category) === 'sun'
                       ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#fef3c7', color: '#92400e' }}>SUN</span>
-                      : p.metafields?.custom?.product_category === 'optical'
+                      : (p.metafields?.custom?.product_type ?? p.metafields?.custom?.product_category) === 'optical'
                         ? <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#dbeafe', color: '#1e40af' }}>OPTICAL</span>
                         : null}
                     {p.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}

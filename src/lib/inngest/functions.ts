@@ -17,6 +17,7 @@ import {
 } from '@/lib/db/schema';
 import { getProductMetafields } from '@/lib/crm/shopify-admin';
 import { toSlug } from '@/lib/shopify/slug';
+import { remapMetafields } from '@/lib/crm/metafield-schema';
 
 const TYPE_SUFFIXES = ['sun', 'optic', 'optics', 'sunglasses'];
 
@@ -108,11 +109,11 @@ async function autoAssignProduct(productId: string, handle: string) {
     }
   }
 
-  // Set product_category metafield (optical/sun)
+  // Set product_type metafield (optical/sun) — also keep product_category for transition
   if (type) {
     await db.execute(sql`
       UPDATE products_projection
-      SET metafields = jsonb_set(COALESCE(metafields, '{}'::jsonb), '{custom,product_category}', ${JSON.stringify(type)}::jsonb)
+      SET metafields = jsonb_set(jsonb_set(COALESCE(metafields, '{}'::jsonb), '{custom,product_type}', ${JSON.stringify(type)}::jsonb), '{custom,product_category}', ${JSON.stringify(type)}::jsonb)
       WHERE shopify_product_id = ${productId}
     `);
   }
@@ -238,7 +239,11 @@ export const syncProduct = inngest.createFunction(
       shopifyUpdatedAt: p.updated_at ? new Date(p.updated_at) : undefined,
       syncedAt: new Date(),
     };
-    if (p.metafields != null) productUpdateSet.metafields = p.metafields;
+    if (p.metafields != null) {
+      const mf = typeof p.metafields === 'object' ? p.metafields as Record<string, Record<string, string>> : null;
+      if (mf?.custom) mf.custom = remapMetafields(mf.custom);
+      productUpdateSet.metafields = mf;
+    }
 
     await db
       .insert(productsProjection)
