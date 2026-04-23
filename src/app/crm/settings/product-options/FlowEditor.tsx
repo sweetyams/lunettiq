@@ -84,7 +84,7 @@ export default function FlowEditor({ data: externalData, loading: externalLoadin
     (data?.placements ?? []).filter(p => p.groupId === gid && str(p.status) !== 'archived').sort((a, b) => num(a.sortOrder) - num(b.sortOrder)),
     [data?.placements, gid]);
 
-  const activePlacement = placements.find(p => p.id === placementId) ?? null;
+  const activePlacement = (data?.placements ?? []).find(p => p.id === placementId) ?? null;
 
   // Notify parent of selection changes
   useEffect(() => {

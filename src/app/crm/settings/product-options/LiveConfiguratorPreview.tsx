@@ -231,15 +231,30 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
         Array.from(chosen).forEach(plId => {
           const pl = group.placements.find(p => p.id === plId);
           if (!pl) return;
+          const choice = choiceMap.get(str(pl.choiceId));
+          const cType = choice ? str(choice.choiceType) || 'standard' : 'standard';
           const label = placementLabel(pl, choiceMap);
-          const priceStr = formatPlacementPrice(plId, data?.priceRules ?? []);
-          const match = priceStr.match(/\$(\d+(?:\.\d+)?)/);
-          lines.push({ stepLabel: str(step.label), label, amount: match ? parseFloat(match[1]) : 0 });
+
+          if (cType === 'colour') {
+            // Price from selected colour
+            const colourSelKey = `${group.id}:${plId}:colour`;
+            const colourId = (selections as any)[colourSelKey]?.values().next().value as string | undefined;
+            const setId = choice ? str(choice.lensColourSetId) : '';
+            const colours = lensColours[setId] ?? [];
+            const colour = colourId ? colours.find(c => c.id === colourId) : null;
+            if (colour) {
+              lines.push({ stepLabel: str(step.label), label: `${label}: ${colour.label}`, amount: Number(colour.price) || 0 });
+            }
+          } else if (cType !== 'content') {
+            const priceStr = formatPlacementPrice(plId, data?.priceRules ?? []);
+            const match = priceStr.match(/\$(\d+(?:\.\d+)?)/);
+            lines.push({ stepLabel: str(step.label), label, amount: match ? parseFloat(match[1]) : 0 });
+          }
         });
       }
     }
     return lines;
-  }, [stepTree, selections, data?.priceRules, choiceMap]);
+  }, [stepTree, selections, data?.priceRules, choiceMap, lensColours]);
 
   if (!flow || stepTree.length === 0) {
     return (
@@ -355,6 +370,8 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
                       const colours = lensColours[setId] ?? [];
                       const colourSelKey = `${group.id}:${pl.id}:colour`;
                       const chosenColourId = (selections as any)[colourSelKey]?.values().next().value as string | undefined;
+                      const chosenColour = chosenColourId ? colours.find(c => c.id === chosenColourId) : null;
+                      const colourPrice = chosenColour && Number(chosenColour.price) > 0 ? `+$${chosenColour.price}` : 'included';
                       return (
                         <div key={pl.id}>
                           <button onClick={() => toggleChoice(group.id, pl.id, mode, false)} style={{
@@ -367,19 +384,24 @@ export default function LiveConfiguratorPreview({ data, selection }: Props) {
                               <span style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${isChosen ? 'var(--crm-text-primary)' : 'var(--crm-border)'}`, background: isChosen ? 'var(--crm-text-primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 {isChosen && <span style={{ color: '#fff', fontSize: 10 }}>✓</span>}
                               </span>
-                              <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                              <div>
+                                <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+                                {isChosen && chosenColour && <span style={{ fontSize: 11, color: 'var(--crm-text-tertiary)', marginLeft: 6 }}>— {chosenColour.label}</span>}
+                              </div>
                             </div>
-                            <span style={{ fontSize: 12, color: 'var(--crm-text-tertiary)' }}>{price}</span>
+                            <span style={{ fontSize: 12, color: isChosen && colourPrice !== 'included' ? 'var(--crm-text-secondary)' : 'var(--crm-text-tertiary)', fontWeight: isChosen && colourPrice !== 'included' ? 500 : 400 }}>{isChosen ? colourPrice : price}</span>
                           </button>
                           {isChosen && colours.length > 0 && (
                             <div style={{ padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                               {colours.map(c => {
                                 const sel = chosenColourId === c.id;
                                 const bg = c.hexEnd ? `linear-gradient(180deg, ${c.hex} 0%, ${c.hexEnd} 100%)` : (c.hex || '#ddd');
+                                const cp = Number(c.price) > 0 ? `+$${c.price}` : '';
                                 return (
-                                  <button key={c.id} onClick={() => { const s = new Set<string>(); s.add(c.id); setSelections(prev => ({ ...prev, [colourSelKey]: s })); }} title={`${c.label}${Number(c.price) > 0 ? ` (+$${c.price})` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
+                                  <button key={c.id} onClick={() => { const s = new Set<string>(); s.add(c.id); setSelections(prev => ({ ...prev, [colourSelKey]: s })); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
                                     <div style={{ width: 36, height: 36, borderRadius: 18, background: bg, border: sel ? '2.5px solid var(--crm-text-primary)' : '2px solid var(--crm-border)', transition: 'border 120ms' }} />
                                     <span style={{ fontSize: 9, color: sel ? 'var(--crm-text-primary)' : 'var(--crm-text-tertiary)', fontWeight: sel ? 600 : 400, maxWidth: 48, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                                    {cp && <span style={{ fontSize: 8, color: sel ? 'var(--crm-success)' : 'var(--crm-text-tertiary)' }}>{cp}</span>}
                                   </button>
                                 );
                               })}

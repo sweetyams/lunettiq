@@ -209,31 +209,40 @@ Set: "Transitions" (code: transitions)
 
 | Step | Status | File(s) |
 |---|---|---|
-| Schema: `group_type` enum | ✅ | `lib/db/schema.ts` |
-| Schema: `lens_colour_sets` + `lens_colour_options` tables | ✅ | `lib/db/schema.ts` |
-| Schema: `group_type` + `lens_colour_set_id` on `step_choice_groups` | ✅ | `lib/db/schema.ts` |
+| Schema: `choice_type` enum on `cfg_choices` | ✅ | `lib/db/schema.ts` |
+| Schema: `lensColourSetId` on `cfg_choices` | ✅ | `lib/db/schema.ts` |
 | Schema: `image_url`, `shopify_product_id`, `content_body` on `cfg_choices` | ✅ | `lib/db/schema.ts` |
-| Seed: 4 sets, 17 colours (Standard, Custom Solid, Custom Fade, Polarized) | ✅ | `scripts/seed-lens-colours.ts` |
+| Schema: `lens_colour_sets` + `lens_colour_options` tables | ✅ | `lib/db/schema.ts` |
+| Schema: `hex_end` gradient support | ✅ | `lib/db/schema.ts` |
+| Seed: 4 sets, 17 colours with real swatch hex | ✅ | `scripts/seed-lens-colours.ts` |
 | API: Lens colours CRUD | ✅ | `app/api/crm/settings/lens-colours/route.ts` |
-| CRM UI: Lens Colours settings page | ✅ | `app/crm/settings/lens-colours/` |
-| CRM Settings: Lens Colours link | ✅ | `app/crm/settings/page.tsx` |
-| ADR-010 logged | ✅ | `.kiro/docs/decisions.md` |
-| Flow builder: group type selector + palette linking | ✅ | `FlowPanels.tsx`, `FlowEditor.tsx` |
-| Storefront: render new group types | ✅ | `LiveConfiguratorPreview.tsx` |
-| Cart: add-on product line items | ✅ | `lib/configurator/serialize-flow.ts`, `context/CartContext.tsx` |
+| CRM: Lens Colours settings page with gradient swatches | ✅ | `app/crm/settings/lens-colours/` |
+| Flow builder: CMS-style add bar (Choice/Product/Colour/Content) | ✅ | `FlowPanels.tsx` |
+| Flow builder: type-specific row rendering | ✅ | `FlowPanels.tsx` |
+| Flow builder: product picker via ProductSearchModal | ✅ | `FlowPanels.tsx` |
+| Flow builder: colour set picker | ✅ | `FlowPanels.tsx` |
+| Inspector: all choice types with conditions | ✅ | `FlowPanels.tsx`, `FlowEditor.tsx` |
+| Preview: per-choice-type rendering with swatch expander | ✅ | `LiveConfiguratorPreview.tsx` |
+| Preview: colour prices in swatches + summary | ✅ | `LiveConfiguratorPreview.tsx` |
+| Cart: serialize-flow.ts for all choice types | ✅ | `lib/configurator/serialize-flow.ts` |
+| Cart: addLinesToCart for multi-line adds | ✅ | `context/CartContext.tsx` |
 
 ## Requirements
 
 | ID | Requirement | Status |
 |---|---|---|
 | REQ-ECT-001 | Lens colour sets are a shared catalogue, not per-flow | ✅ |
-| REQ-ECT-002 | Each colour has label, short desc, full desc, swatch, image, hex, price, category | ✅ |
+| REQ-ECT-002 | Each colour has label, short/full desc, swatch, image, hex, hexEnd, price, category | ✅ |
 | REQ-ECT-003 | Price stored at lens_colour_options level | ✅ |
 | REQ-ECT-004 | Sets CRUD via CRM settings page | ✅ |
-| REQ-ECT-005 | Colours CRUD with hex preview | ✅ |
-| REQ-ECT-006 | Groups link to a set via lens_colour_set_id | ✅ |
-| REQ-ECT-007 | group_type enum: standard, product, content, lens_colour | ✅ |
-| REQ-ECT-008 | Product groups: choices with shopify_product_id become separate cart lines | ✅ |
-| REQ-ECT-009 | Content groups: selection_mode none, display-only | ✅ |
-| REQ-ECT-010 | Lens colour groups: render swatches from linked set | ✅ |
-| REQ-ECT-011 | Seed data: Standard ($0), Custom Solid ($25), Custom Fade ($25), Polarized ($70) | ✅ |
+| REQ-ECT-005 | Colours CRUD with hex/gradient preview | ✅ |
+| REQ-ECT-006 | Colour choices link to set via lensColourSetId on cfg_choices | ✅ |
+| REQ-ECT-007 | choice_type enum: standard, product, colour, content | ✅ |
+| REQ-ECT-008 | Product choices: shopifyProductId, separate cart lines | ✅ |
+| REQ-ECT-009 | Content choices: display-only, no cart impact | ✅ |
+| REQ-ECT-010 | Colour choices: swatch expander from linked set | ✅ |
+| REQ-ECT-011 | Seed: Standard ($0), Custom Solid ($25), Custom Fade ($25), Polarized ($70) | ✅ |
+| REQ-ECT-012 | Choice types mixable within a single group | ✅ |
+| REQ-ECT-013 | Colour prices shown per swatch + in summary | ✅ |
+| REQ-ECT-014 | Inspector works for all choice types with conditions | ✅ |
+| REQ-ECT-015 | CMS-style inline add bar in flow builder | ✅ |

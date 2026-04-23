@@ -4,15 +4,15 @@ Append-only. Newest first.
 
 ---
 
-### ADR-010: Extended Group Types — Product, Content, Lens Colour
+### ADR-010: Extended Choice Types — Product, Content, Lens Colour
 
 **Date:** 2026-04-22 · **Status:** Accepted
 
-**Context:** The configurator needs three new patterns: add-on products (separate cart lines), content/info displays, and shared lens colour palettes. Rather than new choice types, these are new group types that change how a group sources data and renders.
+**Context:** The configurator needs add-on products, content displays, and lens colour pickers. Initially modelled as group types, but this prevented mixing types within a group and conflated display with data concerns.
 
-**Decision:** Added `group_type` enum (`standard`, `product`, `content`, `lens_colour`) to `step_choice_groups`. Lens colours get dedicated tables (`lens_colour_sets` + `lens_colour_options`) as a shared catalogue — sets like "Polarized", "Custom Tint" are reusable across flows via `lens_colour_set_id` FK on groups. Product add-ons use existing `cfg_choices` with new `shopify_product_id` + `image_url` columns. Content uses `selection_mode: 'none'` with `content_body` on choices. Price stored at `lens_colour_options` level.
+**Decision:** Refactored to **choice types** on `cfg_choices`: `standard`, `product`, `colour`, `content`. Each choice defines its own behaviour — a single group can mix all types. Colour choices link to shared `lens_colour_sets` via `lensColourSetId`. Product choices link to Shopify via `shopifyProductId`. Prices: standard from `cfg_price_rules`, colour from `lens_colour_options.price`, product from Shopify. `groupType` removed from `step_choice_groups`.
 
-**Consequences:** Colour palettes are managed centrally (Settings → Lens Colours), not per-flow. Adding a colour to a palette makes it available everywhere. Product add-ons become separate cart lines. Three new columns on `cfg_choices`, two on `step_choice_groups`, two new tables.
+**Consequences:** More flexible — "Lens Finish" group can have standard "Clear" + colour "Custom Tint" + content "What's included" together. Colour palettes managed centrally in Settings → Lens Colours. Flow builder has CMS-style inline add bar with 4 type options. Preview renders per-choice-type with swatch expander for colours.
 
 ---
 
