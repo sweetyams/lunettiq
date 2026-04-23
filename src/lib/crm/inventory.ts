@@ -204,9 +204,14 @@ export async function projectToChannels(familyId: string | null, colour: string 
   const { getSettings } = await import('@/lib/crm/store-settings');
   const settings = await getSettings();
   const shippingLocationId = settings.shipping_location_id ?? null;
-  const onlineAvailable = shippingLocationId
-    ? levels.find(l => l.locationId === shippingLocationId)?.available ?? 0
-    : totalAvailable;
+  const shippingLevel = shippingLocationId ? levels.find(l => l.locationId === shippingLocationId) : null;
+  let onlineAvailable = shippingLevel?.available ?? (shippingLocationId ? 0 : totalAvailable);
+
+  // Last-unit protection: if on_hand = 1 at shipping location, hold it (security stock acts as floor)
+  // This means the last physical unit stays for display/fitting unless security stock is explicitly set to 0
+  if (shippingLevel && shippingLevel.onHand <= 1 && (shippingLevel.securityStock ?? 0) >= 1) {
+    onlineAvailable = 0;
+  }
 
   // Find all Shopify variants for this family+colour
   const members = await db.select({ productId: productFamilyMembers.productId })
@@ -226,16 +231,38 @@ export async function projectToChannels(familyId: string | null, colour: string 
         .where(eq(productVariantsProjection.shopifyVariantId, v.shopifyVariantId));
     }
 
-    // Push to Shopify Admin API
+    // Push to Shopify Admin API — online gets shipping location available only
     try {
       const { shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
       const shippingLoc = await db.select().from(locations).where(eq(locations.id, shippingLocationId!));
       const shopifyLocId = shippingLoc[0]?.shopifyLocationId;
       if (shopifyLocId) {
+        // Oversell prevention: never push negative, floor at 0
+        const safeOnline = Math.max(0, onlineAvailable);
         for (const v of variants) {
-          await shopifySetInventory(v.shopifyVariantId, shopifyLocId, onlineAvailable);
+          await shopifySetInventory(v.shopifyVariantId, shopifyLocId, safeOnline);
         }
       }
     } catch (e) { console.error('[inventory] Shopify push failed:', e); }
+
+    // Push to Square — each location gets its own available
+    try {
+      const { squareSetInventory } = await import('@/lib/square/inventory-write');
+      const { productMappings } = await import('@/lib/db/schema');
+      const allLocs = await db.select().from(locations);
+      const mappings = await db.execute(sql`
+        SELECT square_catalog_id, shopify_product_id FROM product_mappings
+        WHERE shopify_product_id IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
+        AND status IN ('confirmed', 'auto', 'manual')
+      `);
+      for (const mapping of mappings.rows as any[]) {
+        for (const level of levels) {
+          const loc = allLocs.find(l => l.id === level.locationId);
+          if (loc?.squareLocationId && mapping.square_catalog_id) {
+            await squareSetInventory(mapping.square_catalog_id, loc.squareLocationId, Math.max(0, level.available));
+          }
+        }
+      }
+    } catch (e) { console.error('[inventory] Square push failed:', e); }
   }
 }

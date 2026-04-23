@@ -862,7 +862,16 @@ function InventorySection({ productId }: { productId: string }) {
                       <td style={{ padding: '6px 10px', fontWeight: 500 }}>{l.locationName}</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right' }}>{l.onHand}</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', color: l.committed > 0 ? '#d97706' : '#9ca3af' }}>{l.committed}</td>
-                      <td style={{ padding: '6px 10px', textAlign: 'right', color: '#9ca3af' }}>{l.securityStock}</td>
+                      <td style={{ padding: '6px 10px', textAlign: 'right', color: '#9ca3af' }}>
+                        <input type="number" min="0" value={l.securityStock} onChange={async e => {
+                          const val = parseInt(e.target.value) || 0;
+                          const delta = val - l.securityStock;
+                          if (delta === 0) return;
+                          await fetch('/api/crm/inventory', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'adjust', familyId: l.familyId, colour: l.colour, locationId: l.locationId, field: 'security_stock', delta, reason: 'manual' }) });
+                          load();
+                        }} style={{ width: 40, fontSize: 11, textAlign: 'right', border: 'none', background: 'transparent', color: '#9ca3af', padding: 0 }} />
+                      </td>
                       <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: l.available > 0 ? '#065f46' : '#dc2626' }}>{l.available}</td>
                       <td style={{ padding: '6px 10px', textAlign: 'right' }}>
                         <button onClick={() => { setAdjusting(adjusting === l.id ? null : l.id); setAdjDelta(''); setAdjNote(''); }} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer' }}>±</button>
