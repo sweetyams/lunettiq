@@ -21,7 +21,7 @@ export default function FamiliesPage() {
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showAddSquare, setShowAddSquare] = useState(false);
-  const [linkFilter, setLinkFilter] = useState<'all' | 'shopify' | 'square'>('all');
+  const [linkFilter, setLinkFilter] = useState<'all' | 'shopify' | 'square'>('shopify');
   const [memberSearch, setMemberSearch] = useState('');
   const [squareSearch, setSquareSearch] = useState('');
   const [squareItems, setSquareItems] = useState<Array<{ squareCatalogId: string; squareName: string; parsedFrame: string | null; parsedColour: string | null; parsedType: string | null }>>([]);
@@ -174,11 +174,12 @@ export default function FamiliesPage() {
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Filter…" className="crm-input" style={{ fontSize: 'var(--crm-text-xs)', width: '100%', marginBottom: 6 }} />
           <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-            {([['all', 'All'], ['shopify', 'Shopify'], ['square', 'Square-only']] as const).map(([key, label]) => (
+            {([['shopify', 'Shopify'], ['square', 'Square'], ['all', 'All']] as const).map(([key, label]) => (
               <button key={key} onClick={() => setLinkFilter(key)} style={{
-                fontSize: 10, padding: '3px 8px', borderRadius: 12, cursor: 'pointer', border: 'none',
-                background: linkFilter === key ? (key === 'square' ? '#FFFBEB' : key === 'shopify' ? '#DBEAFE' : 'var(--crm-text-primary)') : 'var(--crm-surface-hover)',
-                color: linkFilter === key ? (key === 'square' ? '#92400E' : key === 'shopify' ? '#1E40AF' : 'white') : 'var(--crm-text-tertiary)',
+                fontSize: 10, padding: '3px 10px', borderRadius: 4, cursor: 'pointer', border: 'none',
+                background: linkFilter === key ? (key === 'square' ? '#fef3c7' : key === 'shopify' ? '#dbeafe' : 'var(--crm-text-primary)') : 'var(--crm-surface-hover)',
+                color: linkFilter === key ? (key === 'square' ? '#92400e' : key === 'shopify' ? '#1e40af' : '#fff') : 'var(--crm-text-tertiary)',
+                fontWeight: linkFilter === key ? 600 : 400,
               }}>{label}</button>
             ))}
           </div>
@@ -227,7 +228,7 @@ export default function FamiliesPage() {
         </div>
 
         {/* Right: members */}
-        <div className="crm-card" style={{ padding: 'var(--crm-space-3)' }}>
+        <div style={{ padding: 'var(--crm-space-3)' }}>
           {!activeFamily ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-sm)' }}>Select a family to manage members</div>
           ) : activeFamily === '__unassigned' ? (
@@ -288,31 +289,47 @@ export default function FamiliesPage() {
                 ))}
               </div>
 
-              {/* Members list */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {familyMembers.map(m => (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-3)', padding: '8px 4px', borderBottom: '1px solid var(--crm-border-light)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                      {m.image ? (
-                        <img src={m.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5', flexShrink: 0 }} />
-                      ) : (
-                        <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5', flexShrink: 0 }} />
-                      )}
-                      <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</span>
-                      {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#d1fae5' : m.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600, flexShrink: 0 }}>{m.status}</span>}
-                    </div>
-                    <select value={m.type ?? ''} onChange={e => updateMember(m.id, 'type', e.target.value)}
-                      className="crm-input" style={{ fontSize: 10, padding: '2px 24px 2px 6px', width: 80 }}>
-                      <option value="optical">Optical</option>
-                      <option value="sun">Sun</option>
-                    </select>
-                    <input value={m.colour ?? ''} onChange={e => updateMember(m.id, 'colour', e.target.value)}
-                      className="crm-input" placeholder="colour" style={{ fontSize: 10, width: 90, padding: '2px 6px' }} />
-                    <input type="color" value={m.colour_hex ?? '#cccccc'} onChange={e => updateMember(m.id, 'colourHex', e.target.value)}
-                      style={{ width: 22, height: 22, border: '1px solid var(--crm-border)', borderRadius: 4, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
-                    <button onClick={() => removeMember(m.id)} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }} title="Remove">✕</button>
-                  </div>
-                ))}
+              {/* Members table */}
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Product</th>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280', width: 70 }}>Type</th>
+                      <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280', width: 90 }}>Colour</th>
+                      <th style={{ padding: '6px 10px', width: 30 }}></th>
+                      <th style={{ padding: '6px 10px', width: 30 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {familyMembers.map(m => (
+                      <tr key={m.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '6px 10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {m.image ? <img src={m.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
+                            <span style={{ fontWeight: 500 }}>{m.title}</span>
+                            {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#d1fae5' : m.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{m.status}</span>}
+                          </div>
+                        </td>
+                        <td style={{ padding: '6px 10px' }}>
+                          <select value={m.type ?? ''} onChange={e => updateMember(m.id, 'type', e.target.value)} className="crm-input" style={{ fontSize: 10, padding: '2px 20px 2px 4px', width: '100%' }}>
+                            <option value="optical">Optical</option>
+                            <option value="sun">Sun</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '6px 10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input value={m.colour ?? ''} onChange={e => updateMember(m.id, 'colour', e.target.value)} className="crm-input" placeholder="colour" style={{ fontSize: 10, width: '100%', padding: '2px 4px' }} />
+                            <input type="color" value={m.colour_hex ?? '#cccccc'} onChange={e => updateMember(m.id, 'colourHex', e.target.value)} style={{ width: 20, height: 20, border: '1px solid #e5e7eb', borderRadius: 3, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+                          </div>
+                        </td>
+                        <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                          <button onClick={() => removeMember(m.id)} style={{ fontSize: 10, color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer' }} title="Remove">✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </>
           )}

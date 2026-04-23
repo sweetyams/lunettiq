@@ -216,7 +216,7 @@ export default function FiltersPage() {
         </div>
 
         {/* Right: assignments */}
-        <div className="crm-card" style={{ padding: 'var(--crm-space-3)' }}>
+        <div style={{ padding: 'var(--crm-space-3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--crm-space-3)' }}>
             <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>
               {activeGroup === '__unassigned' ? `Unassigned products (no ${activeType})` : activeGroup ? `Products in "${typeGroups.find(g => g.id === activeGroup)?.label}"` : `All ${activeType} assignments`}
@@ -236,28 +236,29 @@ export default function FiltersPage() {
 
           {loading ? <div style={{ color: 'var(--crm-text-tertiary)', padding: 20 }}>Loading…</div> : activeGroup === '__unassigned' ? (
             /* Unassigned products table */
-            <table className="crm-table" style={{ width: '100%', fontSize: 'var(--crm-text-sm)' }}>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style={{ width: 180 }}>Assign to</th>
+                <tr style={{ background: '#f9fafb' }}>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Product</th>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280', width: 180 }}>Assign to</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUnassigned.map(p => (
-                  <tr key={p.id}>
-                    <td>
+                  <tr key={p.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '6px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {p.image && <img src={p.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
                         <div>
-                          <div style={{ fontWeight: 500 }}>
+                          <div style={{ fontWeight: 500, fontSize: 12 }}>
                             {p.title}
                             {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td style={{ padding: '6px 10px' }}>
                       <select
                         defaultValue=""
                         onChange={e => { if (e.target.value) { assignToGroup(p.id, e.target.value); e.target.value = ''; } }}
@@ -272,43 +273,35 @@ export default function FiltersPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           ) : (
-            <table className="crm-table" style={{ width: '100%', fontSize: 'var(--crm-text-sm)' }}>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr>
-                  <th>Product</th>
-                  {!activeGroup && <th>Filter</th>}
-                  <th style={{ width: 80 }}>Status</th>
-                  <th style={{ width: 120 }}>Actions</th>
+                <tr style={{ background: '#f9fafb' }}>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Product</th>
+                  {!activeGroup && <th style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 500, fontSize: 10, color: '#6b7280' }}>Filter</th>}
+                  <th style={{ padding: '6px 10px', width: 30 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {groupAssignments.map(a => (
-                  <tr key={a.id}>
-                    <td>
+                  <tr key={a.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '6px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {a.image && <img src={a.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
-                        <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 500 }}>{a.title}{a.product_status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: a.product_status === 'active' ? '#d1fae5' : a.product_status === 'draft' ? '#fef3c7' : '#f3f4f6', color: a.product_status === 'active' ? '#065f46' : a.product_status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{a.product_status}</span>}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{a.title}{a.product_status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: a.product_status === 'active' ? '#d1fae5' : a.product_status === 'draft' ? '#fef3c7' : '#f3f4f6', color: a.product_status === 'active' ? '#065f46' : a.product_status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{a.product_status}</span>}</div>
                       </div>
                     </td>
-                    {!activeGroup && <td style={{ fontSize: 'var(--crm-text-xs)' }}>{a.filter_group_id}</td>}
-                    <td>
-                      <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 500, background: `${STATUS_COLOURS[a.status] ?? '#9ca3af'}15`, color: STATUS_COLOURS[a.status] ?? '#9ca3af' }}>
-                        {STATUS_LABELS[a.status] ?? a.status}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {a.status === 'auto' && (
-                          <button onClick={() => confirmAssignment(a.id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #16a34a', background: 'none', color: '#16a34a', cursor: 'pointer' }}>Confirm</button>
-                        )}
-                        <button onClick={() => removeAssignment(a.product_id, a.filter_group_id)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #dc2626', background: 'none', color: '#dc2626', cursor: 'pointer' }}>Remove</button>
-                      </div>
+                    {!activeGroup && <td style={{ padding: '6px 10px', fontSize: 11, color: '#6b7280' }}>{a.filter_group_id}</td>}
+                    <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                      <button onClick={() => removeAssignment(a.product_id, a.filter_group_id)} style={{ fontSize: 10, color: '#d1d5db', background: 'none', border: 'none', cursor: 'pointer' }} title="Remove">✕</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           {!loading && groupAssignments.length === 0 && (
             <div style={{ padding: 20, textAlign: 'center', color: 'var(--crm-text-tertiary)', fontSize: 'var(--crm-text-sm)' }}>
