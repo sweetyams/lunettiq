@@ -14,67 +14,69 @@ export interface MetafieldField {
   label: string;     // display label
   group: string;     // group key
   unit?: string;     // suffix e.g. ' mm', ' g'
+  type?: string;     // Shopify metafield type e.g. 'single_line_text_field', 'number_integer', 'boolean'
 }
 
 export const METAFIELD_GROUPS: MetafieldGroup[] = [
   {
     key: 'details', label: 'Product Details',
     fields: [
-      { key: 'product_name', label: 'Product Name', group: 'details' },
-      { key: 'product_type', label: 'Product Type', group: 'details' },
-      { key: 'collection', label: 'Collection', group: 'details' },
+      { key: 'product_name', label: 'Product Name', group: 'details', type: 'single_line_text_field' },
+      { key: 'product_type', label: 'Product Type', group: 'details', type: 'single_line_text_field' },
+      { key: 'collection', label: 'Collection', group: 'details', type: 'single_line_text_field' },
+      { key: 'designer_notes', label: 'Designer Notes', group: 'details', type: 'multi_line_text_field' },
     ],
   },
   {
     key: 'design', label: 'Frame Design',
     fields: [
-      { key: 'frame_shape', label: 'Frame Shape', group: 'design' },
-      { key: 'frame_thickness', label: 'Frame Thickness', group: 'design' },
-      { key: 'brow_line', label: 'Brow Line', group: 'design' },
-      { key: 'bridge_shape', label: 'Bridge Shape', group: 'design' },
-      { key: 'temple_thickness', label: 'Temple Thickness', group: 'design' },
-      { key: 'temple_split', label: 'Temple Split', group: 'design' },
-      { key: 'frame_construction', label: 'Frame Construction', group: 'design' },
+      { key: 'frame_shape', label: 'Frame Shape', group: 'design', type: 'single_line_text_field' },
+      { key: 'frame_thickness', label: 'Frame Thickness', group: 'design', type: 'single_line_text_field' },
+      { key: 'brow_line', label: 'Brow Line', group: 'design', type: 'single_line_text_field' },
+      { key: 'bridge_shape', label: 'Bridge Shape', group: 'design', type: 'single_line_text_field' },
+      { key: 'temple_thickness', label: 'Temple Thickness', group: 'design', type: 'single_line_text_field' },
+      { key: 'temple_split', label: 'Temple Split', group: 'design', type: 'single_line_text_field' },
+      { key: 'frame_construction', label: 'Frame Construction', group: 'design', type: 'single_line_text_field' },
     ],
   },
   {
     key: 'materials_components', label: 'Materials & Components',
     fields: [
-      { key: 'frame_material', label: 'Frame Material', group: 'materials_components' },
-      { key: 'nose_pad_type', label: 'Nose Pad Type', group: 'materials_components' },
-      { key: 'nose_fit', label: 'Nose Fit', group: 'materials_components' },
-      { key: 'frame_finish', label: 'Frame Finish', group: 'materials_components' },
-      { key: 'frame_pattern', label: 'Frame Pattern', group: 'materials_components' },
+      { key: 'frame_material', label: 'Frame Material', group: 'materials_components', type: 'single_line_text_field' },
+      { key: 'nose_pad_type', label: 'Nose Pad Type', group: 'materials_components', type: 'single_line_text_field' },
+      { key: 'nose_fit', label: 'Nose Fit', group: 'materials_components', type: 'single_line_text_field' },
+      { key: 'frame_finish', label: 'Frame Finish', group: 'materials_components', type: 'single_line_text_field' },
+      { key: 'frame_pattern', label: 'Frame Pattern', group: 'materials_components', type: 'single_line_text_field' },
     ],
   },
   {
     key: 'fit_sizing', label: 'Fit & Sizing',
     fields: [
-      { key: 'face_width_fit', label: 'Face Fit Width', group: 'fit_sizing' },
-      { key: 'lens_width', label: 'Lens Width', group: 'fit_sizing', unit: ' mm' },
-      { key: 'bridge_width', label: 'Bridge Width', group: 'fit_sizing', unit: ' mm' },
-      { key: 'temple_length', label: 'Temple Length', group: 'fit_sizing', unit: ' mm' },
-      { key: 'lens_height', label: 'Lens Height', group: 'fit_sizing', unit: ' mm' },
-      { key: 'front_height', label: 'Front Height', group: 'fit_sizing', unit: ' mm' },
-      { key: 'overall_frame_width', label: 'Overall Frame Width', group: 'fit_sizing', unit: ' mm' },
-      { key: 'weight_grams', label: 'Weight', group: 'fit_sizing', unit: ' g' },
+      { key: 'face_width_fit', label: 'Face Fit Width', group: 'fit_sizing', type: 'single_line_text_field' },
+      { key: 'lens_width', label: 'Lens Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'bridge_width', label: 'Bridge Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'temple_length', label: 'Temple Length', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'lens_height', label: 'Lens Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'front_height', label: 'Front Height', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'overall_frame_width', label: 'Overall Frame Width', group: 'fit_sizing', unit: ' mm', type: 'number_integer' },
+      { key: 'weight_grams', label: 'Weight', group: 'fit_sizing', unit: ' g', type: 'number_decimal' },
     ],
   },
   {
     key: 'compatibility', label: 'Compatibility',
     fields: [
-      { key: 'prescription_compatible', label: 'Prescription Compatible', group: 'compatibility' },
-      { key: 'progressive_suitable', label: 'Progressive Suitable', group: 'compatibility' },
-      { key: 'high_prescription_suitable', label: 'High Prescription Suitable', group: 'compatibility' },
-      { key: 'clip_on_compatible', label: 'Clip-On Compatible', group: 'compatibility' },
+      { key: 'prescription_compatible', label: 'Prescription Compatible', group: 'compatibility', type: 'boolean' },
+      { key: 'progressive_suitable', label: 'Progressive Suitable', group: 'compatibility', type: 'boolean' },
+      { key: 'high_prescription_suitable', label: 'High Prescription Suitable', group: 'compatibility', type: 'boolean' },
+      { key: 'clip_on_compatible', label: 'Clip-On Compatible', group: 'compatibility', type: 'boolean' },
     ],
   },
   {
     key: 'colour', label: 'Colour',
     fields: [
-      { key: 'primary_frame_colour', label: 'Primary Frame Colour', group: 'colour' },
-      { key: 'secondary_frame_colour', label: 'Secondary Frame Colour', group: 'colour' },
-      { key: 'default_lens_colour', label: 'Default Lens Colour', group: 'colour' },
+      { key: 'primary_frame_colour', label: 'Primary Frame Colour', group: 'colour', type: 'single_line_text_field' },
+      { key: 'secondary_frame_colour', label: 'Secondary Frame Colour', group: 'colour', type: 'single_line_text_field' },
+      { key: 'default_lens_colour', label: 'Default Lens Colour', group: 'colour', type: 'single_line_text_field' },
     ],
   },
 ];
@@ -110,6 +112,19 @@ export const OLD_KEY_MAP: Record<string, string> = {
 };
 
 /**
+ * Strip unit suffixes from values (e.g. "52 mm" → "52", "28g" → "28")
+ */
+function stripUnits(value: string): string {
+  return value.replace(/\s*(mm|g|cm|kg|oz|in)\s*$/i, '').trim();
+}
+
+/** Keys whose values should have units stripped */
+const NUMERIC_KEYS = new Set([
+  'lens_width', 'bridge_width', 'temple_length', 'lens_height',
+  'front_height', 'overall_frame_width', 'weight_grams', 'frame_width',
+]);
+
+/**
  * Remap a flat {key: value} object from old keys to new canonical keys.
  * Preserves old keys alongside new ones for comparison.
  */
@@ -118,8 +133,9 @@ export function remapMetafields(old: Record<string, string>): Record<string, str
   for (const [k, v] of Object.entries(old)) {
     if (v == null || v === '') continue;
     const newKey = OLD_KEY_MAP[k] ?? k;
+    const cleaned = NUMERIC_KEYS.has(k) || NUMERIC_KEYS.has(newKey) ? stripUnits(v) : v;
     // New key takes precedence — don't overwrite if already set
-    if (!result[newKey]) result[newKey] = v;
+    if (!result[newKey]) result[newKey] = cleaned;
     // Keep old key too for comparison period
     if (newKey !== k) result[k] = v;
   }

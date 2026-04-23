@@ -11,6 +11,8 @@ const ACTIONS = [
   { id: 'backfill-locations', label: 'Backfill Locations', description: 'Assign location_id to Square orders missing it', endpoint: '/api/crm/system/backfill-locations' },
   { id: 'inventory-sync', label: 'Inventory Sync', description: 'Pull stock levels from Shopify for all locations', endpoint: '/api/crm/inventory/sync' },
   { id: 'seed-colour-groups', label: 'Seed Colour Groups', description: 'Create default colour groups if none exist', endpoint: '/api/crm/system/seed-colour-groups' },
+  { id: 'metafield-setup', label: 'Setup Metafield Definitions', description: 'Create canonical metafield definitions on Shopify (31 fields, 6 groups)', endpoint: '/api/crm/system/metafield-setup' },
+  { id: 'metafield-import', label: 'Import & Transform Metafields', description: 'Remap existing metafield data to new keys on Shopify (strips units, renames keys)', endpoint: '/api/crm/system/metafield-import' },
 ];
 
 export default function SystemSetupPage() {
