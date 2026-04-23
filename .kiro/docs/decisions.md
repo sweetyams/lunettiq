@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-013: Locations Full CRUD + Non-Destructive Sync
+
+**Date:** 2026-04-23 · **Status:** Accepted
+
+**Context:** Locations settings only supported editing and syncing. Sync from Shopify+Square overwrote all fields (`name`, `shopifyLocationId`, `squareLocationId`, `address`, `active`) on every run, destroying manual edits and channel connections. No way to add or delete locations manually.
+
+**Decision:** (1) Added POST (create) and DELETE endpoints to `/api/crm/settings/locations`. POST generates `loc_` prefixed slug IDs matching the sync convention, checks for duplicates. (2) Rewrote sync to be non-destructive: existing locations matched by channel ID only get `address` and `syncedAt` updated — `name`, channel connections, `locationType`, `timezone`, `fulfillsOnline`, `active` are preserved. Only truly new locations are inserted. Removed automatic fuzzy name-matching between Shopify and Square — channel linking is now a manual choice via the UI picker. (3) Added "Add Location" form and "Delete" button to LocationsClient.
+
+**Consequences:** Staff can manually manage locations without sync overwriting their work. Channel connections are stable. New Shopify/Square locations still auto-import on sync. Emoji icons replaced with inline SVGs matching CRM icon system.
+
+---
+
 ### ADR-012: CRM Permission Guards — Redirect, Sidebar Filtering, UI Gating
 
 **Date:** 2026-04-23 · **Status:** Accepted

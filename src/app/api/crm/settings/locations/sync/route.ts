@@ -33,46 +33,57 @@ export const POST = handler(async () => {
     } catch {}
   }
 
-  // Upsert Shopify locations
-  const rows = shopifyLocations.map((loc: any) => {
+  // Fetch existing locations to preserve manual edits
+  const existing = await db.select().from(locations);
+  const existingById = new Map(existing.map(l => [l.id, l]));
+  const existingByShopifyId = new Map(existing.filter(l => l.shopifyLocationId).map(l => [l.shopifyLocationId!, l]));
+  const existingBySquareId = new Map(existing.filter(l => l.squareLocationId).map(l => [l.squareLocationId!, l]));
+
+  // Track which Shopify/Square IDs are still present in source
+  const activeShopifyIds = new Set<string>();
+  const activeSquareIds = new Set<string>();
+
+  // Upsert Shopify locations — only insert new, preserve existing edits
+  for (const loc of shopifyLocations) {
+    const shopifyId = String(loc.id);
+    activeShopifyIds.add(shopifyId);
+    const address = { address1: loc.address1, city: loc.city, province: loc.province, country: loc.country, zip: loc.zip };
+
+    // Check if already linked by shopifyLocationId
+    const linked = existingByShopifyId.get(shopifyId);
+    if (linked) {
+      // Only update address + syncedAt, preserve name and connections
+      await db.update(locations).set({ address, syncedAt: new Date() }).where(eq(locations.id, linked.id));
+      continue;
+    }
+
+    // New location — insert
     const id = `loc_${loc.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    const locName = loc.name.toLowerCase();
-
-    // Match Square location by name similarity
-    const squareMatch = squareLocations.find(sq =>
-      sq.name.toLowerCase().includes(locName) || locName.includes(sq.name.toLowerCase())
-    );
-
-    return {
+    await db.insert(locations).values({
       id,
-      shopifyLocationId: String(loc.id),
-      squareLocationId: squareMatch?.id ?? null,
+      shopifyLocationId: shopifyId,
       name: loc.name,
-      address: { address1: loc.address1, city: loc.city, province: loc.province, country: loc.country, zip: loc.zip },
+      address,
       active: loc.active,
       syncedAt: new Date(),
-    };
-  });
-
-  for (const row of rows) {
-    await db.insert(locations).values(row).onConflictDoUpdate({
+    }).onConflictDoUpdate({
       target: locations.id,
-      set: {
-        name: row.name,
-        shopifyLocationId: row.shopifyLocationId,
-        squareLocationId: row.squareLocationId,
-        address: row.address,
-        active: row.active,
-        syncedAt: row.syncedAt,
-      },
+      // If id exists but no shopifyLocationId, link it
+      set: { shopifyLocationId: shopifyId, address, syncedAt: new Date() },
     });
   }
 
-  // Handle Square locations that don't match any Shopify location
-  const matchedSquareIds = new Set(rows.map(r => r.squareLocationId).filter(Boolean));
-  const unmatchedSquare = squareLocations.filter(sq => !matchedSquareIds.has(sq.id));
+  // Upsert Square locations — only insert new, preserve existing edits
+  for (const sq of squareLocations) {
+    activeSquareIds.add(sq.id);
+    const linked = existingBySquareId.get(sq.id);
+    if (linked) {
+      // Already linked, just update syncedAt
+      await db.update(locations).set({ syncedAt: new Date() }).where(eq(locations.id, linked.id));
+      continue;
+    }
 
-  for (const sq of unmatchedSquare) {
+    // New Square location — insert
     const id = `loc_${sq.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     await db.insert(locations).values({
       id,
@@ -87,5 +98,5 @@ export const POST = handler(async () => {
     });
   }
 
-  return jsonOk({ synced: rows.length, squareMatched: rows.filter(r => r.squareLocationId).length, squareUnmatched: unmatchedSquare.length });
+  return jsonOk({ synced: shopifyLocations.length, squareTotal: squareLocations.length });
 });
