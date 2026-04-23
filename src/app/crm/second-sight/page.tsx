@@ -1,11 +1,12 @@
 import { requirePermission } from '@/lib/crm/auth';
+import { hasPermission } from '@/lib/crm/permissions';
 import { db } from '@/lib/db';
 import { secondSightIntakes, customersProjection } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 
 export default async function SecondSightPage() {
-  await requirePermission('org:second_sight:read');
+  const session = await requirePermission('org:second_sight:read');
   const intakes = await db
     .select({
       id: secondSightIntakes.id,
@@ -25,9 +26,11 @@ export default async function SecondSightPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Second Sight</h1>
+        {hasPermission(session.role, 'org:second_sight:create') && (
         <Link href="/crm/second-sight/new" className="px-4 py-2 bg-neutral-900 text-white text-sm rounded hover:bg-neutral-800">
           New Intake
         </Link>
+        )}
       </div>
 
       <div className="bg-white border border-neutral-200 rounded overflow-hidden">

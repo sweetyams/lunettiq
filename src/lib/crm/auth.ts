@@ -76,9 +76,15 @@ export async function requireCrmAuth(permission?: string): Promise<CrmSession> {
   return session;
 }
 
-/** Require auth + specific permission. Returns session. */
+/** Require auth + specific permission. Returns session. Redirects to /crm/denied on 403. */
 export async function requirePermission(permission: string): Promise<CrmSession> {
-  return requireCrmAuth(permission);
+  const session = await getCrmSession();
+  if (!session) throwAuth('Unauthorized', 401);
+  if (!hasPermission(session.role, permission)) {
+    const { redirect } = await import('next/navigation');
+    redirect('/crm/denied');
+  }
+  return session;
 }
 
 /** Require auth + any of the listed permissions. Returns session. */

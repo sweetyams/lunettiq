@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/crm/CrmShell';
+import { usePermission } from '@/lib/crm/use-permissions';
 
 interface Segment { id: string; name: string; description: string | null; memberCount: number; updatedAt: string }
 interface Condition { field: string; operator: string; value: string }
@@ -64,6 +65,7 @@ function getOperators(field: string) {
 
 export default function SegmentsPage() {
   const { toast } = useToast();
+  const canCreate = usePermission('org:segments:create');
   const [segments, setSegments] = useState<Segment[]>([]);
   const [building, setBuilding] = useState(false);
   const [conditions, setConditions] = useState<Condition[]>([{ field: 'order_count', operator: 'gt', value: '' }]);
@@ -190,6 +192,7 @@ export default function SegmentsPage() {
           <p style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>Group clients by rules or let AI suggest segments</p>
         </div>
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
+          {canCreate && <>
           <button onClick={handleAiAnalyze} disabled={aiLoading} className="crm-btn crm-btn-secondary">
             {aiLoading && aiMode === 'analyze' ? 'Analyzing…' : '◆ AI Analyze'}
           </button>
@@ -199,6 +202,7 @@ export default function SegmentsPage() {
           <button onClick={() => { setBuilding(!building); setPreview(null); }} className={building ? 'crm-btn crm-btn-secondary' : 'crm-btn crm-btn-primary'}>
             {building ? 'Cancel' : '+ New Segment'}
           </button>
+          </>}
         </div>
       </div>
 

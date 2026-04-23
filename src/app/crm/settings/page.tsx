@@ -9,18 +9,28 @@ const SETTINGS_GROUPS = [
       { href: '/crm/settings/families', label: 'Families', description: 'Group products by model for colour/type switching' },
       { href: '/crm/settings/filters', label: 'Filters', description: 'Manage colour, shape, size filter assignments' },
       { href: '/crm/settings/product-mapping', label: 'Square Mapping', description: 'Link Square catalog items to Shopify products' },
-      { href: '/crm/settings/product-options', label: 'Configurator Builder', description: 'Flows, steps, choices, pricing rules, and constraints' },
+      { href: '/crm/settings/metafield-visibility', label: 'Metafields', description: 'Choose which fields show on product pages' },
+    ],
+  },
+  {
+    title: 'Configurator',
+    items: [
+      { href: '/crm/settings/product-options', label: 'Builder', description: 'Flows, steps, choices, pricing rules, and constraints' },
       { href: '/crm/settings/product-options/flows', label: 'Flows', description: 'Configurator flows and product assignment rules' },
       { href: '/crm/settings/lens-colours', label: 'Lens Colours', description: 'Colour palettes for tints, polarized, transitions, and custom dips' },
-      { href: '/crm/settings/inventory', label: 'Inventory', description: 'Security stock, shipping location, low stock thresholds' },
-      { href: '/crm/settings/metafield-visibility', label: 'Metafields', description: 'Choose which fields show on product pages' },
+    ],
+  },
+  {
+    title: 'Inventory',
+    items: [
+      { href: '/crm/settings/inventory', label: 'Settings', description: 'Security stock, shipping location, low stock thresholds' },
+      { href: '/crm/settings/locations', label: 'Locations', description: 'Store locations and Shopify/Square linking' },
     ],
   },
   {
     title: 'Team',
     items: [
       { href: '/crm/settings/staff', label: 'Staff', description: 'Staff accounts and role assignment' },
-      { href: '/crm/settings/locations', label: 'Locations', description: 'Store locations and assignment' },
       { href: '/crm/settings/appointment-types', label: 'Appointments', description: 'Services offered for booking' },
     ],
   },

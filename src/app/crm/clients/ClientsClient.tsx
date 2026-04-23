@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { usePermission } from '@/lib/crm/use-permissions';
 
 interface Client {
   shopifyCustomerId: string;
@@ -24,6 +25,8 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 export default function ClientsClient() {
+  const canCreate = usePermission('org:clients:create');
+  const canMerge = usePermission('org:clients:merge');
   const [clients, setClients] = useState<Client[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
@@ -94,8 +97,8 @@ export default function ClientsClient() {
           </span>
         </div>
         <div style={{ display: 'flex', gap: 'var(--crm-space-2)' }}>
-          <Link href="/crm/clients/duplicates" className="crm-btn crm-btn-secondary">Duplicates</Link>
-          <Link href="/crm/clients/new" className="crm-btn crm-btn-primary">+ New Client</Link>
+          {canMerge && <Link href="/crm/clients/duplicates" className="crm-btn crm-btn-secondary">Duplicates</Link>}
+          {canCreate && <Link href="/crm/clients/new" className="crm-btn crm-btn-primary">+ New Client</Link>}
         </div>
       </div>
 

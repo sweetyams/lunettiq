@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 
-interface NavItem { href: string; label: string; icon: React.ReactNode; tour?: string }
+import { hasPermission, isValidRole, type CrmRole } from '@/lib/crm/permissions';
+
+interface NavItem { href: string; label: string; icon: React.ReactNode; tour?: string; permission?: string }
 interface NavGroup { label: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -17,44 +19,44 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Clients',
     items: [
-      { href: '/crm/clients', label: 'Clients', icon: <UsersIcon />, tour: 'sidebar-clients' },
-      { href: '/crm/segments', label: 'Segments', icon: <FilterIcon />, tour: 'sidebar-segments' },
-      { href: '/crm/appointments', label: 'Appointments', icon: <CalendarIcon />, tour: 'sidebar-appointments' },
+      { href: '/crm/clients', label: 'Clients', icon: <UsersIcon />, tour: 'sidebar-clients', permission: 'org:clients:read' },
+      { href: '/crm/segments', label: 'Segments', icon: <FilterIcon />, tour: 'sidebar-segments', permission: 'org:segments:read' },
+      { href: '/crm/appointments', label: 'Appointments', icon: <CalendarIcon />, tour: 'sidebar-appointments', permission: 'org:appointments:read' },
     ],
   },
   {
     label: 'Orders',
     items: [
-      { href: '/crm/orders', label: 'Orders', icon: <ShoppingBagIcon /> },
-      { href: '/crm/draft-orders', label: 'Draft Orders', icon: <ClipboardIcon /> },
+      { href: '/crm/orders', label: 'Orders', icon: <ShoppingBagIcon />, permission: 'org:orders:read' },
+      { href: '/crm/draft-orders', label: 'Draft Orders', icon: <ClipboardIcon />, permission: 'org:orders:read' },
     ],
   },
   {
     label: 'Products',
     items: [
-      { href: '/crm/products', label: 'Products', icon: <BoxIcon />, tour: 'sidebar-products' },
-      { href: '/crm/products/families', label: 'Families', icon: <CircleIcon /> },
-      { href: '/crm/inventory', label: 'Inventory', icon: <WarehouseIcon /> },
+      { href: '/crm/products', label: 'Products', icon: <BoxIcon />, tour: 'sidebar-products', permission: 'org:products:read' },
+      { href: '/crm/products/families', label: 'Families', icon: <CircleIcon />, permission: 'org:products:read' },
+      { href: '/crm/inventory', label: 'Inventory', icon: <WarehouseIcon />, permission: 'org:settings:business_config' },
     ],
   },
   {
     label: 'Loyalty',
     items: [
-      { href: '/crm/loyalty', label: 'Loyalty', icon: <DiamondIcon />, tour: 'sidebar-loyalty' },
-      { href: '/crm/second-sight', label: 'Second Sight', icon: <RecycleIcon /> },
+      { href: '/crm/loyalty', label: 'Loyalty', icon: <DiamondIcon />, tour: 'sidebar-loyalty', permission: 'org:membership:read' },
+      { href: '/crm/second-sight', label: 'Second Sight', icon: <RecycleIcon />, permission: 'org:second_sight:read' },
     ],
   },
   {
     label: 'Reports',
     items: [
-      { href: '/crm/reports/sales', label: 'Sales', icon: <ChartIcon /> },
-      { href: '/crm/reports/product-analysis', label: 'Analysis', icon: <ChartIcon /> },
+      { href: '/crm/reports/sales', label: 'Sales', icon: <ChartIcon />, permission: 'org:reports:read' },
+      { href: '/crm/reports/product-analysis', label: 'Analysis', icon: <ChartIcon />, permission: 'org:reports:read' },
     ],
   },
   {
     label: 'System',
     items: [
-      { href: '/crm/settings', label: 'Settings', icon: <GearIcon />, tour: 'sidebar-settings' },
+      { href: '/crm/settings', label: 'Settings', icon: <GearIcon />, tour: 'sidebar-settings', permission: 'org:settings:staff' },
     ],
   },
 ];
@@ -72,6 +74,14 @@ export function CrmSidebar() {
   const { user } = useUser();
   const meta = (user?.publicMetadata ?? {}) as { role?: string; locationIds?: string[] };
   const role = meta.role || 'sa';
+  const validRole = isValidRole(role) ? role : null;
+
+  const filteredGroups = NAV_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(item =>
+      !item.permission || !validRole || hasPermission(validRole, item.permission)
+    ),
+  })).filter(group => group.items.length > 0);
 
   return (
     <aside
@@ -92,8 +102,8 @@ export function CrmSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 py-2 px-2 overflow-y-auto">
-        {NAV_GROUPS.map((group, i) => (
-          <div key={group.label || '_home'} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < NAV_GROUPS.length - 1 ? '1px solid var(--crm-border-light)' : 'none' }}>
+        {filteredGroups.map((group, i) => (
+          <div key={group.label || '_home'} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: i < filteredGroups.length - 1 ? '1px solid var(--crm-border-light)' : 'none' }}>
             {group.label && (
               <div style={{ fontSize: 'var(--crm-text-xs)', fontWeight: 500, color: 'var(--crm-text-tertiary)', padding: '6px 10px 2px', letterSpacing: '0.03em', textTransform: 'uppercase' }}>
                 {group.label}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { usePermission } from '@/lib/crm/use-permissions';
 
 const TABS = [
   { href: '/crm/loyalty', label: 'Overview' },
@@ -9,11 +10,14 @@ const TABS = [
   { href: '/crm/loyalty/trials', label: 'Trials' },
   { href: '/crm/loyalty/events', label: 'Events' },
   { href: '/crm/loyalty/gifts', label: 'Gifts' },
-  { href: '/crm/settings/loyalty', label: 'Settings' },
+  { href: '/crm/settings/loyalty', label: 'Settings', permission: 'org:settings:business_config' },
 ];
 
 export default function LoyaltyLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const canSettings = usePermission('org:settings:business_config');
+
+  const visibleTabs = TABS.filter(t => !t.permission || canSettings);
 
   function isActive(href: string) {
     if (href === '/crm/loyalty') return pathname === '/crm/loyalty';
@@ -24,7 +28,7 @@ export default function LoyaltyLayout({ children }: { children: React.ReactNode 
     <div style={{ padding: 'var(--crm-space-6)' }}>
       <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-4)' }}>Loyalty</h1>
       <div style={{ display: 'flex', gap: 0, marginBottom: 'var(--crm-space-5)', borderBottom: '1px solid var(--crm-border-light)' }}>
-        {TABS.map(tab => (
+        {visibleTabs.map(tab => (
           <Link key={tab.href} href={tab.href} style={{
             padding: '8px 16px', fontSize: 'var(--crm-text-sm)', textDecoration: 'none',
             borderBottom: isActive(tab.href) ? '2px solid var(--crm-text-primary)' : '2px solid transparent',

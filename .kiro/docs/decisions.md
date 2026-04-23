@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-012: CRM Permission Guards — Redirect, Sidebar Filtering, UI Gating
+
+**Date:** 2026-04-23 · **Status:** Accepted
+
+**Context:** `requirePermission()` threw errors on 403, which Next.js strips in production Server Components — read_only users saw "Something went wrong" instead of a permission message. Sidebar showed all nav items regardless of role. Write-action buttons (New Client, New Segment, etc.) were visible to read-only users.
+
+**Decision:** Three-layer fix: (1) `requirePermission()` now uses `redirect('/crm/denied')` instead of throwing for 403s — clean UX in production. `requireCrmAuth()` still throws for API routes (caught by `handler()`). (2) Sidebar nav items carry an optional `permission` field; items are filtered client-side via `hasPermission(role, permission)`. (3) Write-action buttons (New Client, Duplicates, New Intake, New Segment, AI tools, Settings tab) are conditionally rendered based on role permissions using `usePermission()` hook or server-side `hasPermission()`.
+
+**Consequences:** read_only users see a clean "Forbidden" page instead of a crash. Sidebar only shows accessible sections. Write buttons are hidden for read-only roles. API layer remains the final guard — even if UI is bypassed, `requireCrmAuth('org:...')` blocks unauthorized writes.
+
+---
+
 ### ADR-011: Canonical Frame-Level Inventory
 
 **Date:** 2026-04-23 · **Status:** Accepted

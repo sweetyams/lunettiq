@@ -1,11 +1,12 @@
 import { requirePermission } from '@/lib/crm/auth';
+import { hasPermission } from '@/lib/crm/permissions';
 import { db } from '@/lib/db';
 import { customersProjection, ordersProjection, productsProjection, productVariantsProjection, appointments, interactions, secondSightIntakes, productFamilies, productFamilyMembers } from '@/lib/db/schema';
 import { sql, desc, gte, and, eq, lt } from 'drizzle-orm';
 import Link from 'next/link';
 
 export default async function CrmDashboardPage() {
-  await requirePermission('org:clients:read');
+  const session = await requirePermission('org:clients:read');
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -233,11 +234,11 @@ export default async function CrmDashboardPage() {
             <h2 style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600, marginBottom: 'var(--crm-space-3)' }}>Quick Actions</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {[
-                { label: 'New Appointment', href: '/crm/appointments/new', icon: '📅' },
-                { label: 'Second Sight Intake', href: '/crm/second-sight/new', icon: '👓', badge: pendingIntakes > 0 ? pendingIntakes : null },
-                { label: 'New Client', href: '/crm/clients/new', icon: '👤' },
-                { label: 'Product Analysis', href: '/crm/reports/product-analysis', icon: '📊' },
-              ].map(a => (
+                { label: 'New Appointment', href: '/crm/appointments/new', icon: '📅', permission: 'org:appointments:create' },
+                { label: 'Second Sight Intake', href: '/crm/second-sight/new', icon: '👓', badge: pendingIntakes > 0 ? pendingIntakes : null, permission: 'org:second_sight:create' },
+                { label: 'New Client', href: '/crm/clients/new', icon: '👤', permission: 'org:clients:create' },
+                { label: 'Product Analysis', href: '/crm/reports/product-analysis', icon: '📊', permission: 'org:reports:read' },
+              ].filter(a => hasPermission(session.role, a.permission)).map(a => (
                 <Link key={a.href} href={a.href} style={{ display: 'flex', alignItems: 'center', gap: 'var(--crm-space-2)', padding: '8px 10px', borderRadius: 8, textDecoration: 'none', color: 'var(--crm-text-primary)', fontSize: 'var(--crm-text-sm)', transition: 'background 100ms' }} className="crm-hover-surface crm-action-link">
                   <span>{a.icon}</span>
                   <span style={{ flex: 1 }}>{a.label}</span>
