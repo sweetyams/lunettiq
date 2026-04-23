@@ -258,7 +258,7 @@ export default function FamiliesPage() {
                           <div>
                             <div style={{ fontWeight: 500 }}>
                               {p.title}
-                              {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
+                              {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
                             </div>
                           </div>
                         </div>
@@ -319,7 +319,7 @@ export default function FamiliesPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {m.image ? <img src={m.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} /> : <div style={{ width: 32, height: 32, borderRadius: 4, background: '#f5f5f5' }} />}
                             <span style={{ fontWeight: 500 }}>{m.title}</span>
-                            {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#d1fae5' : m.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{m.status}</span>}
+                            {m.status && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.status === 'active' ? '#95FFB9' : m.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: m.status === 'active' ? '#065f46' : m.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{m.status}</span>}
                           </div>
                         </td>
                         <td style={{ padding: '6px 10px' }}>

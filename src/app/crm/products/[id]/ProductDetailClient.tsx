@@ -131,7 +131,7 @@ export function ProductDetailClient({ product, variants, siblings, shopifyAdminI
           <div className="crm-card" style={{ padding: 'var(--crm-space-5)' }}>
             <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600, marginBottom: 'var(--crm-space-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {product.title}
-              {product.status && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: product.status === 'active' ? '#d1fae5' : product.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: product.status === 'active' ? '#065f46' : product.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{product.status}</span>}
+              {product.status && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: product.status === 'active' ? '#95FFB9' : product.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: product.status === 'active' ? '#065f46' : product.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{product.status}</span>}
             </h1>
             <div style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-secondary)', marginBottom: 'var(--crm-space-4)' }}>
               {[product.vendor, product.productType].filter(Boolean).join(' · ')}
@@ -832,7 +832,7 @@ function InventorySection({ productId }: { productId: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
           <span style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>Inventory</span>
-          {levels.length > 0 && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: totalAvailable > 0 ? '#d1fae5' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600 }}>{totalAvailable} available</span>}
+          {levels.length > 0 && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: totalAvailable > 0 ? '#95FFB9' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600 }}>{totalAvailable} available</span>}
         </div>
         {open && <button onClick={e => { e.stopPropagation(); load(); }} style={{ fontSize: 10, color: 'var(--crm-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer' }}>↻ Refresh</button>}
       </button>

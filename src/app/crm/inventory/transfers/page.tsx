@@ -14,7 +14,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   requested: { bg: '#dbeafe', color: '#1e40af' },
   approved: { bg: '#fef3c7', color: '#92400e' },
   shipped: { bg: '#e0e7ff', color: '#3730a3' },
-  received: { bg: '#d1fae5', color: '#065f46' },
+  received: { bg: '#95FFB9', color: '#065f46' },
   cancelled: { bg: '#f3f4f6', color: '#6b7280' },
 };
 

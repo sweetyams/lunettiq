@@ -161,7 +161,7 @@ export default function InventoryPage() {
                       <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{colours.length} colour{colours.length !== 1 ? 's' : ''}</div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10, background: total > 5 ? '#d1fae5' : total > 0 ? '#fef3c7' : '#fef2f2', color: total > 5 ? '#065f46' : total > 0 ? '#92400e' : '#dc2626' }}>{total} available</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10, background: total > 5 ? '#95FFB9' : total > 0 ? '#fef3c7' : '#fef2f2', color: total > 5 ? '#065f46' : total > 0 ? '#92400e' : '#dc2626' }}>{total} available</span>
                 </div>
 
                 {/* Expanded: colour × location grid */}
@@ -228,7 +228,7 @@ export default function InventoryPage() {
                     {a.familyId ? `${a.familyId.replace(/-/g, ' ')} — ${(a.colour ?? '').replace(/-/g, ' ')}` : a.variantId ?? '—'}
                   </td>
                   <td style={{ padding: '6px 10px' }}>
-                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: a.reason === 'sale' ? '#dbeafe' : a.reason === 'return' ? '#d1fae5' : a.reason === 'damage' || a.reason === 'loss' ? '#fef2f2' : '#f3f4f6', color: a.reason === 'sale' ? '#1e40af' : a.reason === 'return' ? '#065f46' : a.reason === 'damage' || a.reason === 'loss' ? '#dc2626' : '#6b7280', fontWeight: 500 }}>{a.reason}</span>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 6, background: a.reason === 'sale' ? '#dbeafe' : a.reason === 'return' ? '#95FFB9' : a.reason === 'damage' || a.reason === 'loss' ? '#fef2f2' : '#f3f4f6', color: a.reason === 'sale' ? '#1e40af' : a.reason === 'return' ? '#065f46' : a.reason === 'damage' || a.reason === 'loss' ? '#dc2626' : '#6b7280', fontWeight: 500 }}>{a.reason}</span>
                   </td>
                   <td style={{ padding: '6px 10px', textAlign: 'right', fontWeight: 600, color: a.quantityChange > 0 ? '#16a34a' : a.quantityChange < 0 ? '#dc2626' : '#9ca3af' }}>
                     {a.quantityChange > 0 ? `+${a.quantityChange}` : a.quantityChange}

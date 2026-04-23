@@ -14,8 +14,8 @@ const RULE_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  published: { bg: '#d1fae5', color: '#065f46', label: 'Published' },
-  draft: { bg: '#fef3c7', color: '#92400e', label: 'Draft' },
+  published: { bg: '#95FFB9', color: '#065f46', label: 'Published' },
+  draft: { bg: '#CFEDFF', color: '#1e40af', label: 'Draft' },
   archived: { bg: '#f3f4f6', color: '#6b7280', label: 'Archived' },
 };
 

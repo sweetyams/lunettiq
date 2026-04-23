@@ -9,8 +9,8 @@ import { describe, it, expect } from 'vitest';
 function badgeStyle(status: string | null) {
   if (!status) return null;
   return {
-    background: status === 'active' ? '#d1fae5' : status === 'draft' ? '#fef3c7' : '#f3f4f6',
-    color: status === 'active' ? '#065f46' : status === 'draft' ? '#92400e' : '#6b7280',
+    background: status === 'active' ? '#d1fae5' : status === 'draft' ? '#CFEDFF' : '#f3f4f6',
+    color: status === 'active' ? '#065f46' : status === 'draft' ? '#1e40af' : '#6b7280',
     label: status,
   };
 }

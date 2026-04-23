@@ -74,7 +74,7 @@ export function InlineProductPicker({ excludeIds, multi, showVariants, onSelect,
   }, [products, excludeIds, query, vendorFilter, typeFilter]);
 
   const statusBadge = (s: string | null) => s ? (
-    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 8, background: s === 'active' ? '#d1fae5' : s === 'draft' ? '#fef3c7' : '#f3f4f6', color: s === 'active' ? '#065f46' : s === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{s}</span>
+    <span style={{ fontSize: 8, padding: '1px 5px', borderRadius: 8, background: s === 'active' ? '#95FFB9' : s === 'draft' ? '#CFEDFF' : '#f3f4f6', color: s === 'active' ? '#065f46' : s === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{s}</span>
   ) : null;
 
   if (loading) return <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#9ca3af' }}>Loading products…</div>;

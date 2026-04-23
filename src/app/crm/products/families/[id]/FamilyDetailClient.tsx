@@ -190,7 +190,7 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
                         {isPlaceholder ? <>{m.title} <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: '#FEF3C7', color: '#92400E', marginLeft: 4 }}>SQUARE</span></> : (
                           <Link href={`/crm/products/${m.productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>{m.title}</Link>
                         )}
-                        {m.productStatus && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.productStatus === 'active' ? '#d1fae5' : m.productStatus === 'draft' ? '#fef3c7' : '#f3f4f6', color: m.productStatus === 'active' ? '#065f46' : m.productStatus === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{m.productStatus}</span>}
+                        {m.productStatus && <span style={{ marginLeft: 4, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: m.productStatus === 'active' ? '#95FFB9' : m.productStatus === 'draft' ? '#CFEDFF' : '#f3f4f6', color: m.productStatus === 'active' ? '#065f46' : m.productStatus === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{m.productStatus}</span>}
                       </div>
                       <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)' }}>{m.colour}</div>
                     </div>

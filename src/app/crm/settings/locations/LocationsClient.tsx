@@ -250,7 +250,7 @@ function LocationInventory({ locationId }: { locationId: string }) {
       <button onClick={() => setOpen(!open)} style={{ fontSize: 10, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
         <span style={{ fontSize: 8, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>
         Inventory
-        {levels.length > 0 && <span style={{ padding: '0 5px', borderRadius: 8, background: totalAvailable > 0 ? '#d1fae5' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600, fontSize: 9 }}>{totalAvailable}</span>}
+        {levels.length > 0 && <span style={{ padding: '0 5px', borderRadius: 8, background: totalAvailable > 0 ? '#95FFB9' : '#fef2f2', color: totalAvailable > 0 ? '#065f46' : '#dc2626', fontWeight: 600, fontSize: 9 }}>{totalAvailable}</span>}
       </button>
       {open && (
         <div style={{ marginTop: 6 }}>

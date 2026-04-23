@@ -13,7 +13,7 @@ interface DraftOrder {
 const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   open: { bg: '#fef3c7', fg: '#92400e' },
   invoice_sent: { bg: '#dbeafe', fg: '#1e40af' },
-  completed: { bg: '#d1fae5', fg: '#065f46' },
+  completed: { bg: '#95FFB9', fg: '#065f46' },
 };
 
 export default function DraftOrdersPage() {

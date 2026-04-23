@@ -253,7 +253,7 @@ export default function FiltersPage() {
                         <div>
                           <div style={{ fontWeight: 500, fontSize: 12 }}>
                             {p.title}
-                            {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#d1fae5' : p.status === 'draft' ? '#fef3c7' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
+                            {p.status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: p.status === 'active' ? '#95FFB9' : p.status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: p.status === 'active' ? '#065f46' : p.status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{p.status}</span>}
                           </div>
                         </div>
                       </div>
@@ -290,7 +290,7 @@ export default function FiltersPage() {
                     <td style={{ padding: '6px 10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {a.image && <img src={a.image} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, background: '#f5f5f5' }} />}
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{a.title}{a.product_status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: a.product_status === 'active' ? '#d1fae5' : a.product_status === 'draft' ? '#fef3c7' : '#f3f4f6', color: a.product_status === 'active' ? '#065f46' : a.product_status === 'draft' ? '#92400e' : '#6b7280', fontWeight: 600 }}>{a.product_status}</span>}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{a.title}{a.product_status && <span style={{ marginLeft: 6, fontSize: 9, padding: '1px 5px', borderRadius: 8, background: a.product_status === 'active' ? '#95FFB9' : a.product_status === 'draft' ? '#CFEDFF' : '#f3f4f6', color: a.product_status === 'active' ? '#065f46' : a.product_status === 'draft' ? '#1e40af' : '#6b7280', fontWeight: 600 }}>{a.product_status}</span>}</div>
                       </div>
                     </td>
                     {!activeGroup && <td style={{ padding: '6px 10px', fontSize: 11, color: '#6b7280' }}>{a.filter_group_id}</td>}
