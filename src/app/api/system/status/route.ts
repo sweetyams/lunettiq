@@ -106,7 +106,18 @@ export async function GET() {
 
   // Inngest
   const inngestKey = await getKey('INNGEST_SIGNING_KEY');
-  statuses.push({ id: 'inngest', name: 'Inngest', status: inngestKey ? 'ok' : 'off', detail: inngestKey ? 'Configured' : 'Not configured' });
+  const inngestEventKey = await getKey('INNGEST_EVENT_KEY');
+  if (inngestKey) {
+    statuses.push({ id: 'inngest', name: 'Inngest', status: 'ok', detail: 'Cloud configured' });
+  } else {
+    // Check if local dev server is running
+    try {
+      const devRes = await fetch('http://127.0.0.1:8288/v0/health', { signal: AbortSignal.timeout(1000) });
+      statuses.push({ id: 'inngest', name: 'Inngest', status: devRes.ok ? 'ok' : 'error', detail: devRes.ok ? 'Dev server running' : 'Dev server error' });
+    } catch {
+      statuses.push({ id: 'inngest', name: 'Inngest', status: inngestEventKey ? 'ok' : 'off', detail: inngestEventKey ? 'Event key set' : 'Not configured — run: npx inngest-cli@latest dev' });
+    }
+  }
 
   // Anthropic
   const anthropicKey = await getKey('ANTHROPIC_API_KEY');
