@@ -37,19 +37,17 @@ async function resolveKey(keyName: string, dbConfigs: Map<string, Record<string,
 }
 
 export async function GET(request: NextRequest) {
-  // Auth: require Clerk session or bearer token
-  let authed = false;
+  // Auth: require CRM session or bearer token for monitoring
   try {
-    const { auth } = await import('@clerk/nextjs/server');
-    const { userId } = await auth();
-    if (userId) authed = true;
-  } catch {}
-  if (!authed) {
+    const { requireCrmAuth } = await import('@/lib/crm/auth');
+    await requireCrmAuth();
+  } catch {
     const secret = process.env.SYSTEM_STATUS_SECRET;
     const bearer = request.headers.get('authorization');
-    if (secret && bearer === `Bearer ${secret}`) authed = true;
+    if (!secret || bearer !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
-  if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const statuses: Status[] = [];
 
