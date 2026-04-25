@@ -71,6 +71,39 @@ export async function GET() {
     }));
   } else statuses.push({ id: 'square', name: 'Square POS', status: 'off', detail: 'Not configured' });
 
+  // Shopify Webhooks
+  if (adminToken && shopDomain) {
+    statuses.push(await check('shopify_webhooks', 'Shopify Webhooks', async () => {
+      const res = await fetch(`https://${shopDomain}/admin/api/2024-04/webhooks.json`, {
+        headers: { 'X-Shopify-Access-Token': adminToken },
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const d = await res.json();
+      const count = d.webhooks?.length ?? 0;
+      const topics = (d.webhooks ?? []).map((w: any) => w.topic);
+      const missing = ['orders/create', 'orders/updated', 'products/update', 'customers/create'].filter(t => !topics.includes(t));
+      if (missing.length) return `${count} registered, missing: ${missing.join(', ')}`;
+      return `${count} registered`;
+    }));
+  }
+
+  // Square Webhooks
+  if (squareToken) {
+    statuses.push(await check('square_webhooks', 'Square Webhooks', async () => {
+      const sqEnv = process.env.SQUARE_ENVIRONMENT ?? 'sandbox';
+      const sqBase = sqEnv === 'production' ? 'https://connect.squareup.com/v2' : 'https://connect.squareupsandbox.com/v2';
+      const res = await fetch(`${sqBase}/webhooks/subscriptions`, {
+        headers: { 'Authorization': `Bearer ${squareToken}`, 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const d = await res.json();
+      const subs = d.subscriptions ?? [];
+      if (!subs.length) throw new Error('No subscriptions registered');
+      const events = subs.flatMap((s: any) => s.event_types ?? []);
+      return `${subs.length} sub, ${events.length} events`;
+    }));
+  }
+
   // Inngest
   const inngestKey = await getKey('INNGEST_SIGNING_KEY');
   statuses.push({ id: 'inngest', name: 'Inngest', status: inngestKey ? 'ok' : 'off', detail: inngestKey ? 'Configured' : 'Not configured' });

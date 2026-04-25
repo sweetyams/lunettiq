@@ -11,7 +11,7 @@
 const token = process.env.SQUARE_ACCESS_TOKEN;
 const env = process.env.SQUARE_ENVIRONMENT ?? 'sandbox';
 const base = env === 'production' ? 'https://connect.squareup.com/v2' : 'https://connect.squareupsandbox.com/v2';
-const webhookUrl = process.argv[2] || process.env.SQUARE_WEBHOOK_URL || 'https://lunettiq.vercel.app/api/webhooks/square';
+const webhookUrl = process.argv[2] || 'https://lunettiq.vercel.app/api/webhooks/square';
 
 if (!token) { console.error('Missing SQUARE_ACCESS_TOKEN'); process.exit(1); }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/crm/CrmShell';
 
 interface Action { id: string; label: string; description: string; endpoint: string; estimate: string }
@@ -9,9 +9,8 @@ interface ActionGroup { label: string; description: string; actions: Action[] }
 const GROUPS: ActionGroup[] = [
   {
     label: 'Initial Setup',
-    description: 'Run once when connecting a new store. Creates the foundation — locations, metafield definitions, colour groups, and migrates existing data.',
+    description: 'Run once when connecting a new store. Creates metafield definitions, colour groups, and migrates existing data.',
     actions: [
-      { id: 'sync-locations', label: 'Sync Locations', description: 'Import locations from Shopify and Square. Creates local records for each physical and online location.', endpoint: '/api/crm/settings/locations/sync', estimate: '~5s' },
       { id: 'metafield-setup', label: 'Setup Metafield Definitions', description: 'Create 31 canonical product metafield definitions on Shopify (6 groups: details, design, materials, sizing, compatibility, colour). Also updates CRM visibility settings.', endpoint: '/api/crm/system/metafield-setup', estimate: '~30s' },
       { id: 'metafield-import', label: 'Migrate Existing Metafields', description: 'One-time migration: reads all namespaces (custom, udesly, etc.), remaps to new canonical keys on Shopify, strips unit suffixes (e.g. "52 mm" → "52").', endpoint: '/api/crm/system/metafield-import', estimate: '~60–90s' },
       { id: 'seed-colour-groups', label: 'Seed Colour Groups', description: 'Create default colour filter groups (Black, Brown, Gold, etc.) if none exist. Used for PLP colour filtering.', endpoint: '/api/crm/system/seed-colour-groups', estimate: '~2s' },
@@ -46,7 +45,12 @@ export default function SystemSetupPage() {
   const { toast } = useToast();
   const [running, setRunning] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+  const [statuses, setStatuses] = useState<Array<{ id: string; name: string; status: string; detail?: string }>>([]);
   const startTimes = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch('/api/system/status', { credentials: 'include' }).then(r => r.json()).then(d => setStatuses(d.data ?? [])).catch(() => {});
+  }, []);
 
   function runAction(id: string, label: string, endpoint: string) {
     setRunning(r => new Set(r).add(id));
@@ -78,6 +82,26 @@ export default function SystemSetupPage() {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--crm-space-5)' }}>
+        {/* Connection & Webhook Status */}
+        {statuses.length > 0 && (
+          <div>
+            <div style={{ marginBottom: 'var(--crm-space-2)' }}>
+              <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>System Status</div>
+              <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>Live connection checks. Webhooks must be registered for real-time sync.</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+              {statuses.filter(s => ['neon', 'shopify_admin', 'shopify_storefront', 'shopify_webhooks', 'square', 'square_webhooks', 'clerk', 'inngest'].includes(s.id)).map(s => (
+                <div key={s.id} className="crm-card" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: s.status === 'ok' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#d1d5db' }} />
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 500 }}>{s.name}</div>
+                    <div style={{ fontSize: 9, color: s.status === 'error' ? '#dc2626' : '#9ca3af' }}>{s.detail}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {GROUPS.map(g => (
           <div key={g.label}>
             <div style={{ marginBottom: 'var(--crm-space-2)' }}>
