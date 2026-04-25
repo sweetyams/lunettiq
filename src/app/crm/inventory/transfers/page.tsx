@@ -102,7 +102,7 @@ export default function TransfersPage() {
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 4 }}>From</label>
-              <select className="crm-input" style={{ width: '100%', fontSize: 12 }} value={fromLoc} onChange={e => setFromLoc(e.target.value)}>
+              <select className="crm-input" style={{ width: '100%', fontSize: 12 }} value={fromLoc} onChange={e => { setFromLoc(e.target.value); if (e.target.value === toLoc) setToLoc(''); }}>
                 <option value="">—</option>
                 {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
@@ -141,6 +141,8 @@ export default function TransfersPage() {
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={createTransfer} disabled={!fromLoc || !toLoc || !newLines.length} className="crm-btn crm-btn-primary" style={{ fontSize: 12, padding: '6px 16px' }}>Request Transfer</button>
             <button onClick={() => { setCreating(false); setNewLines([]); }} className="crm-btn crm-btn-ghost" style={{ fontSize: 12 }}>Cancel</button>
+          </div>
+          <p style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>Creates a request. Stock moves when origin marks it picked, not at request time.</p>
           </div>
         </div>
       )}

@@ -201,6 +201,13 @@ export default function InventoryPage() {
             const total = getFamilyTotal(fam.colours);
             const isOpen = expandedFamily === familyId;
             const colours = Array.from(fam.colours.entries());
+            const allLevels = colours.flatMap(([, locs]) => locs);
+            const totalOnHand = allLevels.reduce((s, l) => s + l.onHand, 0);
+            const familyHolds = holds.filter(h => h.familyId === familyId).length;
+            const topLoc = locations.reduce<{ name: string; units: number } | null>((best, loc) => {
+              const u = allLevels.filter(l => l.locationName === loc).reduce((s, l) => s + l.available, 0);
+              return !best || u > best.units ? { name: loc, units: u } : best;
+            }, null);
 
             return (
               <div key={familyId} style={{ border: '1px solid #e5e7eb', borderRadius: 10, background: '#fff', overflow: 'hidden' }}>
@@ -215,7 +222,12 @@ export default function InventoryPage() {
                       <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{colours.length} colour{colours.length !== 1 ? 's' : ''}</div>
                     </div>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10, background: total > 5 ? '#95FFB9' : total > 0 ? '#fef3c7' : '#fef2f2', color: total > 5 ? '#065f46' : total > 0 ? '#92400e' : '#dc2626' }}>{total} available</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>
+                      {totalOnHand} on hand{familyHolds > 0 && <span style={{ color: '#1e40af' }}> · {familyHolds} hold{familyHolds !== 1 ? 's' : ''}</span>}{topLoc && topLoc.units > 0 && <span> · {topLoc.name} {topLoc.units}</span>}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 10, background: total > 5 ? '#95FFB9' : total > 0 ? '#fef3c7' : '#fef2f2', color: total > 5 ? '#065f46' : total > 0 ? '#92400e' : '#dc2626' }}>{total} avail</span>
+                  </div>
                 </div>
 
                 {/* Expanded: colour × location grid */}
@@ -253,6 +265,11 @@ export default function InventoryPage() {
                         })}
                       </tbody>
                     </table>
+                    <div style={{ display: 'flex', gap: 4, padding: '8px 10px', borderTop: '1px solid #f3f4f6' }}>
+                      <Link href={`/crm/inventory/holds`} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', textDecoration: 'none' }}>Hold</Link>
+                      <Link href={`/crm/inventory/transfers`} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', textDecoration: 'none' }}>Transfer</Link>
+                      <Link href={`/crm/products/families/${familyId}`} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', color: '#6b7280', textDecoration: 'none' }}>View Family →</Link>
+                    </div>
                   </div>
                 )}
               </div>
