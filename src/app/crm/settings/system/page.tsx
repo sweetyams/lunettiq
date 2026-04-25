@@ -49,7 +49,7 @@ export default function SystemSetupPage() {
   const startTimes = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    fetch('/api/system/status', { credentials: 'include' }).then(r => r.json()).then(d => setStatuses(d.data ?? [])).catch(() => {});
+    fetch('/api/crm/system/status', { credentials: 'include' }).then(r => r.json()).then(d => setStatuses(d.data ?? [])).catch(() => {});
   }, []);
 
   function runAction(id: string, label: string, endpoint: string) {

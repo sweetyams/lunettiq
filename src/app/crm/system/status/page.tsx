@@ -18,7 +18,7 @@ export default function SystemStatusPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/system/status', { credentials: 'include' })
+    fetch('/api/crm/system/status', { credentials: 'include' })
       .then(r => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then(d => setStatuses(d.data ?? []))
       .catch(() => {})
