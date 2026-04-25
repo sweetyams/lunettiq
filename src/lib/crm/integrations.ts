@@ -21,7 +21,11 @@ const CACHE_TTL = 60_000;
 async function loadConfigs() {
   if (_cache && Date.now() - _cacheTime < CACHE_TTL) return _cache;
   const rows = await db.select().from(integrationsConfig);
-  _cache = new Map(rows.map(r => [r.id, { enabled: r.enabled ?? false, keys: (r.keys ?? {}) as Record<string, string> }]));
+  _cache = new Map(rows.map(r => {
+    let keys = r.keys ?? {};
+    if (typeof keys === 'string') keys = JSON.parse(keys);
+    return [r.id, { enabled: r.enabled ?? false, keys: keys as Record<string, string> }];
+  }));
   _cacheTime = Date.now();
   return _cache;
 }

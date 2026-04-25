@@ -43,7 +43,11 @@ export async function GET() {
   let dbConfigs = new Map<string, Record<string, string>>();
   try {
     const rows = await db.select().from(integrationsConfig);
-    dbConfigs = new Map(rows.filter(r => r.enabled).map(r => [r.id, (r.keys ?? {}) as Record<string, string>]));
+    dbConfigs = new Map(rows.filter(r => r.enabled).map(r => {
+      let keys = r.keys ?? {};
+      if (typeof keys === 'string') keys = JSON.parse(keys);
+      return [r.id, keys as Record<string, string>];
+    }));
   } catch {}
 
   // Helper
