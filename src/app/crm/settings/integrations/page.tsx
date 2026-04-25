@@ -90,7 +90,7 @@ export default function IntegrationsPage() {
           <a href="/crm/settings" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>← Settings</a>
           <h1 style={{ fontSize: 'var(--crm-text-xl)', fontWeight: 600 }}>Integrations</h1>
         </div>
-        <a href="/system/status" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>System Status ↗</a>
+        <a href="/crm/system/status" style={{ fontSize: 'var(--crm-text-sm)', color: 'var(--crm-text-tertiary)', textDecoration: 'none' }}>System Status ↗</a>
       </div>
 
       {/* Tabs */}
