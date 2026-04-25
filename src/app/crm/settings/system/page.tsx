@@ -91,9 +91,10 @@ export default function SystemSetupPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                { label: 'Core', ids: ['neon', 'clerk', 'inngest'] },
+                { label: 'Core', ids: ['neon', 'clerk', 'inngest', 'upstash'] },
                 { label: 'Shopify', ids: ['shopify_storefront', 'shopify_admin', 'shopify_webhooks'] },
                 { label: 'Square', ids: ['square', 'square_webhooks'] },
+                { label: 'Services', ids: ['anthropic', 'klaviyo'] },
               ].map(group => {
                 const items = group.ids.map(id => statuses.find(s => s.id === id)).filter(Boolean);
                 if (!items.length) return null;
