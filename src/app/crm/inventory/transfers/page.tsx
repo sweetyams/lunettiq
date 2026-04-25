@@ -143,11 +143,9 @@ export default function TransfersPage() {
             <button onClick={() => { setCreating(false); setNewLines([]); }} className="crm-btn crm-btn-ghost" style={{ fontSize: 12 }}>Cancel</button>
           </div>
           <p style={{ fontSize: 9, color: '#9ca3af', marginTop: 6 }}>Creates a request. Stock moves when origin marks it picked, not at request time.</p>
-          </div>
         </div>
       )}
 
-      {/* Transfer list */}
       {/* Transfer list — grouped by status */}
       {loading ? <div style={{ padding: 20, textAlign: 'center', color: '#9ca3af' }}>Loading…</div> : transfers.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No transfers yet.</div>
