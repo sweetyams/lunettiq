@@ -89,16 +89,31 @@ export default function SystemSetupPage() {
               <div style={{ fontSize: 'var(--crm-text-sm)', fontWeight: 600 }}>System Status</div>
               <div style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginTop: 2 }}>Live connection checks. Webhooks must be registered for real-time sync.</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-              {statuses.filter(s => ['neon', 'shopify_admin', 'shopify_storefront', 'shopify_webhooks', 'square', 'square_webhooks', 'clerk', 'inngest'].includes(s.id)).map(s => (
-                <div key={s.id} className="crm-card" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: s.status === 'ok' ? '#16a34a' : s.status === 'error' ? '#dc2626' : '#d1d5db' }} />
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 500 }}>{s.name}</div>
-                    <div style={{ fontSize: 9, color: s.status === 'error' ? '#dc2626' : '#9ca3af' }}>{s.detail}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { label: 'Core', ids: ['neon', 'clerk', 'inngest'] },
+                { label: 'Shopify', ids: ['shopify_storefront', 'shopify_admin', 'shopify_webhooks'] },
+                { label: 'Square', ids: ['square', 'square_webhooks'] },
+              ].map(group => {
+                const items = group.ids.map(id => statuses.find(s => s.id === id)).filter(Boolean);
+                if (!items.length) return null;
+                return (
+                  <div key={group.label}>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>{group.label}</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {items.map(s => (
+                        <div key={s!.id} className="crm-card" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, minWidth: 180 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: s!.status === 'ok' ? '#16a34a' : s!.status === 'error' ? '#dc2626' : '#d1d5db' }} />
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 500 }}>{s!.name}</div>
+                            <div style={{ fontSize: 9, color: s!.status === 'error' ? '#dc2626' : '#9ca3af' }}>{s!.detail}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
