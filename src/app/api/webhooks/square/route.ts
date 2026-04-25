@@ -19,6 +19,11 @@ function verifySignature(body: string, signature: string, requestUrl: string): b
   return hmac === signature;
 }
 
+// GET — Square webhook URL validation (returns 200 so registration succeeds)
+export async function GET() {
+  return NextResponse.json({ ok: true });
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const signature = request.headers.get('x-square-hmacsha256-signature') ?? '';

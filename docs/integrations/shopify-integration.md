@@ -30,6 +30,7 @@ CRM + Storefront
 |---|---|---|
 | `customers/create`, `customers/update` | `syncCustomer` | `customers_projection` |
 | `orders/create`, `orders/updated` | `syncOrder` | `orders_projection` |
+| `orders/create`, `orders/updated` | `inventoryOnOrder` | `inventory_levels` + `inventory_adjustments` |
 | `products/create`, `products/update` | `syncProduct` | `products_projection` + `product_variants_projection` |
 | `collections/create`, `collections/update` | `syncCollection` | `collections_projection` |
 
@@ -41,6 +42,7 @@ CRM + Storefront
 | Update customer tags | `PUT /admin/api/customers/{id}.json` |
 | Set customer metafields | GraphQL `customerUpdate` mutation |
 | Upload files (photos) | GraphQL `stagedUploadsCreate` + `fileCreate` |
+| Push inventory levels | GraphQL `inventorySetQuantities` mutation |
 
 All CRM→Shopify writes go through `src/lib/crm/shopify-admin.ts`.
 
@@ -112,16 +114,58 @@ node --env-file=.env.local scripts/register-webhooks.mjs https://yourdomain.com/
 
 ### Registered Topics
 
-| Topic | What It Triggers |
-|---|---|
-| `customers/create` | Upsert customer projection |
-| `customers/update` | Upsert customer projection |
-| `orders/create` | Upsert order projection + loyalty points |
-| `orders/updated` | Update order status/fulfillment |
-| `products/create` | Upsert product + variants projection |
-| `products/update` | Upsert product + variants projection |
-| `collections/create` | Upsert collection projection |
-| `collections/update` | Upsert collection projection |
+| Topic | Inngest Event | What It Triggers |
+|---|---|---|
+| `customers/create` | `shopify/customer.updated` | Upsert customer projection |
+| `customers/update` | `shopify/customer.updated` | Upsert customer projection |
+| `orders/create` | `shopify/order.updated` | Upsert order projection + commit inventory + loyalty points |
+| `orders/updated` | `shopify/order.updated` | Update order status; on fulfillment: decrement on_hand + committed; on cancel: release committed |
+| `products/create` | `shopify/product.updated` | Upsert product + variants projection, auto-assign family |
+| `products/update` | `shopify/product.updated` | Upsert product + variants projection |
+| `collections/create` | `shopify/collection.updated` | Upsert collection projection |
+| `collections/update` | `shopify/collection.updated` | Upsert collection projection |
+
+**Not registered (covered by `orders/updated`):**
+- `orders/cancelled` — `orders/updated` fires on cancel; handler checks `cancelled_at`
+- `orders/fulfilled` — `orders/updated` fires on fulfill; handler checks `fulfillment_status`
+
+**Not registered (optional):**
+- `products/delete` — rare; handled in route if registered
+- `draft_orders/*` — not a valid Shopify webhook topic; draft order completion fires `orders/create`
+
+### Inventory Flow
+
+When a Shopify order webhook fires, `inventoryOnOrder` (Inngest) runs:
+
+```
+orders/create (new order, paid/authorized)
+  → resolve each line item variant → family + colour
+  → route to fulfilling location with highest available stock
+  → committed += qty at that location
+  → projectToChannels() → push to Shopify + Square
+
+orders/updated (fulfilled)
+  → on_hand -= qty, committed -= qty at order location
+  → projectToChannels()
+
+orders/updated (cancelled)
+  → committed -= qty at order location
+  → projectToChannels()
+```
+
+Shopify never has stale inventory — `projectToChannels()` pushes the CRM's computed available count back to Shopify via `inventorySetQuantities` after every adjustment.
+
+### Draft Order Checkout
+
+Draft orders don't have webhook topics. The flow is:
+
+```
+CRM creates draft order → Shopify returns checkout URL
+  → Customer pays → Shopify converts to real order
+  → orders/create webhook fires → inventory commits
+```
+
+The `syncDraftOrder` Inngest function handles CRM-side projection of draft orders, triggered by CRM API calls (not webhooks).
 
 ### Verification
 
@@ -224,6 +268,14 @@ The CRM doesn't query Shopify directly. It reads from local projection tables th
 | `products_projection` | `shopify_product_id` | title, vendor, type, tags, images, prices, metafields |
 | `product_variants_projection` | `shopify_variant_id` | title, SKU, price, inventory, image |
 | `collections_projection` | `shopify_collection_id` | title, handle, product IDs |
+
+**CRM-owned (not projections — Shopify is the downstream consumer):**
+
+| Table | Key | Purpose |
+|---|---|---|
+| `inventory_levels` | `family_id + colour + location_id` | Canonical stock per frame per location |
+| `inventory_adjustments` | `id` | Audit log of every stock change |
+| `inventory_protections` | `id` | Holds, last-unit locks, display reserves |
 
 All tables have a `synced_at` timestamp. The `shopify_updated_at` field tracks the last Shopify-side update.
 

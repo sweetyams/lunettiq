@@ -299,12 +299,27 @@ export function FamilyDetailClient({ familyId }: { familyId: string }) {
 function FamilyInventoryGrid({ familyId }: { familyId: string }) {
   const [levels, setLevels] = useState<Array<{ familyId: string | null; colour: string | null; locationId: string; locationName: string; onHand: number; available: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUnitProtected, setLastUnitProtected] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch(`/api/crm/inventory?familyId=${familyId}`, { credentials: 'include' })
       .then(r => r.json()).then(d => setLevels(d.data ?? []))
       .catch(() => {}).finally(() => setLoading(false));
+    fetch('/api/crm/settings/families', { credentials: 'include' })
+      .then(r => r.json()).then(d => {
+        const fam = (d.data?.families ?? []).find((f: any) => f.id === familyId);
+        if (fam) setLastUnitProtected(fam.lastUnitProtected ?? false);
+      }).catch(() => {});
   }, [familyId]);
+
+  async function toggleLastUnit() {
+    const next = !lastUnitProtected;
+    setLastUnitProtected(next);
+    await fetch('/api/crm/settings/families', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update-family', familyId, lastUnitProtected: next }),
+    });
+  }
 
   if (loading || !levels.length) return null;
 
@@ -320,7 +335,15 @@ function FamilyInventoryGrid({ familyId }: { familyId: string }) {
 
   return (
     <div style={{ marginBottom: 'var(--crm-space-5)' }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--crm-text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock by Colour</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--crm-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock by Colour</div>
+        {lastUnitProtected !== null && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#6b7280', cursor: 'pointer' }}>
+            <input type="checkbox" checked={lastUnitProtected} onChange={toggleLastUnit} />
+            Last-unit protection
+          </label>
+        )}
+      </div>
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>

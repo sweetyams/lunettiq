@@ -4,99 +4,54 @@ import { locations } from '@/lib/db/schema';
 import { requireCrmAuth } from '@/lib/crm/auth';
 import { jsonOk, jsonError } from '@/lib/crm/api-response';
 import { handler } from '@/lib/crm/route-handler';
-import { getKey } from '@/lib/crm/integration-keys';
 import { eq } from 'drizzle-orm';
 
-export const POST = handler(async () => {
+// POST /api/crm/settings/locations/sync
+// Actions: link (attach channel ID to existing location) or create (new location from channel)
+export const POST = handler(async (request) => {
   await requireCrmAuth('org:settings:locations');
+  const body = await request.json();
+  const { action } = body;
 
-  const token = await getKey('SHOPIFY_ADMIN_API_ACCESS_TOKEN');
-  const domain = await getKey('NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN');
-  if (!token || !domain) return jsonError('Shopify not configured', 500);
-
-  // Fetch Shopify locations
-  const res = await fetch(`https://${domain}/admin/api/2024-04/locations.json`, {
-    headers: { 'X-Shopify-Access-Token': token },
-  });
-  if (!res.ok) return jsonError('Failed to fetch Shopify locations', 502);
-
-  const data = await res.json();
-  const shopifyLocations = data.locations ?? [];
-
-  // Fetch Square locations (if configured)
-  let squareLocations: Array<{ id: string; name: string; address?: any }> = [];
-  const squareToken = await getKey('SQUARE_ACCESS_TOKEN');
-  if (squareToken) {
-    try {
-      const { listLocations } = await import('@/lib/square/client');
-      squareLocations = await listLocations();
-    } catch {}
+  if (action === 'link') {
+    // Link a channel location to an existing CRM location
+    const { locationId, channel, channelLocationId } = body;
+    if (!locationId || !channel || !channelLocationId) {
+      return jsonError('locationId, channel, channelLocationId required', 400);
+    }
+    if (channel !== 'shopify' && channel !== 'square') {
+      return jsonError('channel must be shopify or square', 400);
+    }
+    const field = channel === 'shopify' ? 'shopifyLocationId' : 'squareLocationId';
+    const [row] = await db.update(locations)
+      .set({ [field]: channelLocationId, syncedAt: new Date() })
+      .where(eq(locations.id, locationId))
+      .returning();
+    if (!row) return jsonError('Location not found', 404);
+    return jsonOk(row);
   }
 
-  // Fetch existing locations to preserve manual edits
-  const existing = await db.select().from(locations);
-  const existingById = new Map(existing.map(l => [l.id, l]));
-  const existingByShopifyId = new Map(existing.filter(l => l.shopifyLocationId).map(l => [l.shopifyLocationId!, l]));
-  const existingBySquareId = new Map(existing.filter(l => l.squareLocationId).map(l => [l.squareLocationId!, l]));
-
-  // Track which Shopify/Square IDs are still present in source
-  const activeShopifyIds = new Set<string>();
-  const activeSquareIds = new Set<string>();
-
-  // Upsert Shopify locations — only insert new, preserve existing edits
-  for (const loc of shopifyLocations) {
-    const shopifyId = String(loc.id);
-    activeShopifyIds.add(shopifyId);
-    const address = { address1: loc.address1, city: loc.city, province: loc.province, country: loc.country, zip: loc.zip };
-
-    // Check if already linked by shopifyLocationId
-    const linked = existingByShopifyId.get(shopifyId);
-    if (linked) {
-      // Only update address + syncedAt, preserve name and connections
-      await db.update(locations).set({ address, syncedAt: new Date() }).where(eq(locations.id, linked.id));
-      continue;
+  if (action === 'create') {
+    // Create a new CRM location from a channel location
+    const { name, channel, channelLocationId, address } = body;
+    if (!name?.trim() || !channel || !channelLocationId) {
+      return jsonError('name, channel, channelLocationId required', 400);
     }
+    const id = `loc_${name.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const existing = await db.select({ id: locations.id }).from(locations).where(eq(locations.id, id));
+    if (existing.length) return jsonError('Location with this name already exists', 409);
 
-    // New location — insert
-    const id = `loc_${loc.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    await db.insert(locations).values({
+    const field = channel === 'shopify' ? 'shopifyLocationId' : 'squareLocationId';
+    const [row] = await db.insert(locations).values({
       id,
-      shopifyLocationId: shopifyId,
-      name: loc.name,
-      address,
-      active: loc.active,
-      syncedAt: new Date(),
-    }).onConflictDoUpdate({
-      target: locations.id,
-      // If id exists but no shopifyLocationId, link it
-      set: { shopifyLocationId: shopifyId, address, syncedAt: new Date() },
-    });
-  }
-
-  // Upsert Square locations — only insert new, preserve existing edits
-  for (const sq of squareLocations) {
-    activeSquareIds.add(sq.id);
-    const linked = existingBySquareId.get(sq.id);
-    if (linked) {
-      // Already linked, just update syncedAt
-      await db.update(locations).set({ syncedAt: new Date() }).where(eq(locations.id, linked.id));
-      continue;
-    }
-
-    // New Square location — insert
-    const id = `loc_${sq.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-    await db.insert(locations).values({
-      id,
-      squareLocationId: sq.id,
-      name: sq.name,
-      address: sq.address ?? null,
+      name: name.trim(),
+      [field]: channelLocationId,
+      address: address ?? null,
       active: true,
       syncedAt: new Date(),
-    }).onConflictDoUpdate({
-      target: locations.id,
-      set: { squareLocationId: sq.id, syncedAt: new Date() },
-    });
+    }).returning();
+    return jsonOk(row, 201);
   }
 
-  return jsonOk({ synced: shopifyLocations.length, squareTotal: squareLocations.length });
+  return jsonError('action must be link or create', 400);
 });

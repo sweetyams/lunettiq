@@ -4,6 +4,18 @@ Append-only. Newest first.
 
 ---
 
+### ADR-016: Multi-Location Inventory Projection + Protection Model
+
+**Date:** 2026-04-25 · **Status:** Accepted
+
+**Context:** Inventory projection used a single `shipping_location_id` to feed Shopify. With plans for store-as-fulfillment (Plateau, DIX30 shipping online orders), the projection needed to sum across multiple locations. Additionally, "protected stock" was a single opaque `security_stock` number with no audit trail for holds, try-on reservations, or last-unit locks.
+
+**Decision:** (1) `projectToChannels()` now sums `max(0, location.available - location.online_reserve_buffer)` across all locations with `fulfills_online = true`. Each location has its own `online_reserve_buffer` column (default 2). (2) New `inventory_protections` table with scope (`all_channels`/`online_only`/`square_only`), reason (`try_on_hold`/`last_unit_lock`/`manager_hold`/etc.), expiry, staff owner, and reference linking. Active protections are subtracted from available during projection. (3) Last-unit lock auto-creates when a family with `last_unit_protected = true` drops to 1 available across all locations. (4) `return_inspections` table gates returned items through sellable/damaged/refurbish inspection before restocking. (5) `sync_discrepancies` table + nightly Inngest cron compares Shopify values to Lunettiq's computed projection, logs deltas, and pushes Lunettiq values (Lunettiq wins). (6) Protection expiry cron runs every 15 min to release expired holds and re-project.
+
+**Consequences:** Adding a new fulfilling location requires only flipping `fulfills_online = true` and setting its buffer — no code changes. Holds are auditable per-staff with expiry. Last-unit protection is per-family with a global default. Returns don't auto-restock until inspected. Drift detection is automated nightly.
+
+---
+
 ### ADR-015: Canonical Product Metafield Schema + Migration
 
 **Date:** 2026-04-23 · **Status:** Accepted

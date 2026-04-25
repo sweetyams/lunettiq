@@ -1,37 +1,48 @@
 # Square POS Integration
 
-**Status:** Live (sandbox)  
-**Date:** 2026-04-18  
-**Rule:** READ-ONLY — we only pull data from Square, never push changes.
+**Status:** Live (production credentials, webhooks pending registration)  
+**Date:** 2026-04-25  
+**Role:** In-store POS sales, customer data, inventory projection target
 
 ---
 
 ## Overview
 
-Square POS orders sync into the Lunettiq CRM automatically. When a sale happens at the register, the order appears in the CRM within seconds, matched to the customer's profile, with loyalty points issued.
+Square POS orders sync into the Lunettiq CRM via webhooks. When a sale happens at the register, the order appears in the CRM within seconds, matched to the customer's profile, with loyalty points issued and inventory decremented. The CRM also pushes inventory levels back to Square so POS stock counts stay accurate.
 
 ```
-Square POS → Webhook → /api/webhooks/square → Inngest → Database
-                                                  ↓
-                                          Customer matching
-                                          Order projection
-                                          Loyalty points
+Square POS
+  ↓ webhooks (HMAC verified)
+/api/webhooks/square
+  ↓ events
+Inngest
+  ↓
+Order projection + Customer matching + Inventory decrement + Loyalty points
+
+CRM inventory changes
+  ↓ projectToChannels()
+Square inventory write (per-location available)
 ```
 
 ## What Syncs
 
-| Square Data | Where It Goes | Notes |
+### Square → CRM (via webhooks)
+
+| Square Event | Inngest Function | What Happens |
 |---|---|---|
-| Completed orders | `orders_projection` (source: `square`) | Line items, totals, timestamps |
-| Customer info | `customers_projection` | Matched by email/phone, or created as `sq_` prefix |
-| Payment status | Order financial status | Only completed orders sync |
-| Location | Mapped via `locations.square_location_id` | Set per-location in DB |
+| `order.created` | `syncSquareOrder` | Upsert order projection, match customer, issue loyalty points, decrement inventory |
+| `order.updated` | `syncSquareOrder` | Update order projection |
+| `payment.completed` | `syncSquareOrder` | Backup trigger (resolves order ID from payment) |
+| `customer.created` | `syncSquareCustomer` | Upsert customer projection |
+| `customer.updated` | `syncSquareCustomer` | Update customer projection |
 
-## What Does NOT Sync
+### CRM → Square (via API writes)
 
-- We never write to Square (no product updates, no customer changes, no order modifications)
-- Draft/open orders are ignored — only COMPLETED state triggers sync
-- Refunds are not yet tracked (future enhancement)
+| CRM Action | Square API Call | File |
+|---|---|---|
+| Inventory projection | `inventory/changes/batch-create` | `lib/square/inventory-write.ts` |
+
+Inventory pushes happen automatically via `projectToChannels()` after every stock adjustment. Each CRM location with a `square_location_id` gets its own available count pushed.
 
 ## Architecture
 
@@ -39,10 +50,12 @@ Square POS → Webhook → /api/webhooks/square → Inngest → Database
 
 | File | Purpose |
 |---|---|
-| `src/lib/square/client.ts` | READ-ONLY API client |
+| `src/lib/square/client.ts` | READ-ONLY API client (orders, customers, locations, inventory counts) |
+| `src/lib/square/inventory-write.ts` | Inventory write client (separate from read-only per architecture rule) |
 | `src/app/api/webhooks/square/route.ts` | Webhook receiver + HMAC verification |
 | `src/lib/inngest/functions.ts` | `syncSquareOrder` + `syncSquareCustomer` |
 | `scripts/backfill-square.ts` | Historical order import |
+| `scripts/register-square-webhooks.mjs` | Register webhook subscription |
 
 ### Customer Matching
 
@@ -52,22 +65,54 @@ When a Square order comes in with a customer:
 2. Normalize email and phone
 3. Look up in `customers_projection` by email, then phone
 4. If found → link order to existing customer
-5. If not found → create new entry with `sq_` prefix ID (e.g. `sq_ABC123`)
-
-Shopify customers are never overwritten by Square data. Square-only customers (`sq_` prefix) can be updated.
+5. If not found → create new entry with `sq_` prefix ID
 
 ### Location Mapping
 
-Square locations are mapped to CRM locations via the `square_location_id` column:
+Square locations are mapped to CRM locations via `locations.square_location_id`. Managed in Settings → Locations — unlinked Square locations appear automatically for linking.
 
-| CRM Location | Square Location ID |
-|---|---|
-| Lunettiq - 2459 Notre-Dame O. | `L7S77JNHED7JH` |
+### Inventory Flow
 
-To map a new location:
-```sql
-UPDATE locations SET square_location_id = 'LXXXXXXXXXX' WHERE id = 'loc_xxx';
 ```
+Square POS sale (order.created webhook)
+  → syncSquareOrder resolves each line item:
+    catalog_object_id → product_mappings → product_family_members → family + colour
+  → adjust(on_hand, -qty, 'sale') at the sale location
+  → projectToChannels() → pushes updated available to Square + Shopify
+```
+
+---
+
+## Webhook Setup
+
+### Prerequisites
+
+- App deployed to Vercel (Square validates URL is reachable)
+- `SQUARE_ACCESS_TOKEN` set (production or sandbox)
+- `SQUARE_ENVIRONMENT` set (`production` or `sandbox`)
+
+### Register
+
+```bash
+# Uses SQUARE_WEBHOOK_URL from env, or defaults to lunettiq.vercel.app:
+node --env-file=.env.local scripts/register-square-webhooks.mjs
+
+# Custom URL:
+node --env-file=.env.local scripts/register-square-webhooks.mjs https://yourdomain.com/api/webhooks/square
+```
+
+The script registers one subscription with these events:
+- `order.created`
+- `order.updated`
+- `payment.completed`
+- `customer.created`
+- `customer.updated`
+
+**Save the signature key** returned by the script as `SQUARE_WEBHOOK_SIGNATURE_KEY` in your env vars.
+
+### Verification
+
+Every webhook is HMAC-verified using `SQUARE_WEBHOOK_SIGNATURE_KEY`. The HMAC is computed over `notification_url + body`. Invalid signatures return 401.
 
 ---
 
@@ -76,7 +121,7 @@ UPDATE locations SET square_location_id = 'LXXXXXXXXXX' WHERE id = 'loc_xxx';
 ```env
 SQUARE_APPLICATION_ID=       # From Square Developer Dashboard
 SQUARE_ACCESS_TOKEN=         # Sandbox or Production access token
-SQUARE_WEBHOOK_SIGNATURE_KEY= # From webhook subscription setup
+SQUARE_WEBHOOK_SIGNATURE_KEY= # From webhook subscription registration
 SQUARE_ENVIRONMENT=sandbox   # "sandbox" or "production"
 SQUARE_WEBHOOK_URL=          # The registered webhook notification URL
 ```
@@ -87,14 +132,10 @@ SQUARE_WEBHOOK_URL=          # The registered webhook notification URL
 
 ### Step 1: Get Production Credentials
 
-1. Go to [developer.squareup.com/apps](https://developer.squareup.com/apps)
-2. Click your app → **Credentials** tab
-3. Switch to **Production** tab
-4. Copy the **Production Access Token**
+1. [developer.squareup.com/apps](https://developer.squareup.com/apps) → your app → Credentials → Production
+2. Copy the Production Access Token
 
 ### Step 2: Update Environment Variables
-
-In your Vercel dashboard (or `.env.local` for local):
 
 ```env
 SQUARE_ACCESS_TOKEN=<production-token>
@@ -102,96 +143,66 @@ SQUARE_ENVIRONMENT=production
 SQUARE_WEBHOOK_URL=https://yourdomain.com/api/webhooks/square
 ```
 
-### Step 3: Update Webhook URL
+### Step 3: Register Webhooks
 
-1. Square Developer Dashboard → Webhooks
-2. Edit your subscription
-3. Change URL to: `https://yourdomain.com/api/webhooks/square`
-4. Save → copy the new Signature Key
-5. Update `SQUARE_WEBHOOK_SIGNATURE_KEY` in Vercel env vars
-
-### Step 4: Map Production Locations
-
-Get your real Square location IDs:
 ```bash
-curl -s -H "Authorization: Bearer <prod-token>" \
-  "https://connect.squareup.com/v2/locations" | jq '.locations[] | {id, name}'
+node --env-file=.env.local scripts/register-square-webhooks.mjs
 ```
 
-Then map each to your CRM locations:
-```sql
-UPDATE locations SET square_location_id = 'LREAL1' WHERE id = 'loc_lunettiq___2459_notre_dame_o_';
-UPDATE locations SET square_location_id = 'LREAL2' WHERE id = 'loc_lunettiq___225_st_viateur_o_';
-```
+Save the returned signature key as `SQUARE_WEBHOOK_SIGNATURE_KEY`.
+
+### Step 4: Map Locations
+
+In Settings → Locations, unlinked Square locations appear automatically. Click "Link to existing" or "Create Location" for each.
 
 ### Step 5: Backfill Historical Orders
 
 ```bash
-# Pull all historical orders (adjust date as needed):
 npx tsx scripts/backfill-square.ts --from 2023-01-01
-
-# Or a specific range:
-npx tsx scripts/backfill-square.ts --from 2024-06-01 --to 2025-01-01
 ```
-
-The backfill is idempotent — safe to run multiple times. Orders are upserted by ID.
 
 ### Step 6: Verify
 
 1. Make a test purchase at the POS
-2. Check the CRM — order should appear within 10 seconds
-3. Check the customer profile — order linked, points issued
-4. Check `/crm/loyalty` dashboard — points balance updated
+2. Check CRM — order should appear within 10 seconds
+3. Check customer profile — order linked, points issued
+4. Check inventory — stock decremented at the sale location
 
 ---
 
 ## Troubleshooting
 
-### Webhook returns 401 (Invalid signature)
+### Webhooks not registered
 
-- `SQUARE_WEBHOOK_URL` must exactly match the URL registered in Square Dashboard
-- `SQUARE_WEBHOOK_SIGNATURE_KEY` must match the key shown in Square Dashboard
-- If using a tunnel (dev), the URL changes on restart — update both env and Square Dashboard
+- Square validates the URL is reachable at registration time
+- The webhook route must respond to GET with 200 (added in `route.ts`)
+- Deploy to Vercel first, then run the registration script
 
-### Webhook returns 500
+### Webhook returns 401
 
-- Check that Inngest dev server is running: `npx inngest-cli@latest dev`
-- Check Next.js terminal for error details
+- `SQUARE_WEBHOOK_URL` must exactly match the registered notification URL
+- `SQUARE_WEBHOOK_SIGNATURE_KEY` must match the key from registration
+- Tunnel URLs expire — re-register if using a tunnel
 
-### Orders not appearing in DB
+### Orders not syncing
 
 - Only COMPLETED orders sync (OPEN/CANCELLED are skipped)
-- Check Inngest dashboard at `http://localhost:8288` for function run status
-- Check if the order has a `sq_` prefix in `orders_projection`
+- Check Inngest dashboard for function run status
+- Verify the Square location is mapped to a CRM location
 
-### Customer not matched
+### Inventory not pushing to Square
 
-- Customer must have email or phone in Square
-- Email/phone must match exactly after normalization
-- Unmatched customers get a `sq_` prefix ID — merge manually in CRM if needed
-
-### Duplicate orders
-
-- Orders use `sq_<order_id>` as primary key with `onConflictDoUpdate`
-- Running backfill multiple times is safe
-- Webhook retries are safe (same order ID = same row)
+- Check `isIntegrationEnabled('square')` — Square must be enabled
+- Check `locations.square_location_id` is set for the location
+- Check `product_mappings` has a confirmed mapping for the product
+- Check Inngest logs for `[inventory] Square push failed` errors
 
 ---
 
 ## Security
 
-- **READ-ONLY**: The Square client (`src/lib/square/client.ts`) only uses GET requests. The search endpoint uses POST but it's a query, not a mutation.
-- **HMAC verification**: Every webhook is verified against Square's signature before processing.
-- **No PII in logs**: Webhook logging truncates payloads to 200 chars.
-- **Access token**: Stored in environment variables, never in code.
-- **Sandbox isolation**: Sandbox and production use different base URLs and tokens. `SQUARE_ENVIRONMENT` controls which is active.
-
----
-
-## Future Enhancements
-
-- [ ] Refund tracking (sync `refund.created` webhook)
-- [ ] Inventory sync (read Square stock levels)
-- [ ] Square customer → Shopify customer auto-merge
-- [ ] CRM dashboard showing Square vs Shopify order split
-- [ ] Square catalog mapping to Shopify products by SKU
+- **Inventory writes** go through a separate module (`inventory-write.ts`), not the read-only client
+- **HMAC verification** on every webhook using Square's signature
+- **No PII in logs** — webhook payloads truncated to 200 chars
+- **Access token** in env vars, never in code
+- **Environment isolation** — sandbox and production use different base URLs and tokens

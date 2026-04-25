@@ -271,51 +271,41 @@ Uses Square `inventory/changes/batch-create` endpoint. Every call logged to `inv
 | Step | Status | File(s) |
 |---|---|---|
 | Schema: `inventory_levels` + `inventory_adjustments` | ✅ | `lib/db/schema.ts` |
+| Schema: `inventory_protections` + `return_inspections` + `sync_discrepancies` | ✅ | `lib/db/schema.ts` |
+| Schema: location flags (`is_retail`, `online_reserve_buffer`) | ✅ | `lib/db/schema.ts` |
+| Schema: `last_unit_protected` on `product_families` | ✅ | `lib/db/schema.ts` |
 | Service: core inventory logic | ✅ | `lib/crm/inventory.ts` |
+| Service: multi-location Shopify projection (sum across `fulfills_online`) | ✅ | `lib/crm/inventory.ts` |
+| Service: inventory protections (create, release, expire, compute available) | ✅ | `lib/crm/inventory.ts` |
+| Service: last-unit lock auto-creation | ✅ | `lib/crm/inventory.ts` |
 | Sync: pull from Shopify inventory levels | ✅ | `lib/crm/inventory-sync.ts` |
 | Sync: pull from Square inventory counts | ⬜ | Needs `getInventoryCounts` on Square client |
 | API: GET/POST `/api/crm/inventory` | ✅ | `app/api/crm/inventory/route.ts` |
 | API: GET `/api/crm/inventory/adjustments` | ✅ | `app/api/crm/inventory/adjustments/route.ts` |
 | API: POST `/api/crm/inventory/sync` | ✅ | `app/api/crm/inventory/sync/route.ts` |
+| API: GET/POST `/api/crm/inventory/protections` | ✅ | `app/api/crm/inventory/protections/route.ts` |
+| API: GET/POST `/api/crm/inventory/returns` | ✅ | `app/api/crm/inventory/returns/route.ts` |
 | UI: Product detail inventory section | ✅ | `app/crm/products/[id]/ProductDetailClient.tsx` |
 | UI: Stock dots on product list | ✅ | `app/crm/products/ProductsClient.tsx` |
 | UI: Inventory page `/crm/inventory` | ✅ | `app/crm/inventory/page.tsx` |
 | UI: Sidebar restructure (Products → Inventory) | ✅ | `components/crm/CrmSidebar.tsx` |
 | System page: inventory sync action | ✅ | `app/crm/settings/system/page.tsx` |
-| Push: write available to Shopify | ⬜ | Needs `inventorySetQuantities` mutation |
-| Push: write available to Square | ⬜ | Needs `lib/square/inventory-write.ts` |
-| Webhooks: order events → inventory updates | ⬜ | Needs Inngest handlers |
-| UI: Family colour inventory grid | ⬜ | On family detail page |
-| UI: Settings → Inventory page | ⬜ | Global config (security stock, shipping location) |
+| Push: write available to Shopify | ✅ | `lib/shopify/admin-graphql.ts` |
+| Push: write available to Square | ✅ | `lib/square/inventory-write.ts` |
+| Webhooks: order events → inventory updates | ✅ | `lib/inngest/functions.ts` |
+| UI: Family colour inventory grid + last-unit toggle | ✅ | `app/crm/products/families/[id]/FamilyDetailClient.tsx` |
+| UI: Settings → Inventory page | ✅ | `app/crm/settings/inventory/page.tsx` |
+| UI: Settings → Locations (is_retail, online_reserve_buffer) | ✅ | `app/crm/settings/locations/LocationsClient.tsx` |
+| UI: Holds list page `/crm/inventory/holds` | ✅ | `app/crm/inventory/holds/page.tsx` |
+| UI: Returns inspection page `/crm/inventory/returns` | ✅ | `app/crm/inventory/returns/page.tsx` |
+| Square order → inventory decrement | ✅ | `lib/inngest/functions.ts` (syncSquareOrder) |
+| Inngest: nightly reconciliation cron | ✅ | `lib/inngest/functions.ts` |
+| Inngest: protection expiry cron | ✅ | `lib/inngest/functions.ts` |
 
 ## Remaining Work
 
-### Priority 1: Push to Shopify (keeps Shopify in sync)
-- Add `inventorySetQuantities` mutation to `lib/shopify/admin-graphql.ts`
-- Call from `projectToChannels()` after every adjustment
-- Maps: `inventory_levels.available` → Shopify `available` quantity per variant per location
-
-### Priority 2: Webhook handlers (real-time updates)
-- `shopify/orders/create` → increment `committed`
-- `shopify/orders/fulfilled` → decrement `on_hand` + `committed`
-- `shopify/orders/cancelled` → decrement `committed`
-- `square/order.completed` → decrement `on_hand`
-- All handlers: resolve variant → family+colour → adjust → project
-
-### Priority 3: Square inventory
-- Read: add `getInventoryCounts()` to `lib/square/client.ts`
-- Write: new `lib/square/inventory-write.ts` (separate from read-only client)
-- Sync: add Square pull to `inventory-sync.ts`
-- Push: call from `projectToChannels()`
-
-### Priority 4: UI polish
-- Family detail: colour × location inventory grid
-- Settings → Inventory: default security stock, shipping location, low stock threshold
-- Inventory page: adjustment history tab, bulk recount
-
-### Not started (future)
-- Transfer workflow between locations
-- Canonical frame SKU (sun/optical share pool at DB constraint level)
+### Future
 - Demand forecasting
 - Serialized tracking
 - Automated low-stock alerts
+- Distance-based order routing

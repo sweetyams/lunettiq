@@ -13,6 +13,7 @@ interface FamilyMember { family_id: string; colour: string | null }
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   requested: { bg: '#dbeafe', color: '#1e40af' },
   approved: { bg: '#fef3c7', color: '#92400e' },
+  picked: { bg: '#e0e7ff', color: '#3730a3' },
   shipped: { bg: '#e0e7ff', color: '#3730a3' },
   received: { bg: '#95FFB9', color: '#065f46' },
   cancelled: { bg: '#f3f4f6', color: '#6b7280' },
@@ -150,7 +151,8 @@ export default function TransfersPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     {t.status === 'requested' && <button onClick={() => updateStatus(t.id, 'approve')} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Approve</button>}
-                    {t.status === 'approved' && <button onClick={() => updateStatus(t.id, 'ship')} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Mark Shipped</button>}
+                    {t.status === 'approved' && <button onClick={() => updateStatus(t.id, 'pick')} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Mark Picked</button>}
+                    {t.status === 'picked' && <button onClick={() => updateStatus(t.id, 'ship')} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Mark Shipped</button>}
                     {t.status === 'shipped' && <button onClick={() => updateStatus(t.id, 'receive')} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Receive</button>}
                     {(t.status === 'requested' || t.status === 'approved') && <button onClick={() => updateStatus(t.id, 'cancel')} className="crm-btn crm-btn-ghost" style={{ fontSize: 10, padding: '3px 10px', color: '#dc2626' }}>Cancel</button>}
                   </div>

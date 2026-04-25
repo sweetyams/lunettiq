@@ -3,7 +3,7 @@
  * Inventory truth lives here. Shopify/Square are projections.
  */
 import { db } from '@/lib/db';
-import { inventoryLevels, inventoryAdjustments, productFamilyMembers, productVariantsProjection, locations } from '@/lib/db/schema';
+import { inventoryLevels, inventoryAdjustments, productFamilyMembers, productVariantsProjection, locations, inventoryProtections } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 
 // ── Types ────────────────────────────────────────────────
@@ -151,6 +151,30 @@ export async function adjust(opts: {
     previousValue, newValue,
   });
 
+  // Last-unit lock: auto-create protection when total available across all locations drops to 1
+  if (familyId && colour && delta < 0) {
+    const { productFamilies } = await import('@/lib/db/schema');
+    const [family] = await db.select().from(productFamilies).where(eq(productFamilies.id, familyId));
+    if (family?.lastUnitProtected) {
+      const allLevels = await getLevels({ familyId, colour });
+      const totalAvail = allLevels.reduce((s, l) => s + l.available, 0);
+      if (totalAvail <= 1 && totalAvail > 0) {
+        // Check no existing active last_unit_lock for this frame
+        const existing = await listProtections({ familyId, colour, activeOnly: true });
+        if (!existing.some(p => p.reason === 'last_unit_lock')) {
+          const lastLoc = allLevels.find(l => l.available > 0);
+          if (lastLoc) {
+            await db.insert(inventoryProtections).values({
+              familyId, colour, locationId: lastLoc.locationId,
+              quantity: 1, scope: 'all_channels', reason: 'last_unit_lock',
+              note: 'Auto-created: last unit protection',
+            });
+          }
+        }
+      }
+    }
+  }
+
   return { ...level, [dbField]: newValue, available: recalcAvailable(onHand, committed, securityStock) } as any;
 }
 
@@ -173,6 +197,28 @@ export async function recount(opts: {
   });
 }
 
+// ── Compute active protections for a frame+location ──────
+
+export async function getActiveProtections(familyId: string, colour: string, locationId?: string): Promise<{ total: number; onlineOnly: number; squareOnly: number }> {
+  const { inventoryProtections } = await import('@/lib/db/schema');
+  const conditions = [
+    eq(inventoryProtections.familyId, familyId),
+    eq(inventoryProtections.colour, colour),
+    sql`${inventoryProtections.releasedAt} IS NULL`,
+    sql`(${inventoryProtections.expiresAt} IS NULL OR ${inventoryProtections.expiresAt} > NOW())`,
+  ];
+  if (locationId) conditions.push(eq(inventoryProtections.locationId, locationId));
+
+  const rows = await db.select().from(inventoryProtections).where(and(...conditions));
+  let total = 0, onlineOnly = 0, squareOnly = 0;
+  for (const r of rows) {
+    if (r.scope === 'all_channels') total += r.quantity;
+    else if (r.scope === 'online_only') onlineOnly += r.quantity;
+    else if (r.scope === 'square_only') squareOnly += r.quantity;
+  }
+  return { total, onlineOnly, squareOnly };
+}
+
 // ── Project to channels ──────────────────────────────────
 
 export async function projectToChannels(familyId: string | null, colour: string | null, variantId: string | null) {
@@ -184,7 +230,6 @@ export async function projectToChannels(familyId: string | null, colour: string 
       await db.update(productVariantsProjection)
         .set({ inventoryQuantity: total, availableForSale: total > 0 })
         .where(eq(productVariantsProjection.shopifyVariantId, variantId));
-      // Push to Shopify
       try {
         const { shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
         for (const l of levels) {
@@ -196,22 +241,24 @@ export async function projectToChannels(familyId: string | null, colour: string 
     return;
   }
 
-  // Get all levels for this frame
+  // Get all levels + locations + protections for this frame
   const levels = await getLevels({ familyId, colour });
-  const totalAvailable = levels.reduce((sum, l) => sum + l.available, 0);
+  const allLocs = await db.select().from(locations);
+  const locMap = new Map(allLocs.map(l => [l.id, l]));
+  const protections = await getActiveProtections(familyId, colour);
 
-  // Get shipping location for online availability
-  const { getSettings } = await import('@/lib/crm/store-settings');
-  const settings = await getSettings();
-  const shippingLocationId = settings.shipping_location_id ?? null;
-  const shippingLevel = shippingLocationId ? levels.find(l => l.locationId === shippingLocationId) : null;
-  let onlineAvailable = shippingLevel?.available ?? (shippingLocationId ? 0 : totalAvailable);
-
-  // Last-unit protection: if on_hand = 1 at shipping location, hold it (security stock acts as floor)
-  // This means the last physical unit stays for display/fitting unless security stock is explicitly set to 0
-  if (shippingLevel && shippingLevel.onHand <= 1 && (shippingLevel.securityStock ?? 0) >= 1) {
-    onlineAvailable = 0;
+  // Multi-location Shopify projection: sum post-buffer available across fulfilling locations
+  // Each location subtracts its own online_reserve_buffer before contributing
+  let onlineAvailable = 0;
+  for (const level of levels) {
+    const loc = locMap.get(level.locationId);
+    if (!loc?.fulfillsOnline) continue;
+    const buffer = loc.onlineReserveBuffer ?? 2;
+    const locAvail = Math.max(0, level.available - buffer);
+    onlineAvailable += locAvail;
   }
+  // Subtract online-scoped protections from the aggregate
+  onlineAvailable = Math.max(0, onlineAvailable - protections.total - protections.onlineOnly);
 
   // Find all Shopify variants for this family+colour
   const members = await db.select({ productId: productFamilyMembers.productId })
@@ -224,32 +271,30 @@ export async function projectToChannels(familyId: string | null, colour: string 
       .from(productVariantsProjection)
       .where(inArray(productVariantsProjection.shopifyProductId, productIds));
 
-    // Update local projection + push to Shopify
+    const safeOnline = Math.max(0, onlineAvailable);
     for (const v of variants) {
       await db.update(productVariantsProjection)
-        .set({ inventoryQuantity: onlineAvailable, availableForSale: onlineAvailable > 0 })
+        .set({ inventoryQuantity: safeOnline, availableForSale: safeOnline > 0 })
         .where(eq(productVariantsProjection.shopifyVariantId, v.shopifyVariantId));
     }
 
-    // Push to Shopify Admin API — online gets shipping location available only
+    // Push to Shopify — use default fulfillment location (or first fulfilling location)
     try {
       const { shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
-      const shippingLoc = await db.select().from(locations).where(eq(locations.id, shippingLocationId!));
-      const shopifyLocId = shippingLoc[0]?.shopifyLocationId;
-      if (shopifyLocId) {
-        // Oversell prevention: never push negative, floor at 0
-        const safeOnline = Math.max(0, onlineAvailable);
+      const { getSettings } = await import('@/lib/crm/store-settings');
+      const settings = await getSettings();
+      const primaryLocId = settings.default_fulfillment_location ?? settings.shipping_location_id;
+      const primaryLoc = primaryLocId ? allLocs.find(l => l.id === primaryLocId) : allLocs.find(l => l.fulfillsOnline);
+      if (primaryLoc?.shopifyLocationId) {
         for (const v of variants) {
-          await shopifySetInventory(v.shopifyVariantId, shopifyLocId, safeOnline);
+          await shopifySetInventory(v.shopifyVariantId, primaryLoc.shopifyLocationId, safeOnline);
         }
       }
     } catch (e) { console.error('[inventory] Shopify push failed:', e); }
 
-    // Push to Square — each location gets its own available
+    // Push to Square — each location gets its own available minus protections
     try {
       const { squareSetInventory } = await import('@/lib/square/inventory-write');
-      const { productMappings } = await import('@/lib/db/schema');
-      const allLocs = await db.select().from(locations);
       const mappings = await db.execute(sql`
         SELECT square_catalog_id, shopify_product_id FROM product_mappings
         WHERE shopify_product_id IN (${sql.join(productIds.map(id => sql`${id}`), sql`, `)})
@@ -257,12 +302,77 @@ export async function projectToChannels(familyId: string | null, colour: string 
       `);
       for (const mapping of mappings.rows as any[]) {
         for (const level of levels) {
-          const loc = allLocs.find(l => l.id === level.locationId);
+          const loc = locMap.get(level.locationId);
           if (loc?.squareLocationId && mapping.square_catalog_id) {
-            await squareSetInventory(mapping.square_catalog_id, loc.squareLocationId, Math.max(0, level.available));
+            const locProtections = await getActiveProtections(familyId, colour, level.locationId);
+            const squareAvail = Math.max(0, level.available - locProtections.total - locProtections.squareOnly);
+            await squareSetInventory(mapping.square_catalog_id, loc.squareLocationId, squareAvail);
           }
         }
       }
     } catch (e) { console.error('[inventory] Square push failed:', e); }
   }
+}
+
+// ── Protections CRUD ─────────────────────────────────────
+
+type ProtectionScope = 'all_channels' | 'online_only' | 'square_only';
+type ProtectionReason = 'display' | 'try_on_hold' | 'rx_in_progress' | 'transfer_pending' | 'last_unit_lock' | 'damage_review' | 'manager_hold';
+
+export async function createProtection(opts: {
+  familyId: string; colour: string; locationId: string;
+  quantity?: number; scope?: ProtectionScope; reason: ProtectionReason;
+  referenceId?: string; referenceType?: string;
+  expiresAt?: Date; staffId?: string; note?: string;
+}) {
+  const [row] = await db.insert(inventoryProtections).values({
+    familyId: opts.familyId, colour: opts.colour, locationId: opts.locationId,
+    quantity: opts.quantity ?? 1, scope: opts.scope ?? 'all_channels', reason: opts.reason,
+    referenceId: opts.referenceId ?? null, referenceType: opts.referenceType ?? null,
+    expiresAt: opts.expiresAt ?? null, staffId: opts.staffId ?? null, note: opts.note ?? null,
+  }).returning();
+  // Re-project after protection change
+  await projectToChannels(opts.familyId, opts.colour, null);
+  return row;
+}
+
+export async function releaseProtection(protectionId: string) {
+  const [row] = await db.update(inventoryProtections)
+    .set({ releasedAt: new Date() })
+    .where(and(eq(inventoryProtections.id, protectionId), sql`${inventoryProtections.releasedAt} IS NULL`))
+    .returning();
+  if (row) await projectToChannels(row.familyId, row.colour, null);
+  return row;
+}
+
+export async function listProtections(opts?: { familyId?: string; colour?: string; locationId?: string; activeOnly?: boolean }) {
+  const conditions = [];
+  if (opts?.familyId) conditions.push(eq(inventoryProtections.familyId, opts.familyId));
+  if (opts?.colour) conditions.push(eq(inventoryProtections.colour, opts.colour));
+  if (opts?.locationId) conditions.push(eq(inventoryProtections.locationId, opts.locationId));
+  if (opts?.activeOnly !== false) {
+    conditions.push(sql`${inventoryProtections.releasedAt} IS NULL`);
+    conditions.push(sql`(${inventoryProtections.expiresAt} IS NULL OR ${inventoryProtections.expiresAt} > NOW())`);
+  }
+  return db.select().from(inventoryProtections).where(conditions.length ? and(...conditions) : undefined);
+}
+
+export async function expireProtections(): Promise<number> {
+  const expired = await db.select().from(inventoryProtections).where(and(
+    sql`${inventoryProtections.releasedAt} IS NULL`,
+    sql`${inventoryProtections.expiresAt} IS NOT NULL`,
+    sql`${inventoryProtections.expiresAt} <= NOW()`,
+  ));
+  if (!expired.length) return 0;
+  const ids = expired.map(r => r.id);
+  await db.update(inventoryProtections)
+    .set({ releasedAt: new Date() })
+    .where(inArray(inventoryProtections.id, ids));
+  // Re-project affected frames
+  const frames = new Set(expired.map(r => `${r.familyId}|${r.colour}`));
+  for (const key of frames) {
+    const [fId, col] = key.split('|');
+    await projectToChannels(fId, col, null);
+  }
+  return expired.length;
 }

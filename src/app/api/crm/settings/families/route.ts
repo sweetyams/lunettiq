@@ -69,6 +69,17 @@ export const POST = handler(async (request) => {
     return jsonOk({ updated: id });
   }
 
+  if (body.action === 'update-family') {
+    const { familyId, lastUnitProtected } = body;
+    if (!familyId) return jsonError('familyId required', 400);
+    const updates: Record<string, unknown> = {};
+    if (lastUnitProtected !== undefined) updates.lastUnitProtected = lastUnitProtected;
+    if (Object.keys(updates).length) {
+      await db.update(productFamilies).set(updates).where(eq(productFamilies.id, familyId));
+    }
+    return jsonOk({ familyId });
+  }
+
   if (body.action === 'add-square-member') {
     const { familyId, squareCatalogId, squareName, type, colour, colourHex } = body;
     if (!familyId || !squareCatalogId || !squareName) return jsonError('familyId, squareCatalogId, squareName required', 400);

@@ -805,11 +805,23 @@ function InventorySection({ productId }: { productId: string }) {
   const [adjDelta, setAdjDelta] = useState('');
   const [adjReason, setAdjReason] = useState<string>('manual');
   const [adjNote, setAdjNote] = useState('');
+  const [holds, setHolds] = useState<any[]>([]);
+  const [holdingLoc, setHoldingLoc] = useState<string | null>(null);
+  const [holdNote, setHoldNote] = useState('');
+  const [holdHours, setHoldHours] = useState('48');
 
   function load() {
     setLoading(true);
     fetch(`/api/crm/inventory?productId=${productId}`, { credentials: 'include' })
-      .then(r => r.json()).then(d => setLevels(d.data ?? []))
+      .then(r => r.json()).then(d => {
+        setLevels(d.data ?? []);
+        // Fetch holds for this frame
+        const first = (d.data ?? [])[0];
+        if (first?.familyId && first?.colour) {
+          fetch(`/api/crm/inventory/protections?familyId=${first.familyId}&colour=${first.colour}`, { credentials: 'include' })
+            .then(r => r.json()).then(h => setHolds(h.data ?? [])).catch(() => {});
+        }
+      })
       .catch(() => {}).finally(() => setLoading(false));
   }
 
@@ -908,6 +920,58 @@ function InventorySection({ productId }: { productId: string }) {
                   </div>
                 );
               })()}
+            </div>
+          )}
+
+          {/* Holds */}
+          {levels.length > 0 && levels[0].familyId && (
+            <div style={{ marginTop: 8 }}>
+              {holdingLoc ? (
+                <div style={{ border: '1px dashed #d1d5db', borderRadius: 8, padding: 10, background: '#fafafa' }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Hold at {levels.find(l => l.locationId === holdingLoc)?.locationName}</div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input className="crm-input" style={{ fontSize: 11, width: 50 }} type="number" min="1" max="168" value={holdHours} onChange={e => setHoldHours(e.target.value)} />
+                    <span style={{ fontSize: 10, color: '#9ca3af' }}>hours</span>
+                    <input className="crm-input" style={{ fontSize: 11, flex: 1, minWidth: 80 }} value={holdNote} onChange={e => setHoldNote(e.target.value)} placeholder="Client name or reason" />
+                    <button onClick={async () => {
+                      const l = levels[0];
+                      const expires = new Date(Date.now() + parseInt(holdHours) * 3600000);
+                      await fetch('/api/crm/inventory/protections', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ familyId: l.familyId, colour: l.colour, locationId: holdingLoc, reason: 'try_on_hold', expiresAt: expires.toISOString(), note: holdNote || undefined }) });
+                      setHoldingLoc(null); setHoldNote(''); setHoldHours('48'); load();
+                    }} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '4px 10px' }}>Hold</button>
+                    <button onClick={() => setHoldingLoc(null)} style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {levels.filter(l => l.available > 0).map(l => (
+                    <button key={l.locationId} onClick={() => setHoldingLoc(l.locationId)} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 4, border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', color: '#6b7280' }}>
+                      Hold at {l.locationName}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {holds.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 500, color: '#6b7280', marginBottom: 4 }}>Active Holds</div>
+                  {holds.map(h => (
+                    <div key={h.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0', fontSize: 11, borderBottom: '1px solid #f3f4f6' }}>
+                      <div>
+                        <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 4, background: h.reason === 'last_unit_lock' ? '#fef2f2' : '#dbeafe', color: h.reason === 'last_unit_lock' ? '#dc2626' : '#1e40af', fontWeight: 500 }}>{h.reason.replace(/_/g, ' ')}</span>
+                        <span style={{ marginLeft: 6, color: '#6b7280' }}>{h.note ?? ''}</span>
+                        {h.expiresAt && <span style={{ marginLeft: 6, fontSize: 9, color: '#9ca3af' }}>expires {new Date(h.expiresAt).toLocaleString()}</span>}
+                      </div>
+                      <button onClick={async () => {
+                        await fetch('/api/crm/inventory/protections', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ action: 'release', id: h.id }) });
+                        load();
+                      }} style={{ fontSize: 9, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}>Release</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

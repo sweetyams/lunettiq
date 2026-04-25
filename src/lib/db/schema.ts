@@ -546,6 +546,8 @@ export const locations = pgTable('locations', {
   address: jsonb('address'),
   timezone: text('timezone').default('America/Montreal'),
   fulfillsOnline: boolean('fulfills_online').default(false),
+  isRetail: boolean('is_retail').default(false),
+  onlineReserveBuffer: integer('online_reserve_buffer').default(2),
   maxConcurrent: integer('max_concurrent').default(1),
   active: boolean('active').default(true),
   syncedAt: timestamp('synced_at').defaultNow(),
@@ -801,6 +803,7 @@ export const searchSynonyms = pgTable('search_synonyms', {
 export const productFamilies = pgTable('product_families', {
   id: text('id').primaryKey(), // e.g. 'shelby', 'fontaine'
   name: text('name').notNull(), // 'SHELBY', 'FONTAINE'
+  lastUnitProtected: boolean('last_unit_protected'),
 });
 
 export const productFamilyMembers = pgTable('product_family_members', {
@@ -1337,7 +1340,7 @@ export const inventoryAdjustments = pgTable('inventory_adjustments', {
   index('idx_inv_adj_created').on(t.createdAt),
 ]);
 
-export const transferStatusEnum = pgEnum('transfer_status', ['requested', 'approved', 'shipped', 'received', 'cancelled']);
+export const transferStatusEnum = pgEnum('transfer_status', ['requested', 'approved', 'picked', 'shipped', 'received', 'cancelled']);
 
 export const inventoryTransfers = pgTable('inventory_transfers', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -1363,4 +1366,81 @@ export const inventoryTransferLines = pgTable('inventory_transfer_lines', {
   receivedQuantity: integer('received_quantity'),
 }, (t) => [
   index('idx_transfer_lines_transfer').on(t.transferId),
+]);
+
+// ─── Inventory Protections ───────────────────────────────
+
+export const protectionScopeEnum = pgEnum('protection_scope', ['all_channels', 'online_only', 'square_only']);
+
+export const protectionReasonEnum = pgEnum('protection_reason', [
+  'display', 'try_on_hold', 'rx_in_progress', 'transfer_pending',
+  'last_unit_lock', 'damage_review', 'manager_hold',
+]);
+
+export const inventoryProtections = pgTable('inventory_protections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  familyId: text('family_id').notNull(),
+  colour: text('colour').notNull(),
+  locationId: text('location_id').notNull().references(() => locations.id),
+  quantity: integer('quantity').notNull().default(1),
+  scope: protectionScopeEnum('scope').notNull().default('all_channels'),
+  reason: protectionReasonEnum('reason').notNull(),
+  referenceId: text('reference_id'),
+  referenceType: text('reference_type'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  staffId: text('staff_id'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  releasedAt: timestamp('released_at', { withTimezone: true }),
+}, (t) => [
+  index('idx_protections_frame').on(t.familyId, t.colour, t.locationId),
+  index('idx_protections_active').on(t.releasedAt),
+]);
+
+// ─── Return Inspections ──────────────────────────────────
+
+export const returnInspectionStatusEnum = pgEnum('return_inspection_status', [
+  'awaiting', 'sellable', 'damaged', 'refurbish', 'written_off',
+]);
+
+export const returnInspections = pgTable('return_inspections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  shopifyRefundId: text('shopify_refund_id'),
+  squareRefundId: text('square_refund_id'),
+  familyId: text('family_id').notNull(),
+  colour: text('colour').notNull(),
+  locationId: text('location_id').notNull().references(() => locations.id),
+  status: returnInspectionStatusEnum('status').notNull().default('awaiting'),
+  inspectedBy: text('inspected_by'),
+  inspectedAt: timestamp('inspected_at', { withTimezone: true }),
+  notes: text('notes'),
+  photoUrl: text('photo_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (t) => [
+  index('idx_return_inspections_status').on(t.status),
+]);
+
+// ─── Sync Discrepancies ─────────────────────────────────
+
+export const syncDiscrepancyChannelEnum = pgEnum('sync_discrepancy_channel', ['shopify', 'square']);
+
+export const syncDiscrepancyResolutionEnum = pgEnum('sync_discrepancy_resolution', [
+  'auto_overwritten', 'manual_review', 'ignored',
+]);
+
+export const syncDiscrepancies = pgTable('sync_discrepancies', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  familyId: text('family_id').notNull(),
+  colour: text('colour').notNull(),
+  locationId: text('location_id').notNull(),
+  channel: syncDiscrepancyChannelEnum('channel').notNull(),
+  channelValue: integer('channel_value').notNull(),
+  lunettiqValue: integer('lunettiq_value').notNull(),
+  delta: integer('delta').notNull(),
+  resolved: boolean('resolved').default(false),
+  resolution: syncDiscrepancyResolutionEnum('resolution'),
+  detectedAt: timestamp('detected_at', { withTimezone: true }).defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+}, (t) => [
+  index('idx_sync_disc_unresolved').on(t.resolved),
 ]);

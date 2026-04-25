@@ -7,9 +7,10 @@ interface Location {
   id: string; name: string; locationType: string | null;
   shopifyLocationId: string | null; squareLocationId: string | null;
   address: any; timezone: string | null; fulfillsOnline: boolean | null;
+  isRetail: boolean | null; onlineReserveBuffer: number | null;
   active: boolean;
 }
-interface ChannelLoc { id: string; name: string }
+interface ChannelLoc { id: string; name: string; active?: boolean }
 
 const TYPES = [
   { value: 'retail', label: 'Retail Store', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
@@ -23,8 +24,9 @@ export default function LocationsClient() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [shopifyLocs, setShopifyLocs] = useState<ChannelLoc[]>([]);
   const [squareLocs, setSquareLocs] = useState<ChannelLoc[]>([]);
+  const [shopifyDomain, setShopifyDomain] = useState<string | null>(null);
+  const [squareEnv, setSquareEnv] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<Location>>({});
   const [adding, setAdding] = useState(false);
@@ -37,19 +39,15 @@ export default function LocationsClient() {
         setLocations(d.data?.locations ?? d.data ?? []);
         setSquareLocs(d.data?.squareLocations ?? []);
         setShopifyLocs(d.data?.shopifyLocations ?? []);
+        setShopifyDomain(d.data?.shopifyDomain ?? null);
+        setSquareEnv(d.data?.squareEnvironment ?? null);
       }).catch(() => {}).finally(() => setLoading(false));
   }
   useEffect(() => { load(); }, []);
 
-  async function sync() {
-    setSyncing(true); toast('Syncing locations…');
-    await fetch('/api/crm/settings/locations/sync', { method: 'POST', credentials: 'include' });
-    toast('Locations synced'); setSyncing(false); load();
-  }
-
   function startEdit(loc: Location) {
     setEditing(loc.id);
-    setForm({ name: loc.name, locationType: loc.locationType ?? 'retail', timezone: loc.timezone, fulfillsOnline: loc.fulfillsOnline ?? false, active: loc.active, shopifyLocationId: loc.shopifyLocationId, squareLocationId: loc.squareLocationId });
+    setForm({ name: loc.name, locationType: loc.locationType ?? 'retail', timezone: loc.timezone, fulfillsOnline: loc.fulfillsOnline ?? false, isRetail: loc.isRetail ?? false, onlineReserveBuffer: loc.onlineReserveBuffer ?? 2, active: loc.active, shopifyLocationId: loc.shopifyLocationId, squareLocationId: loc.squareLocationId });
   }
 
   async function save(id: string) {
@@ -85,14 +83,28 @@ export default function LocationsClient() {
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 700 }}>
       <a href="/crm/settings" style={{ fontSize: 13, color: '#9ca3af', textDecoration: 'none' }}>← Settings</a>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 12 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600 }}>Locations</h1>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => { setAdding(true); setEditing(null); }} className="crm-btn crm-btn-primary" style={{ fontSize: 11 }}>+ Add Location</button>
-          <button onClick={sync} disabled={syncing} className="crm-btn crm-btn-secondary" style={{ fontSize: 11 }}>
-            {syncing ? 'Syncing…' : 'Sync from Shopify + Square'}
-          </button>
+          <button onClick={load} className="crm-btn crm-btn-secondary" style={{ fontSize: 11 }}>↻ Refresh</button>
         </div>
+      </div>
+
+      {/* Connected channels */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {shopifyDomain && (
+          <span style={{ fontSize: 10, padding: '4px 10px', borderRadius: 6, background: '#f0fdf4', color: '#065f46', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+            {shopifyDomain.replace('.myshopify.com', '')}
+          </span>
+        )}
+        {squareEnv && (
+          <span style={{ fontSize: 10, padding: '4px 10px', borderRadius: 6, background: squareEnv === 'production' ? '#fffbeb' : '#f3f4f6', color: squareEnv === 'production' ? '#92400e' : '#6b7280', border: `1px solid ${squareEnv === 'production' ? '#fde68a' : '#e5e7eb'}`, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: squareEnv === 'production' ? '#d97706' : '#9ca3af', display: 'inline-block' }} />
+            Square {squareEnv}
+          </span>
+        )}
       </div>
 
       {loading ? <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af' }}>Loading…</div> : (
@@ -169,9 +181,20 @@ export default function LocationsClient() {
                         <input type="checkbox" checked={form.fulfillsOnline ?? false} onChange={e => setForm({ ...form, fulfillsOnline: e.target.checked })} /> Fulfills online orders
                       </label>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.isRetail ?? false} onChange={e => setForm({ ...form, isRetail: e.target.checked })} /> Retail (walk-in sales)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
                         <input type="checkbox" checked={form.active ?? true} onChange={e => setForm({ ...form, active: e.target.checked })} /> Active
                       </label>
                     </div>
+
+                    {form.fulfillsOnline && (
+                      <div>
+                        <label style={{ fontSize: 10, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 2 }}>Online Reserve Buffer</label>
+                        <p style={{ fontSize: 9, color: '#9ca3af', marginBottom: 4 }}>Units held back from Shopify projection at this location.</p>
+                        <input className="crm-input" style={{ width: 60, fontSize: 12 }} type="number" min="0" value={form.onlineReserveBuffer ?? 2} onChange={e => setForm({ ...form, onlineReserveBuffer: parseInt(e.target.value) || 0 })} />
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button onClick={() => save(loc.id)} className="crm-btn crm-btn-primary" style={{ fontSize: 11, padding: '6px 16px' }}>Save</button>
@@ -187,18 +210,18 @@ export default function LocationsClient() {
                           <span style={{ fontSize: 14, fontWeight: 600 }}>{loc.name}</span>
                           {!loc.active && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#f3f4f6', color: '#6b7280', fontWeight: 600 }}>inactive</span>}
                           {loc.fulfillsOnline && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#dbeafe', color: '#1e40af', fontWeight: 600 }}>ships online</span>}
+                          {loc.isRetail && <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 8, background: '#fef3c7', color: '#92400e', fontWeight: 600 }}>retail</span>}
                         </div>
-                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, marginLeft: 24, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4, marginLeft: 24, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                           <span>{type.label}</span>
-                          {loc.shopifyLocationId ? (
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#f0fdf4', color: '#065f46', fontSize: 10 }}>Shopify: {sName ?? loc.shopifyLocationId}</span>
-                          ) : (
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#f9fafb', color: '#d1d5db', fontSize: 10 }}>Shopify —</span>
+                          {loc.shopifyLocationId && (
+                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#f0fdf4', color: '#065f46', fontSize: 10, border: '1px solid #bbf7d0' }}>✓ Shopify</span>
                           )}
-                          {loc.squareLocationId ? (
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#fffbeb', color: '#92400e', fontSize: 10 }}>Square: {sqName ?? loc.squareLocationId}</span>
-                          ) : (
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#f9fafb', color: '#d1d5db', fontSize: 10 }}>Square —</span>
+                          {loc.squareLocationId && (
+                            <span style={{ padding: '1px 6px', borderRadius: 4, background: '#fffbeb', color: '#92400e', fontSize: 10, border: '1px solid #fde68a' }}>✓ Square</span>
+                          )}
+                          {!loc.shopifyLocationId && !loc.squareLocationId && (
+                            <span style={{ fontSize: 10, color: '#d1d5db' }}>no channels</span>
                           )}
                         </div>
                       </div>
@@ -215,10 +238,98 @@ export default function LocationsClient() {
           })}
 
           {locations.length === 0 && (
-            <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No locations. Click "Sync from Shopify + Square" to import.</div>
+            <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>No locations yet. Add one manually or link a channel location below.</div>
           )}
+
+          {/* Unlinked channel locations */}
+          <UnlinkedChannelLocations shopifyLocs={shopifyLocs} squareLocs={squareLocs} crmLocations={locations} onAction={load} />
         </div>
       )}
+    </div>
+  );
+}
+
+function UnlinkedChannelLocations({ shopifyLocs, squareLocs, crmLocations, onAction }: {
+  shopifyLocs: ChannelLoc[]; squareLocs: ChannelLoc[]; crmLocations: Location[]; onAction: () => void;
+}) {
+  const { toast } = useToast();
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkTarget, setLinkTarget] = useState('');
+
+  // Find channel locations not linked to any CRM location
+  const linkedShopifyIds = new Set(crmLocations.map(l => l.shopifyLocationId).filter(Boolean));
+  const linkedSquareIds = new Set(crmLocations.map(l => l.squareLocationId).filter(Boolean));
+  const unlinkedShopify = shopifyLocs.filter(s => !linkedShopifyIds.has(s.id) && s.active !== false);
+  const unlinkedSquare = squareLocs.filter(s => !linkedSquareIds.has(s.id));
+
+  if (!unlinkedShopify.length && !unlinkedSquare.length) return null;
+
+  async function link(channel: 'shopify' | 'square', channelLocationId: string, locationId: string) {
+    const res = await fetch('/api/crm/settings/locations/sync', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'link', locationId, channel, channelLocationId }),
+    });
+    if (res.ok) { toast('Linked'); setLinkingId(null); setLinkTarget(''); onAction(); }
+    else { const d = await res.json(); toast(d.error ?? 'Failed'); }
+  }
+
+  async function create(channel: 'shopify' | 'square', channelLocationId: string, name: string) {
+    const res = await fetch('/api/crm/settings/locations/sync', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'create', name, channel, channelLocationId }),
+    });
+    if (res.ok) { toast('Location created'); onAction(); }
+    else { const d = await res.json(); toast(d.error ?? 'Failed'); }
+  }
+
+  const items = [
+    ...unlinkedShopify.map(s => ({ ...s, channel: 'shopify' as const, key: `shopify-${s.id}` })),
+    ...unlinkedSquare.map(s => ({ ...s, channel: 'square' as const, key: `square-${s.id}` })),
+  ];
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+        Unlinked Channel Locations ({items.length})
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {items.map(item => {
+          const isLinking = linkingId === item.key;
+          return (
+            <div key={item.key} style={{ border: '1px dashed #fde68a', borderRadius: 8, background: '#fffbeb', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</span>
+                  <span style={{ marginLeft: 8, fontSize: 9, padding: '1px 6px', borderRadius: 4, background: item.channel === 'shopify' ? '#f0fdf4' : '#fffbeb', color: item.channel === 'shopify' ? '#065f46' : '#92400e', border: `1px solid ${item.channel === 'shopify' ? '#bbf7d0' : '#fde68a'}` }}>
+                    {item.channel}
+                  </span>
+                  <span style={{ marginLeft: 6, fontSize: 9, color: '#9ca3af', fontFamily: 'monospace' }}>{item.id}</span>
+                </div>
+                {!isLinking && (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {crmLocations.length > 0 && (
+                      <button onClick={() => { setLinkingId(item.key); setLinkTarget(''); }} className="crm-btn crm-btn-secondary" style={{ fontSize: 10, padding: '3px 10px' }}>Link to existing</button>
+                    )}
+                    <button onClick={() => create(item.channel, item.id, item.name)} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '3px 10px' }}>Create Location</button>
+                  </div>
+                )}
+              </div>
+              {isLinking && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                  <select className="crm-input" style={{ flex: 1, fontSize: 11 }} value={linkTarget} onChange={e => setLinkTarget(e.target.value)}>
+                    <option value="">— Select location —</option>
+                    {crmLocations.filter(l => item.channel === 'shopify' ? !l.shopifyLocationId : !l.squareLocationId).map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
+                  <button onClick={() => linkTarget && link(item.channel, item.id, linkTarget)} disabled={!linkTarget} className="crm-btn crm-btn-primary" style={{ fontSize: 10, padding: '4px 12px' }}>Link</button>
+                  <button onClick={() => setLinkingId(null)} style={{ fontSize: 10, color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -307,7 +418,7 @@ function ChannelPicker({ label, colour, bg, border, current, options, onSelect }
 
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 50 }} />
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50 }} />
           <div style={{ position: 'fixed', top: '15%', left: '50%', transform: 'translateX(-50%)', width: 420, maxHeight: '70vh', background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.15)', zIndex: 51, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6' }}>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Select {label} Location</div>

@@ -1018,6 +1018,28 @@ export const syncSquareOrder = inngest.createFunction(
       }
     }
 
+    // Inventory: decrement on_hand for each line item (§4.1)
+    if (loc?.id) {
+      const { resolveFrame, adjust, projectToChannels } = await import('@/lib/crm/inventory');
+      for (const li of order.line_items ?? []) {
+        if (!li.catalog_object_id) continue;
+        const qty = Number(li.quantity ?? 1);
+        // Resolve catalog_object_id → shopify product → family+colour
+        const [mapping] = await db.execute(sql`
+          SELECT shopify_product_id FROM product_mappings
+          WHERE square_catalog_id = ${li.catalog_object_id} AND status IN ('confirmed','auto','manual')
+          LIMIT 1
+        `).then(r => r.rows as any[]);
+        if (!mapping?.shopify_product_id) continue;
+        const [member] = await db.select({ familyId: productFamilyMembers.familyId, colour: productFamilyMembers.colour })
+          .from(productFamilyMembers).where(eq(productFamilyMembers.productId, mapping.shopify_product_id));
+        const familyId = member?.familyId ?? null;
+        const colour = member?.colour ?? null;
+        await adjust({ familyId, colour, variantId: familyId ? null : mapping.shopify_product_id, locationId: loc.id, field: 'on_hand', delta: -qty, reason: 'sale', referenceId: `sq_${order.id}`, referenceType: 'square_order' });
+        await projectToChannels(familyId, colour, familyId ? null : mapping.shopify_product_id);
+      }
+    }
+
     return { synced: true, orderId: order.id, customerId };
   }
 );
@@ -1365,44 +1387,71 @@ export const inventoryOnOrder = inngest.createFunction(
     const o = event.data;
     if (!o.line_items?.length) return;
 
-    const { resolveFrame, adjust, projectToChannels } = await import('@/lib/crm/inventory');
-    const { locations: locTable } = await import('@/lib/db/schema');
+    const { resolveFrame, adjust, projectToChannels, getLevels } = await import('@/lib/crm/inventory');
+    const { locations: locTable, inventoryLevels } = await import('@/lib/db/schema');
+    const { getSettings } = await import('@/lib/crm/store-settings');
 
-    // Determine what changed
     const isNew = o.financial_status === 'paid' || o.financial_status === 'authorized';
     const isCancelled = !!o.cancelled_at;
     const isFulfilled = o.fulfillment_status === 'fulfilled';
 
-    // Get the location for this order (use location_id from line items or default)
+    // For fulfilled/cancelled, use the order's Shopify location (commit already placed)
     const orderLocationId = o.location_id ? String(o.location_id) : null;
-    let locationId: string | null = null;
+    let fallbackLocationId: string | null = null;
     if (orderLocationId) {
       const [loc] = await db.select().from(locTable).where(eq(locTable.shopifyLocationId, orderLocationId));
-      locationId = loc?.id ?? null;
+      fallbackLocationId = loc?.id ?? null;
     }
-    if (!locationId) {
-      // Fallback to first location
-      const [loc] = await db.select().from(locTable).where(eq(locTable.active, true)).limit(1);
-      locationId = loc?.id ?? null;
-    }
-    if (!locationId) return;
+
+    const settings = await getSettings();
+    const defaultFulfillmentLoc = settings.default_fulfillment_location ?? settings.shipping_location_id ?? null;
 
     for (const li of o.line_items) {
       const variantId = li.variant_id ? String(li.variant_id) : null;
       if (!variantId) continue;
       const qty = li.quantity ?? 1;
-
       const frame = await resolveFrame(variantId);
 
+      let locationId = fallbackLocationId;
+
+      // Order routing: for new orders, pick the fulfilling location with highest available
+      if (isNew && frame.familyId && frame.colour) {
+        const levels = await getLevels({ familyId: frame.familyId, colour: frame.colour });
+        const fulfillingLocs = await db.select().from(locTable).where(sql`${locTable.fulfillsOnline} = true AND ${locTable.active} = true`);
+        const fulfillingIds = new Set(fulfillingLocs.map(l => l.id));
+
+        // Among fulfilling locations with enough available, pick highest stock
+        let best: { id: string; available: number } | null = null;
+        for (const level of levels) {
+          if (!fulfillingIds.has(level.locationId)) continue;
+          if (level.available < qty) continue;
+          if (!best || level.available > best.available) {
+            best = { id: level.locationId, available: level.available };
+          }
+        }
+        // Tie-break: prefer default fulfillment location
+        if (best && defaultFulfillmentLoc) {
+          const defaultLevel = levels.find(l => l.locationId === defaultFulfillmentLoc && fulfillingIds.has(l.locationId) && l.available >= qty);
+          if (defaultLevel && defaultLevel.available === best.available) {
+            best = { id: defaultFulfillmentLoc, available: defaultLevel.available };
+          }
+        }
+        if (best) locationId = best.id;
+      }
+
+      // Final fallback
+      if (!locationId) {
+        const [loc] = await db.select().from(locTable).where(eq(locTable.active, true)).limit(1);
+        locationId = loc?.id ?? null;
+      }
+      if (!locationId) continue;
+
       if (isCancelled) {
-        // Release committed stock
         await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: -qty, reason: 'return', referenceId: String(o.id), referenceType: 'shopify_order' });
       } else if (isFulfilled) {
-        // Decrement on_hand + committed
         await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'on_hand', delta: -qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
         await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: -qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
       } else if (isNew) {
-        // Reserve stock
         await adjust({ familyId: frame.familyId, colour: frame.colour, variantId: frame.variantId, locationId, field: 'committed', delta: qty, reason: 'sale', referenceId: String(o.id), referenceType: 'shopify_order' });
       }
 
@@ -1411,4 +1460,89 @@ export const inventoryOnOrder = inngest.createFunction(
   }
 );
 
-export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership, cleanupDraftOrders, syncDraftOrder, deleteDraftOrder, inventoryOnOrder];
+// ─── Inventory: nightly reconciliation (§6) ─────────────
+
+export const inventoryReconciliation = inngest.createFunction(
+  { id: 'inventory-reconciliation', retries: 1 },
+  { cron: 'TZ=America/Montreal 0 3 * * *' }, // 3am ET daily
+  async () => {
+    const { locations: locTable, inventoryLevels, syncDiscrepancies } = await import('@/lib/db/schema');
+    const { getLevels, projectToChannels } = await import('@/lib/crm/inventory');
+    const { graphqlAdmin, shopifySetInventory } = await import('@/lib/shopify/admin-graphql');
+
+    const locs = await db.select().from(locTable).where(sql`${locTable.fulfillsOnline} = true AND ${locTable.shopifyLocationId} IS NOT NULL`);
+    let discrepancies = 0;
+
+    for (const loc of locs) {
+      // Pull Shopify inventory for this location
+      let cursor: string | null = null;
+      while (true) {
+        const result = await graphqlAdmin<any>(`query($locationId: ID!, $cursor: String) {
+          location(id: $locationId) {
+            inventoryLevels(first: 250, after: $cursor) {
+              pageInfo { hasNextPage endCursor }
+              nodes { quantities(names: ["available"]) { name quantity } item { variant { id } } }
+            }
+          }
+        }`, { locationId: `gid://shopify/Location/${loc.shopifyLocationId}`, cursor });
+
+        if (!result.ok) break;
+        const data = result.data?.location?.inventoryLevels;
+        if (!data?.nodes?.length) break;
+
+        for (const node of data.nodes) {
+          const variantGid = node.item?.variant?.id;
+          if (!variantGid) continue;
+          const variantId = variantGid.replace(/^gid:\/\/shopify\/\w+\//, '');
+          const channelAvail = node.quantities?.find((q: any) => q.name === 'available')?.quantity ?? 0;
+
+          // Resolve to family+colour
+          const { resolveFrame } = await import('@/lib/crm/inventory');
+          const frame = await resolveFrame(variantId);
+          if (!frame.familyId || !frame.colour) continue;
+
+          // Get what Lunettiq thinks this should be
+          const levels = await getLevels({ familyId: frame.familyId, colour: frame.colour });
+          const fulfillingLocs = await db.select().from(locTable).where(sql`${locTable.fulfillsOnline} = true`);
+          let lunettiqValue = 0;
+          for (const fl of fulfillingLocs) {
+            const level = levels.find(l => l.locationId === fl.id);
+            if (!level) continue;
+            const buffer = fl.onlineReserveBuffer ?? 2;
+            lunettiqValue += Math.max(0, level.available - buffer);
+          }
+
+          const delta = channelAvail - lunettiqValue;
+          if (delta !== 0) {
+            await db.insert(syncDiscrepancies).values({
+              familyId: frame.familyId, colour: frame.colour, locationId: loc.id,
+              channel: 'shopify', channelValue: channelAvail, lunettiqValue, delta,
+            });
+            // Push Lunettiq value (Lunettiq wins)
+            await projectToChannels(frame.familyId, frame.colour, null);
+            discrepancies++;
+          }
+        }
+
+        if (!data.pageInfo.hasNextPage) break;
+        cursor = data.pageInfo.endCursor;
+      }
+    }
+
+    return { discrepancies };
+  }
+);
+
+// ─── Inventory: expire protections ───────────────────────
+
+export const inventoryProtectionExpiry = inngest.createFunction(
+  { id: 'inventory-protection-expiry', retries: 1 },
+  { cron: 'TZ=America/Montreal */15 * * * *' }, // every 15 min
+  async () => {
+    const { expireProtections } = await import('@/lib/crm/inventory');
+    const expired = await expireProtections();
+    return { expired };
+  }
+);
+
+export const functions = [syncCustomer, syncOrder, syncProduct, deleteProduct, syncCollection, dedupScan, monthlyCredits, birthdayCredits, creditReconciliation, dailyDigest, appointmentReminders, pointsOnPurchase, pointsBirthday, pointsExpiryScan, pointsExpiryExecute, trialConversionScan, trialReminder, referralQualify, vaultGiftDispatch, syncSquareOrder, syncSquareCustomer, rxExpiryReminder, activateMembership, cleanupDraftOrders, syncDraftOrder, deleteDraftOrder, inventoryOnOrder, inventoryReconciliation, inventoryProtectionExpiry];

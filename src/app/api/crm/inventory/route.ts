@@ -60,6 +60,7 @@ export const POST = handler(async (request) => {
     const level = await adjust({
       familyId, colour, variantId, locationId,
       field: 'on_hand', delta: body.quantity, reason: 'received',
+      referenceId: body.referenceId, referenceType: body.referenceType,
       staffId: session.userId, note: body.note,
     });
     await projectToChannels(familyId, colour, variantId);

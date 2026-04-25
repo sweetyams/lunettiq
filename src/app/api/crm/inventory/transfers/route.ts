@@ -41,14 +41,20 @@ export const POST = handler(async (request) => {
     return jsonOk(t);
   }
 
-  // Ship — decrement origin
-  if (action === 'ship') {
-    const [t] = await db.update(inventoryTransfers).set({ status: 'shipped', updatedAt: new Date() }).where(eq(inventoryTransfers.id, body.id)).returning();
+  // Pick — decrement origin on_hand (§5.4)
+  if (action === 'pick') {
+    const [t] = await db.update(inventoryTransfers).set({ status: 'picked', updatedAt: new Date() }).where(eq(inventoryTransfers.id, body.id)).returning();
     const lines = await db.select().from(inventoryTransferLines).where(eq(inventoryTransferLines.transferId, body.id));
     for (const line of lines) {
       await adjust({ familyId: line.familyId, colour: line.colour, variantId: line.variantId, locationId: t.fromLocationId, field: 'on_hand', delta: -line.quantity, reason: 'transfer', referenceId: t.id, referenceType: 'transfer', staffId: session.userId });
       await projectToChannels(line.familyId, line.colour, line.variantId);
     }
+    return jsonOk(t);
+  }
+
+  // Ship — handoff confirmation (stock already decremented at pick)
+  if (action === 'ship') {
+    const [t] = await db.update(inventoryTransfers).set({ status: 'shipped', updatedAt: new Date() }).where(eq(inventoryTransfers.id, body.id)).returning();
     return jsonOk(t);
   }
 
@@ -74,5 +80,5 @@ export const POST = handler(async (request) => {
     return jsonOk(t);
   }
 
-  return jsonError('action must be create, approve, ship, receive, or cancel', 400);
+  return jsonError('action must be create, approve, pick, ship, receive, or cancel', 400);
 });

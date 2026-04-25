@@ -25,16 +25,27 @@ export const GET = handler(async (request) => {
     } catch {}
     try {
       const { graphqlAdmin } = await import('@/lib/shopify/admin-graphql');
-      const result = await graphqlAdmin<any>(`{ locations(first: 50) { nodes { id name } } }`);
+      const result = await graphqlAdmin<any>(`{ locations(first: 50) { nodes { id name isActive } } }`);
       if (result.ok) {
         shopifyLocations = (result.data?.locations?.nodes ?? []).map((l: any) => ({
-          id: l.id.replace('gid://shopify/Location/', ''), name: l.name,
+          id: l.id.replace('gid://shopify/Location/', ''), name: l.name, active: l.isActive ?? true,
         }));
       }
     } catch {}
   }
 
-  return jsonOk(includeSquare ? { locations: rows, squareLocations, shopifyLocations } : rows);
+  // Include environment info so UI can show which store/env is connected
+  let shopifyDomain: string | null = null;
+  let squareEnvironment: string | null = null;
+  if (includeSquare) {
+    try {
+      const { getKey } = await import('@/lib/crm/integration-keys');
+      shopifyDomain = await getKey('NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN');
+    } catch {}
+    squareEnvironment = process.env.SQUARE_ENVIRONMENT ?? 'sandbox';
+  }
+
+  return jsonOk(includeSquare ? { locations: rows, squareLocations, shopifyLocations, shopifyDomain, squareEnvironment } : rows);
 });
 
 export const POST = handler(async (req) => {

@@ -121,6 +121,20 @@ export default function RecountPage() {
 
           {changed.length > 0 && (
             <div>
+              {/* Large delta warning */}
+              {(() => {
+                const large = changed.filter(l => {
+                  const actual = parseInt(counts[l.id]);
+                  const diff = Math.abs(actual - l.onHand);
+                  const pct = l.onHand > 0 ? (diff / l.onHand) * 100 : 100;
+                  return diff > 5 || pct > 20;
+                });
+                return large.length > 0 ? (
+                  <div style={{ border: '1px solid #fde68a', borderRadius: 8, background: '#fffbeb', padding: '10px 12px', marginBottom: 12, fontSize: 11, color: '#92400e' }}>
+                    <span style={{ fontWeight: 600 }}>⚠ Manager sign-off recommended</span> — {large.length} item{large.length !== 1 ? 's have' : ' has'} a delta {'>'} 5 units or {'>'} 20%. Consider having a manager review before submitting.
+                  </div>
+                ) : null;
+              })()}
               <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 4 }}>Recount Note</label>
               <input className="crm-input" style={{ width: '100%', fontSize: 12, marginBottom: 12 }} value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Weekly cycle count, found damaged unit" />
               <button onClick={submit} disabled={submitting} className="crm-btn crm-btn-primary" style={{ fontSize: 12, padding: '8px 20px' }}>
