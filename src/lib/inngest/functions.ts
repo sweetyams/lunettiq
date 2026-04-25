@@ -1463,8 +1463,7 @@ export const inventoryOnOrder = inngest.createFunction(
 // ─── Inventory: nightly reconciliation (§6) ─────────────
 
 export const inventoryReconciliation = inngest.createFunction(
-  { id: 'inventory-reconciliation', retries: 1 },
-  { cron: 'TZ=America/Montreal 0 3 * * *' }, // 3am ET daily
+  { id: 'inventory-reconciliation', retries: 1, triggers: [{ cron: 'TZ=America/Montreal 0 3 * * *' }] },
   async () => {
     const { locations: locTable, inventoryLevels, syncDiscrepancies } = await import('@/lib/db/schema');
     const { getLevels, projectToChannels } = await import('@/lib/crm/inventory');
@@ -1536,8 +1535,7 @@ export const inventoryReconciliation = inngest.createFunction(
 // ─── Inventory: expire protections ───────────────────────
 
 export const inventoryProtectionExpiry = inngest.createFunction(
-  { id: 'inventory-protection-expiry', retries: 1 },
-  { cron: 'TZ=America/Montreal */15 * * * *' }, // every 15 min
+  { id: 'inventory-protection-expiry', retries: 1, triggers: [{ cron: 'TZ=America/Montreal */15 * * * *' }] },
   async () => {
     const { expireProtections } = await import('@/lib/crm/inventory');
     const expired = await expireProtections();
