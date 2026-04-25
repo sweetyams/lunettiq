@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { integrationsConfig } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
@@ -36,7 +36,21 @@ async function resolveKey(keyName: string, dbConfigs: Map<string, Record<string,
   return process.env[keyName] ?? null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Auth: require Clerk session or bearer token
+  let authed = false;
+  try {
+    const { auth } = await import('@clerk/nextjs/server');
+    const { userId } = await auth();
+    if (userId) authed = true;
+  } catch {}
+  if (!authed) {
+    const secret = process.env.SYSTEM_STATUS_SECRET;
+    const bearer = request.headers.get('authorization');
+    if (secret && bearer === `Bearer ${secret}`) authed = true;
+  }
+  if (!authed) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const statuses: Status[] = [];
 
   // Load all integration configs from DB in one query (bypass the module cache)
@@ -69,8 +83,7 @@ export async function GET() {
         body: JSON.stringify({ query: '{ shop { name } }' }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      return d.data?.shop?.name ?? 'Connected';
+      return 'Connected';
     }));
   } else statuses.push({ id: 'shopify_storefront', name: 'Shopify Storefront API', status: 'off', detail: 'No token or domain' });
 
@@ -82,8 +95,7 @@ export async function GET() {
         headers: { 'X-Shopify-Access-Token': adminToken },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      return d.shop?.name ?? 'Connected';
+      return 'Connected';
     }));
   } else statuses.push({ id: 'shopify_admin', name: 'Shopify Admin API', status: 'off', detail: 'No token' });
 
