@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/crm/CrmShell';
 
-interface Level { id: string; familyId: string | null; colour: string | null; locationId: string; locationName: string; onHand: number; available: number }
+interface Level { id: string; familyId: string | null; colour: string | null; locationId: string; locationName: string; displayName: string; onHand: number; available: number }
 interface Location { id: string; name: string }
 
 export default function RecountPage() {
@@ -60,9 +60,7 @@ export default function RecountPage() {
       .then(r => r.json()).then(d => { setLevels(d.data ?? []); setCounts({}); });
   }
 
-  const formatFrame = (l: Level) => l.familyId
-    ? `${l.familyId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} — ${(l.colour ?? '').replace(/-/g, ' ')}`
-    : l.id;
+  const formatFrame = (l: Level) => l.displayName;
 
   return (
     <div style={{ padding: 'var(--crm-space-6)', maxWidth: 700 }}>

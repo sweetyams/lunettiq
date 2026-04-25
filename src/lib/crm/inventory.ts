@@ -74,9 +74,31 @@ export async function getLevels(opts: { familyId?: string; colour?: string; vari
   const rows = await db.select().from(inventoryLevels)
     .where(conditions.length ? and(...conditions) : undefined);
 
-  // Attach location names
+  // Attach location names + display names
   const locs = await db.select().from(locations);
   const locMap = new Map(locs.map(l => [l.id, l.name]));
+
+  // Resolve variant-level rows to product titles
+  const variantIds = rows.filter(r => !r.familyId && r.variantId).map(r => r.variantId!);
+  let variantTitles = new Map<string, string>();
+  if (variantIds.length) {
+    const variants = await db.select({ variantId: productVariantsProjection.shopifyVariantId, title: productVariantsProjection.title, productId: productVariantsProjection.shopifyProductId })
+      .from(productVariantsProjection)
+      .where(inArray(productVariantsProjection.shopifyVariantId, variantIds));
+    // Also get product titles
+    const productIds = [...new Set(variants.map(v => v.productId))];
+    if (productIds.length) {
+      const { productsProjection } = await import('@/lib/db/schema');
+      const products = await db.select({ id: productsProjection.shopifyProductId, title: productsProjection.title })
+        .from(productsProjection)
+        .where(inArray(productsProjection.shopifyProductId, productIds));
+      const prodMap = new Map(products.map(p => [p.id, p.title]));
+      for (const v of variants) {
+        const prodTitle = prodMap.get(v.productId) ?? '';
+        variantTitles.set(v.variantId, v.title ? `${prodTitle} — ${v.title}` : prodTitle);
+      }
+    }
+  }
 
   return rows.map(r => ({
     id: r.id,
@@ -85,6 +107,9 @@ export async function getLevels(opts: { familyId?: string; colour?: string; vari
     variantId: r.variantId,
     locationId: r.locationId,
     locationName: locMap.get(r.locationId) ?? r.locationId,
+    displayName: r.familyId && r.colour
+      ? `${r.familyId.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} — ${r.colour.replace(/-/g, ' ')}`
+      : r.variantId ? (variantTitles.get(r.variantId) || r.variantId) : r.id,
     onHand: r.onHand ?? 0,
     committed: r.committed ?? 0,
     securityStock: r.securityStock ?? 0,
