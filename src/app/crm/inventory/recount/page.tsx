@@ -32,9 +32,7 @@ export default function RecountPage() {
       .then(r => r.json()).then(d => {
         const lvls = (d.data ?? []) as Level[];
         setLevels(lvls);
-        const c: Record<string, string> = {};
-        lvls.forEach(l => { c[l.id] = String(l.onHand); });
-        setCounts(c);
+        setCounts({});
       }).finally(() => setLoading(false));
   }, [locationId]);
 
@@ -59,7 +57,7 @@ export default function RecountPage() {
     setSubmitting(false);
     // Reload
     fetch(`/api/crm/inventory?locationId=${locationId}`, { credentials: 'include' })
-      .then(r => r.json()).then(d => { setLevels(d.data ?? []); const c: Record<string, string> = {}; (d.data ?? []).forEach((l: Level) => { c[l.id] = String(l.onHand); }); setCounts(c); });
+      .then(r => r.json()).then(d => { setLevels(d.data ?? []); setCounts({}); });
   }
 
   const formatFrame = (l: Level) => l.familyId
@@ -74,7 +72,7 @@ export default function RecountPage() {
         <span style={{ fontWeight: 600 }}>Recount</span>
       </div>
       <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 4 }}>Stock Recount</h1>
-      <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 20 }}>Enter actual physical counts. The system will log the difference as an adjustment.</p>
+      <p style={{ fontSize: 11, color: '#9ca3af', marginBottom: 20 }}>Count by physical frame. Sun and optical share the same pool. Counts within 5 units of the system value post immediately. Larger deltas need manager approval.</p>
 
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 4 }}>Location</label>
@@ -118,6 +116,19 @@ export default function RecountPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Live summary */}
+          {(() => {
+            const counted = levels.filter(l => counts[l.id] !== undefined && counts[l.id] !== '').length;
+            const netDelta = changed.reduce((s, l) => s + (parseInt(counts[l.id]) - l.onHand), 0);
+            const needsApproval = changed.filter(l => { const d = Math.abs(parseInt(counts[l.id]) - l.onHand); return d > 5 || (l.onHand > 0 && (d / l.onHand) * 100 > 20); }).length;
+            return counted > 0 ? (
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>
+                {counted} of {levels.length} counted · {changed.length} mismatch{changed.length !== 1 ? 'es' : ''} · Net {netDelta >= 0 ? '+' : ''}{netDelta}
+                {needsApproval > 0 && <span style={{ color: '#d97706' }}> · {needsApproval} needs approval</span>}
+              </div>
+            ) : null;
+          })()}
 
           {changed.length > 0 && (
             <div>

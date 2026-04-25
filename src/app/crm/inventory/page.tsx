@@ -15,7 +15,6 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all');
@@ -48,16 +47,6 @@ export default function InventoryPage() {
         .then(r => r.json()).then(d => setAdjustments(d.data ?? [])).catch(() => {});
     }
   }, [tab]);
-
-  async function sync() {
-    setSyncing(true);
-    toast('Inventory sync started…');
-    const res = await fetch('/api/crm/inventory/sync', { method: 'POST', credentials: 'include' });
-    const d = await res.json();
-    toast(d.data?.message ?? 'Sync complete');
-    setSyncing(false);
-    load();
-  }
 
   const locations = useMemo(() => Array.from(new Set(levels.map(l => l.locationName))).sort(), [levels]);
 
@@ -109,90 +98,66 @@ export default function InventoryPage() {
           <Link href="/crm/inventory/transfers" className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>Transfers</Link>
           <Link href="/crm/inventory/holds" className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>Holds</Link>
           <Link href="/crm/inventory/returns" className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>Returns</Link>
-          <button onClick={sync} disabled={syncing} className="crm-btn crm-btn-secondary" style={{ fontSize: 'var(--crm-text-xs)' }}>
-            {syncing ? 'Syncing…' : 'Sync'}
-          </button>
         </div>
       </div>
       <p style={{ fontSize: 'var(--crm-text-xs)', color: 'var(--crm-text-tertiary)', marginBottom: 'var(--crm-space-4)' }}>
         Stock levels by frame family and colour. Grouped by physical frame — optical and sun share the same pool.
       </p>
 
-      {/* Stock state summary */}
+      {/* Stock at a glance — 4 cards */}
       {!loading && levels.length > 0 && (() => {
-        const totalOnHand = levels.reduce((s, l) => s + l.onHand, 0);
         const totalAvail = levels.reduce((s, l) => s + l.available, 0);
-        const totalCommitted = levels.reduce((s, l) => s + l.committed, 0);
         const outOfStock = families.families.filter(([, f]) => getFamilyTotal(f.colours) === 0).length;
         const lowStock = families.families.filter(([, f]) => { const t = getFamilyTotal(f.colours); return t > 0 && t <= 5; }).length;
-        const byLoc = locations.map(loc => ({ name: loc, units: levels.filter(l => l.locationName === loc).reduce((s, l) => s + l.available, 0) }));
 
         return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8, marginBottom: 'var(--crm-space-4)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 'var(--crm-space-4)' }}>
             <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: 18, fontWeight: 600 }}>{totalOnHand}</div>
-              <div style={{ fontSize: 10, color: '#9ca3af' }}>On Hand</div>
-            </div>
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#065f46' }}>{totalAvail}</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: '#065f46' }}>{totalAvail}</div>
               <div style={{ fontSize: 10, color: '#9ca3af' }}>Available</div>
             </div>
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#d97706' }}>{totalCommitted}</div>
-              <div style={{ fontSize: 10, color: '#9ca3af' }}>Committed</div>
-            </div>
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#dc2626' }}>{outOfStock}</div>
-              <div style={{ fontSize: 10, color: '#9ca3af' }}>Out of Stock</div>
-            </div>
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: '#92400e' }}>{lowStock}</div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: `1px solid ${lowStock ? '#fde68a' : '#e5e7eb'}` }}>
+              <div style={{ fontSize: 20, fontWeight: 600, color: lowStock ? '#92400e' : '#9ca3af' }}>{lowStock}</div>
               <div style={{ fontSize: 10, color: '#9ca3af' }}>Low Stock</div>
             </div>
+            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: `1px solid ${outOfStock ? '#fecaca' : '#e5e7eb'}` }}>
+              <div style={{ fontSize: 20, fontWeight: 600, color: outOfStock ? '#dc2626' : '#9ca3af' }}>{outOfStock}</div>
+              <div style={{ fontSize: 10, color: '#9ca3af' }}>Out of Stock</div>
+            </div>
             <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: `1px solid ${holds.length ? '#dbeafe' : '#e5e7eb'}` }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: holds.length ? '#1e40af' : '#9ca3af' }}>{holds.length}</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: holds.length ? '#1e40af' : '#9ca3af' }}>{holds.length}</div>
               <div style={{ fontSize: 10, color: '#9ca3af' }}>Active Holds</div>
             </div>
-            <div style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: `1px solid ${pendingReturns ? '#fde68a' : '#e5e7eb'}` }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: pendingReturns ? '#92400e' : '#9ca3af' }}>{pendingReturns}</div>
-              <div style={{ fontSize: 10, color: '#9ca3af' }}>Returns Pending</div>
-            </div>
-            {byLoc.map(l => (
-              <div key={l.name} style={{ padding: '10px 12px', borderRadius: 8, background: '#fff', border: '1px solid #e5e7eb' }}>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>{l.units}</div>
-                <div style={{ fontSize: 10, color: '#9ca3af' }}>{l.name}</div>
-              </div>
-            ))}
           </div>
         );
       })()}
 
       {/* Action queue */}
-      {!loading && (holds.length > 0 || transfers.length > 0 || pendingReturns > 0) && (
-        <div style={{ border: '1px solid #fde68a', borderRadius: 8, background: '#fffbeb', padding: 12, marginBottom: 'var(--crm-space-4)', fontSize: 11 }}>
-          <div style={{ fontWeight: 600, fontSize: 10, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Action Queue</div>
-          {pendingReturns > 0 && (
-            <div style={{ padding: '3px 0', color: '#92400e' }}>
-              <a href="/crm/inventory/returns" style={{ color: '#92400e', fontWeight: 600 }}>{pendingReturns} return{pendingReturns !== 1 ? 's' : ''} awaiting inspection</a>
-            </div>
-          )}
-          {holds.filter(h => h.expiresAt && new Date(h.expiresAt).getTime() - Date.now() < 86400000).map(h => (
-            <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#92400e' }}>
-              <span>Hold expiring: {h.familyId?.replace(/-/g, ' ')} {h.colour?.replace(/-/g, ' ')} — {h.note || h.reason.replace(/_/g, ' ')}</span>
-              <span style={{ fontSize: 9, color: '#b45309' }}>{h.expiresAt ? new Date(h.expiresAt).toLocaleString() : ''}</span>
-            </div>
-          ))}
-          {transfers.map(t => (
-            <div key={t.id} style={{ padding: '3px 0', color: '#92400e' }}>
-              Transfer {t.status}: {t.fromLocationId} → {t.toLocationId}
-              {t.status === 'shipped' && <span style={{ marginLeft: 6, fontWeight: 600 }}>awaiting receipt</span>}
-            </div>
-          ))}
-          {holds.length > 0 && !holds.some(h => h.expiresAt && new Date(h.expiresAt).getTime() - Date.now() < 86400000) && transfers.length === 0 && (
-            <div style={{ color: '#b45309' }}>{holds.length} active hold{holds.length !== 1 ? 's' : ''}</div>
-          )}
-        </div>
-      )}
+      {!loading && (() => {
+        const expiringHolds = holds.filter(h => h.expiresAt && new Date(h.expiresAt).getTime() - Date.now() < 86400000);
+        const awaitingReceipt = transfers.filter(t => t.status === 'shipped');
+        const lowStockCount = families.families.filter(([, f]) => { const t = getFamilyTotal(f.colours); return t > 0 && t <= 5; }).length;
+        const hasItems = expiringHolds.length || awaitingReceipt.length || lowStockCount || pendingReturns || transfers.length;
+        if (!hasItems && !loading) return null;
+        return (
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', padding: 12, marginBottom: 'var(--crm-space-4)', fontSize: 11 }}>
+            <div style={{ fontWeight: 600, fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Action Queue</div>
+            {awaitingReceipt.length > 0 && (
+              <div style={{ padding: '3px 0' }}><a href="/crm/inventory/transfers" style={{ color: '#1e40af', textDecoration: 'none' }}>{awaitingReceipt.length} transfer{awaitingReceipt.length !== 1 ? 's' : ''} awaiting receipt</a></div>
+            )}
+            {expiringHolds.length > 0 && (
+              <div style={{ padding: '3px 0' }}><a href="/crm/inventory/holds" style={{ color: '#d97706', textDecoration: 'none' }}>{expiringHolds.length} hold{expiringHolds.length !== 1 ? 's' : ''} expiring in 24h</a></div>
+            )}
+            {lowStockCount > 0 && (
+              <div style={{ padding: '3px 0' }}><button onClick={() => setStockFilter('low')} style={{ color: '#92400e', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, fontFamily: 'inherit' }}>{lowStockCount} frame{lowStockCount !== 1 ? 's' : ''} at low stock</button></div>
+            )}
+            {pendingReturns > 0 && (
+              <div style={{ padding: '3px 0' }}><a href="/crm/inventory/returns" style={{ color: '#92400e', textDecoration: 'none' }}>{pendingReturns} return{pendingReturns !== 1 ? 's' : ''} awaiting inspection</a></div>
+            )}
+            {!hasItems && <div style={{ color: '#9ca3af' }}>All clear.</div>}
+          </div>
+        );
+      })()}
 
       {/* Tab: Levels / History */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--crm-border-light)', marginBottom: 'var(--crm-space-4)' }}>
